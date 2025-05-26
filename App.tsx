@@ -9,34 +9,15 @@ import HomeScrn from './main/HomeScrn';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import { seeAllDBData } from './seeData';
+import { useAsyncStorage } from './hooks/useAsyncStorage';
 
 export default function App() {
-
-  const clearAsyncStorage = async () => {
-    try {
-      await AsyncStorage.clear();
-      console.log('AsyncStorage cleared successfully.');
-    } catch (error) {
-      console.error('Error clearing AsyncStorage:', error);
-    }
-  };
-  // clearAsyncStorage();
-  
+  const onboardingStatus = useAsyncStorage('onboarding_completed');
   const [isOnboardingCompleted, setIsOnboardingCompleted] = useState<boolean | null>(null);
-  seeAllDBData()
-  useEffect(() => {
-    const checkOnboardingStatus = async () => {
-      try {
-        const value = await AsyncStorage.getItem('onboarding_completed');
-        setIsOnboardingCompleted(value === 'true');
-      } catch (error) {
-        console.error('Error checking onboarding status:', error);
-        setIsOnboardingCompleted(false);
-      }
-    };
 
-    checkOnboardingStatus();
-  }, []);
+  useEffect(() => {
+    setIsOnboardingCompleted(onboardingStatus === 'true');
+  }, [onboardingStatus]);
 
   if (isOnboardingCompleted === null) {
     return (
