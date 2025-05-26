@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import Header from '../components/Header';
 import { seeAllDBData } from '../../seeData';
+import { finishOnboarding } from '../util/finishOnboarding';
 
 const { width } = Dimensions.get('window');
 
@@ -58,6 +59,19 @@ const MultiChildScrn = () => {
     if (editingIndex === index) resetForm();
   };
 
+  async function handleSaveAndContinue() {
+    try {
+          console.log('Saving data:', children);
+          await finishOnboarding(children); // Await the async function
+          console.log('Data saved successfully');
+          console.log("\n-- Data in AsyncStorage --\n");
+          await seeAllDBData(); // Ensure this is awaited as well
+          console.log("-- End of Data --\n");
+        } catch (error) {
+          console.error('Error saving data to AsyncStorage:', error);
+        }
+  }
+  
   return (
     <SafeAreaView style={styles.safeArea}>
           <Header onBackPress={() => {}} />
@@ -126,11 +140,7 @@ const MultiChildScrn = () => {
               { backgroundColor: children.length > 0 ? '#7CBADD' : '#ccc' },
             ]}
             disabled={children.length === 0}
-            onPress={() => {
-              console.log(children);
-            //   seeAllDBData();
-              // Navigate or save logic
-            }}
+            onPress={handleSaveAndContinue}
           >
             <Text style={styles.continueButtonText}>Save and Continue</Text>
           </TouchableOpacity>
