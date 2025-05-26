@@ -1,13 +1,52 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import ChildrenCountScrn from './onboarding/screens/ChildrenCountScrn';
+import OneChildScrn from './onboarding/screens/OneChildScrn';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import MultiChildScrn from './onboarding/screens/MultiChildScrn';
+import { MainStack, OnboardingStack } from './navigation';
+import HomeScrn from './main/HomeScrn';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect, useState } from 'react';
+import { seeAllDBData } from './seeData';
 
 export default function App() {
-  return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
-  );
+
+  const clearAsyncStorage = async () => {
+    try {
+      await AsyncStorage.clear();
+      console.log('AsyncStorage cleared successfully.');
+    } catch (error) {
+      console.error('Error clearing AsyncStorage:', error);
+    }
+  };
+  // clearAsyncStorage();
+  
+  const [isOnboardingCompleted, setIsOnboardingCompleted] = useState<boolean | null>(null);
+  seeAllDBData()
+  useEffect(() => {
+    const checkOnboardingStatus = async () => {
+      try {
+        const value = await AsyncStorage.getItem('onboarding_completed');
+        setIsOnboardingCompleted(value === 'true');
+      } catch (error) {
+        console.error('Error checking onboarding status:', error);
+        setIsOnboardingCompleted(false);
+      }
+    };
+
+    checkOnboardingStatus();
+  }, []);
+
+  if (isOnboardingCompleted === null) {
+    return (
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
+
+  return isOnboardingCompleted ? <MainStack /> : <OnboardingStack />;
 }
 
 const styles = StyleSheet.create({
@@ -16,5 +55,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
