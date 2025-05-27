@@ -16,7 +16,7 @@ export async function finishOnboarding(childrenData: { child_name: string; prono
             pronouns: child.pronouns,
             created_at: timestamp,
             updated_at: timestamp,
-            uuid: uuid,
+            child_uuid: uuid,
         };
 
         try {
