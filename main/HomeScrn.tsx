@@ -1,7 +1,11 @@
 import { StyleSheet, Text, View, SafeAreaView, TouchableOpacity, Platform, Modal, FlatList } from 'react-native'
 import { useState, useEffect } from 'react'
 import { Ionicons } from '@expo/vector-icons'
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
+
+const Tab = createBottomTabNavigator()
 
 interface SelectedChild {
   id: string;
@@ -9,7 +13,7 @@ interface SelectedChild {
   child_name: string;
 }
 
-export default function HomeScrn() {
+function HomeTab() {
   const [selectedChild, setSelectedChild] = useState<SelectedChild | null>(null)
   const [streakCount, setStreakCount] = useState(2)
   const [isModalVisible, setIsModalVisible] = useState(false)
@@ -143,7 +147,7 @@ export default function HomeScrn() {
         <TouchableOpacity style={styles.actionCard}>
           <View style={styles.actionContent}>
             <View style={styles.iconContainer}>
-              <Ionicons name="pencil" size={48} color="#007AFF" />
+              <Ionicons name="create" size={48} color="#FF8B6A" />
             </View>
             <View style={styles.textContainer}>
               <Text style={styles.actionText}>New Log</Text>
@@ -154,7 +158,7 @@ export default function HomeScrn() {
         <TouchableOpacity style={styles.actionCard}>
           <View style={styles.actionContent}>
             <View style={styles.iconContainer}>
-              <Ionicons name="paper-plane" size={48} color="#007AFF" />
+              <MaterialIcons name="attach-email" size={48} color="#67B7D1" />
             </View>
             <View style={styles.textContainer}>
               <Text style={styles.actionText}>Send Summary</Text>
@@ -165,6 +169,50 @@ export default function HomeScrn() {
 
 
     </SafeAreaView>
+  )
+}
+
+function PastLogsScreen() {
+  return (
+    <SafeAreaView style={styles.container}>
+      <Text style={styles.greeting}>Past Logs</Text>
+    </SafeAreaView>
+  )
+}
+
+function SettingsScreen() {
+  return (
+    <SafeAreaView style={styles.container}>
+      <Text style={styles.greeting}>Settings</Text>
+    </SafeAreaView>
+  )
+}
+
+export default function HomeScrn() {
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName;
+
+          if (route.name === 'Home') {
+            iconName = focused ? 'home' : 'home-outline';
+          } else if (route.name === 'Past Logs') {
+            iconName = focused ? 'calendar' : 'calendar-outline';
+          } else if (route.name === 'Settings') {
+            iconName = focused ? 'settings' : 'settings-outline';
+          }
+
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: '#007AFF',
+        tabBarInactiveTintColor: 'gray',
+      })}
+    >
+      <Tab.Screen name="Home" component={HomeTab} options={{ headerShown: false }} />
+      <Tab.Screen name="Past Logs" component={PastLogsScreen} options={{ headerShown: false }} />
+      <Tab.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />
+    </Tab.Navigator>
   )
 }
 
