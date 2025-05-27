@@ -3,8 +3,14 @@ import { useState, useEffect } from 'react'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
+interface SelectedChild {
+  id: string;
+  child_uuid: string;
+  child_name: string;
+}
+
 export default function HomeScrn() {
-  const [selectedChild, setSelectedChild] = useState('Ethan')
+  const [selectedChild, setSelectedChild] = useState<SelectedChild | null>(null)
   const [streakCount, setStreakCount] = useState(2)
   const [isModalVisible, setIsModalVisible] = useState(false)
   const [children, setChildren] = useState([])
@@ -16,23 +22,43 @@ export default function HomeScrn() {
   const loadChildren = async () => {
     try {
       const keys = await AsyncStorage.getAllKeys()
-      const childKeys = keys.filter(key => key !== 'onboarding_completed')
+      const childKeys = keys.filter(key => key !== 'onboarding_completed' && key !== 'current_selected_child')
       const childData = await AsyncStorage.multiGet(childKeys)
-      const childNames = childData
-        .map(([key, value]) => {
-          const data = JSON.parse(value)
-          return data?.child_name
-        })
-        .filter(Boolean)
-      setChildren(childNames)
+      
+      // Get child names and store full data
+      const childDetails = childData.map(([key, value]) => {
+        const data = JSON.parse(value)
+        return {
+          id: key,
+          child_uuid: data.child_uuid,
+          child_name: data.child_name
+        }
+      })
+      
+      setChildren(childDetails)
+
+      // Handle selected child
+      const currentSelectedChild = await AsyncStorage.getItem('current_selected_child')
+      if (currentSelectedChild) {
+        setSelectedChild(JSON.parse(currentSelectedChild))
+      } else if (childDetails.length > 0) {
+        // Set first child as default if no selection exists
+        setSelectedChild(childDetails[0])
+        await AsyncStorage.setItem('current_selected_child', JSON.stringify(childDetails[0]))
+      }
     } catch (error) {
       console.error('Error loading children:', error)
     }
   }
 
-  const handleChildSelect = (childName) => {
-    setSelectedChild(childName)
-    setIsModalVisible(false)
+  const handleChildSelect = async (child: SelectedChild) => {
+    try {
+      await AsyncStorage.setItem('current_selected_child', JSON.stringify(child))
+      setSelectedChild(child)
+      setIsModalVisible(false)
+    } catch (error) {
+      console.error('Error saving selected child:', error)
+    }
   }
 
   const greeting = () => {
@@ -51,7 +77,7 @@ export default function HomeScrn() {
           style={styles.childSwitcher}
           onPress={() => setIsModalVisible(true)}
         >
-          <Text style={styles.childSwitcherText}>Tracking: {selectedChild}</Text>
+          <Text style={styles.childSwitcherText}>Tracking: {selectedChild?.child_name}</Text>
           <Ionicons name="chevron-down" size={20} color="#5B9AA0" />
         </TouchableOpacity>
       </View>
@@ -77,14 +103,14 @@ export default function HomeScrn() {
             </View>
             <FlatList
               data={children}
-              keyExtractor={(item) => item}
+              keyExtractor={(item) => item.id}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={styles.childItem}
                   onPress={() => handleChildSelect(item)}
                 >
-                  <Text style={styles.childItemText}>{item}</Text>
-                  {selectedChild === item && (
+                  <Text style={styles.childItemText}>{item.child_name}</Text>
+                  {selectedChild?.id === item.id && (
                     <Ionicons name="checkmark" size={24} color="#007AFF" />
                   )}
                 </TouchableOpacity>
@@ -108,7 +134,7 @@ export default function HomeScrn() {
        <View style={styles.insightCard}>
         <Text style={styles.insightTitle}>This Week's Insight</Text>
         <Text style={styles.insightText}>
-          {selectedChild}'s seen more emotional outbursts after bedtime ⏰
+          {selectedChild?.child_name}'s seen more emotional outbursts after bedtime ⏰
         </Text>
       </View>
 
