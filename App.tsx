@@ -14,7 +14,15 @@ import { useAsyncStorage } from './hooks/useAsyncStorage';
 export default function App() {
   const onboardingStatus = useAsyncStorage('onboarding_completed');
   const [isOnboardingCompleted, setIsOnboardingCompleted] = useState<boolean | null>(null);
-
+  const clearAsyncStorage = async () => {
+    try {
+      await AsyncStorage.clear();
+      console.log('AsyncStorage cleared successfully');
+    } catch (error) {
+      console.error('Failed to clear AsyncStorage:', error);
+    }
+  };
+  // clearAsyncStorage();
   useEffect(() => {
     setIsOnboardingCompleted(onboardingStatus === 'true');
   }, [onboardingStatus]);
