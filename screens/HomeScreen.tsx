@@ -11,7 +11,7 @@ interface SelectedChild {
   child_name: string;
 }
 
-export default function HomeScrn() {
+export default function HomeScreen() {
   const [selectedChild, setSelectedChild] = useState<SelectedChild | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [children, setChildren] = useState([]);

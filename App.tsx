@@ -4,12 +4,13 @@ import ChildrenCountScrn from './onboarding/screens/ChildrenCountScrn';
 import OneChildScrn from './onboarding/screens/OneChildScrn';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import MultiChildScrn from './onboarding/screens/MultiChildScrn';
-import { MainStack, OnboardingStack } from './navigation';
+import BottomTabsStack, { MainStack, OnboardingStack } from './navigation';
 import HomeScrn from './main/HomeScrn';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import { seeAllDBData } from './seeData';
 import { useAsyncStorage } from './hooks/useAsyncStorage';
+import { NavigationContainer } from '@react-navigation/native';
 
 export default function App() {
   const onboardingStatus = useAsyncStorage('onboarding_completed');
@@ -35,7 +36,11 @@ export default function App() {
     );
   }
 
-  return isOnboardingCompleted ? <MainStack /> : <OnboardingStack />;
+  return (
+    <NavigationContainer>
+      {isOnboardingCompleted ? <BottomTabsStack /> : <OnboardingStack />}
+    </NavigationContainer>
+  );
 }
 
 const styles = StyleSheet.create({
