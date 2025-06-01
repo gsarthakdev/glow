@@ -1,18 +1,23 @@
 import 'react-native-get-random-values';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { v4 as uuidv4 } from 'uuid';
+import { flow_basic_1 } from '../../flows/flow_basic_1';
 
 export async function finishOnboarding(childrenData: { child_name: string; pronouns: string | null }[]) {
     const timestamp = new Date().toISOString();
 
     for (const child of childrenData) {
         const uuid = uuidv4();
-        const key = `${child.child_name}_${uuid}`;
+        const key = `${child.child_name.toLowerCase()}_${uuid}`;
         const value = {
             logs: [],
-            flow_basic: [],
+            flow_basic_1: flow_basic_1,
+            completed_logs: {
+                flow_basic_1: []
+            },
             is_deleted: false,
-            child_name: child.child_name,
+            child_name: child.child_name.toLowerCase(),
+            child_name_capitalized: child.child_name.charAt(0).toUpperCase() + child.child_name.slice(1).toLowerCase(),
             pronouns: child.pronouns,
             created_at: timestamp,
             updated_at: timestamp,
