@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, FlatList, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, FlatList, Platform, Button } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import SimpleLineIcons from '@expo/vector-icons/SimpleLineIcons';
@@ -11,7 +11,7 @@ interface SelectedChild {
   child_name: string;
 }
 
-export default function HomeScrn() {
+export default function HomeScrn({navigation}: {navigation: any}) {
   const [selectedChild, setSelectedChild] = useState<SelectedChild | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [children, setChildren] = useState([]);
@@ -31,7 +31,7 @@ export default function HomeScrn() {
         return {
           id: key,
           child_uuid: data.child_uuid,
-          child_name: data.child_name
+          child_name: data.child_name_capitalized
         }
       })
       
@@ -84,8 +84,8 @@ export default function HomeScrn() {
           <Ionicons name="chevron-down" size={20} color="#5B9AA0" />
         </TouchableOpacity>
       </View>
-
-      <TouchableOpacity style={styles.logButton}>
+    {/* <Button title="add data" onPress={() => {}}/> */}
+      <TouchableOpacity onPress={() => navigation.push("FlowBasic1BaseScrn")} style={styles.logButton}>
         {/* <Feather name="edit-3" size={42} color="#EAA987" /> */}
         <SimpleLineIcons name="pencil" size={50} color="#EAA987" />
         <Text style={styles.logText}>Log Today</Text>

@@ -1,3 +1,5 @@
+// Ignore this file. It won't be used in the app.
+
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, FlatList, Platform } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';

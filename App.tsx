@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { seeAllDBData } from './seeData';
 import { useAsyncStorage } from './hooks/useAsyncStorage';
 import { NavigationContainer } from '@react-navigation/native';
+import { writeAsyncStorageToFile } from './utils/asyncStorageUtils';
 
 export default function App() {
   const onboardingStatus = useAsyncStorage('onboarding_completed');
@@ -24,8 +25,14 @@ export default function App() {
     }
   };
   // clearAsyncStorage();
+  const doIt = async () => {
+    await writeAsyncStorageToFile();
+  }
+  
+  
   useEffect(() => {
     setIsOnboardingCompleted(onboardingStatus === 'true');
+    doIt();
   }, [onboardingStatus]);
 
   if (isOnboardingCompleted === null) {

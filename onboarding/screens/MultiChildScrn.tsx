@@ -15,6 +15,7 @@ import {
 import Header from '../components/Header';
 import { seeAllDBData } from '../../seeData';
 import { finishOnboarding } from '../util/finishOnboarding';
+import { capitalizeFirstLetter } from '../../utils/nameUtils';
 
 const { width } = Dimensions.get('window');
 
@@ -34,7 +35,7 @@ const MultiChildScrn = () => {
   };
 
   const handleAddOrUpdate = () => {
-    const trimmedName = name.trim(); // Trim spaces from the name
+    const trimmedName = capitalizeFirstLetter(name.trim()); 
     if (editingIndex !== null) {
       const updated = [...children];
       updated[editingIndex] = { child_name: trimmedName, pronouns: pronouns.toLowerCase() || null };
@@ -47,8 +48,9 @@ const MultiChildScrn = () => {
 
   const handleEdit = (index) => {
     const child = children[index];
-    setName(child.child_name);
-    setPronouns(child.pronouns.toLowerCase() || null);
+    const childName = capitalizeFirstLetter(child.child_name);
+    setName(childName);
+    setPronouns(child.pronouns ? child.pronouns.toLowerCase() : null);
     setEditingIndex(index);
   };
 
