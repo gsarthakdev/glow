@@ -8,6 +8,9 @@ import {
   SafeAreaView,
   ScrollView,
   Modal,
+  KeyboardAvoidingView,
+  Platform,
+  findNodeHandle,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { v4 as uuidv4 } from 'uuid';
@@ -33,6 +36,10 @@ export default function FlowBasic1BaseScrn({ navigation }) {
   const [showCommentInput, setShowCommentInput] = useState<{ [key: string]: boolean }>({});
   const [currentChild, setCurrentChild] = useState<any>(null);
   const [showOtherModal, setShowOtherModal] = useState(false);
+
+  // Add ref for ScrollView
+  const scrollViewRef = React.useRef(null);
+  const commentInputRef = React.useRef(null);
 
   useEffect(() => {
     loadCurrentChild();
@@ -156,124 +163,153 @@ export default function FlowBasic1BaseScrn({ navigation }) {
     return `${choice.emoji} ${choice.label}`;
   };
 
+  const handleCommentPress = (questionId) => {
+    const showing = !showCommentInput[questionId];
+    setShowCommentInput(prev => ({
+      ...prev,
+      [questionId]: showing
+    }));
+    
+    if (showing) {
+      // Wait for TextInput to render
+      setTimeout(() => {
+        commentInputRef.current?.measureInWindow((x, y, width, height) => {
+          scrollViewRef.current?.scrollTo({
+            y: y - 100, // Account for some padding
+            animated: true
+          });
+        });
+      }, 100);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.progress}>Step {currentQuestion + 1} of {flow_basic_1.length}</Text>
-        <Text style={styles.question}>{currentQ.question}</Text>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={20} // Reduced from previous values
+      >
+        <ScrollView
+          ref={scrollViewRef}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.progress}>Step {currentQuestion + 1} of {flow_basic_1.length}</Text>
+          <Text style={styles.question}>{currentQ.question}</Text>
 
-        {currentQ.answer_choices.map((choice) => (
+          {currentQ.answer_choices.map((choice) => (
+            <TouchableOpacity
+              key={choice.label}
+              style={[
+                styles.choiceButton,
+                isAnswerSelected(currentQ.id, choice.label === 'Other' ? 
+                  selectedAnswers[currentQ.id]?.find(a => a.isCustom)?.answer || choice.label 
+                  : choice.label) && styles.selectedChoice
+              ]}
+              onPress={() => handleAnswer(currentQ.id, choice)}
+            >
+              <Text style={styles.choiceText}>
+                {getChoiceLabel(choice)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+
+          {/* Comment section */}
           <TouchableOpacity
-            key={choice.label}
-            style={[
-              styles.choiceButton,
-              isAnswerSelected(currentQ.id, choice.label === 'Other' ? 
-                selectedAnswers[currentQ.id]?.find(a => a.isCustom)?.answer || choice.label 
-                : choice.label) && styles.selectedChoice
-            ]}
-            onPress={() => handleAnswer(currentQ.id, choice)}
+            style={styles.commentButton}
+            onPress={() => handleCommentPress(currentQ.id)}
           >
-            <Text style={styles.choiceText}>
-              {getChoiceLabel(choice)}
+            <Text style={styles.commentButtonText}>
+              {showCommentInput[currentQ.id] ? 'Hide Comment' : 'Add Comment'}
             </Text>
           </TouchableOpacity>
-        ))}
 
-        {/* Comment section */}
-        <TouchableOpacity
-          style={styles.commentButton}
-          onPress={() => setShowCommentInput(prev => ({
-            ...prev,
-            [currentQ.id]: !prev[currentQ.id]
-          }))}
-        >
-          <Text style={styles.commentButtonText}>
-            {showCommentInput[currentQ.id] ? 'Hide Comment' : 'Add Comment'}
-          </Text>
-        </TouchableOpacity>
-
-        {showCommentInput[currentQ.id] && (
-          <TextInput
-            style={styles.commentInput}
-            placeholder="Add your comment here"
-            multiline
-            value={comments[currentQ.id]}
-            onChangeText={(text) => setComments(prev => ({
-              ...prev,
-              [currentQ.id]: text
-            }))}
-          />
-        )}
-
-        {/* Add Modal for Other input */}
-        <Modal
-          visible={showOtherModal}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowOtherModal(false)}
-        >
-          <TouchableOpacity
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => setShowOtherModal(false)}
-          >
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Add Other Option</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="Type your answer here..."
-                value={otherText[currentQ.id] || ''}
-                onChangeText={(text) => setOtherText(prev => ({
-                  ...prev,
-                  [currentQ.id]: text
-                }))}
-                autoFocus
-              />
-              <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  style={styles.modalButton}
-                  onPress={() => setShowOtherModal(false)}
-                >
-                  <Text style={styles.modalButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.submitButton]}
-                  onPress={handleOtherSubmit}
-                >
-                  <Text style={[styles.modalButtonText, { color: 'white' }]}>Submit</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </TouchableOpacity>
-        </Modal>
-
-        <View style={styles.navigationButtons}>
-          {currentQuestion > 0 && (
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => setCurrentQuestion(prev => prev - 1)}
-            >
-              <Text style={styles.buttonText}>Back</Text>
-            </TouchableOpacity>
+          {showCommentInput[currentQ.id] && (
+            <TextInput
+              ref={commentInputRef}
+              style={styles.commentInput}
+              placeholder="Add your comment here"
+              multiline
+              value={comments[currentQ.id]}
+              onChangeText={(text) => setComments(prev => ({
+                ...prev,
+                [currentQ.id]: text
+              }))}
+              autoFocus
+            />
           )}
 
-          <TouchableOpacity
-            style={[styles.nextButton, !canProceed() && styles.disabledButton]}
-            disabled={!canProceed()}
-            onPress={() => {
-              if (currentQuestion === flow_basic_1.length - 1) {
-                handleSave();
-              } else {
-                setCurrentQuestion(prev => prev + 1);
-              }
-            }}
+          {/* Add Modal for Other input */}
+          <Modal
+            visible={showOtherModal}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setShowOtherModal(false)}
           >
-            <Text style={styles.buttonText}>
-              {currentQuestion === flow_basic_1.length - 1 ? 'Submit' : 'Next'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+            <TouchableOpacity
+              style={styles.modalOverlay}
+              activeOpacity={1}
+              onPress={() => setShowOtherModal(false)}
+            >
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Add Other Option</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Type your answer here..."
+                  value={otherText[currentQ.id] || ''}
+                  onChangeText={(text) => setOtherText(prev => ({
+                    ...prev,
+                    [currentQ.id]: text
+                  }))}
+                  autoFocus
+                />
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity
+                    style={styles.modalButton}
+                    onPress={() => setShowOtherModal(false)}
+                  >
+                    <Text style={styles.modalButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.submitButton]}
+                    onPress={handleOtherSubmit}
+                  >
+                    <Text style={[styles.modalButtonText, { color: 'white' }]}>Submit</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableOpacity>
+          </Modal>
+
+          <View style={styles.navigationButtons}>
+            {currentQuestion > 0 && (
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => setCurrentQuestion(prev => prev - 1)}
+              >
+                <Text style={styles.buttonText}>Back</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={[styles.nextButton, !canProceed() && styles.disabledButton]}
+              disabled={!canProceed()}
+              onPress={() => {
+                if (currentQuestion === flow_basic_1.length - 1) {
+                  handleSave();
+                } else {
+                  setCurrentQuestion(prev => prev + 1);
+                }
+              }}
+            >
+              <Text style={styles.buttonText}>
+                {currentQuestion === flow_basic_1.length - 1 ? 'Submit' : 'Next'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -323,7 +359,8 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
     borderRadius: 10,
     padding: 15,
-    height: 100,
+    minHeight: 100, // Changed from fixed height
+    maxHeight: 200,
     marginBottom: 20,
     textAlignVertical: 'top',
   },
