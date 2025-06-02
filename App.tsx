@@ -10,6 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import { seeAllDBData } from './seeData';
 import { useAsyncStorage } from './hooks/useAsyncStorage';
+import TestScreen from './TestScreen';
 import { NavigationContainer } from '@react-navigation/native';
 import { writeAsyncStorageToFile } from './utils/asyncStorageUtils';
 
@@ -24,12 +25,12 @@ export default function App() {
       console.error('Failed to clear AsyncStorage:', error);
     }
   };
-  // clearAsyncStorage();
-  const doIt = async () => {
+  
+    const doIt = async () => {
     await writeAsyncStorageToFile();
   }
   
-  
+  // clearAsyncStorage();
   useEffect(() => {
     setIsOnboardingCompleted(onboardingStatus === 'true');
     doIt();
@@ -43,11 +44,15 @@ export default function App() {
     );
   }
 
-  return (
+  // return isOnboardingCompleted ? <MainStack /> : <OnboardingStack />;
+  // return isOnboardingCompleted ? <OnboardingStack /> : <BottomTabsStack />;
+    return (
     <NavigationContainer>
-      {isOnboardingCompleted ? <BottomTabsStack /> : <OnboardingStack />}
+      {isOnboardingCompleted ? <MainStack /> : <OnboardingStack />}
     </NavigationContainer>
   );
+  
+  // return <TestScreen/>;
 }
 
 const styles = StyleSheet.create({
