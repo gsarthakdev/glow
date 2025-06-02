@@ -1,4 +1,14 @@
 /*
+Tunneling steps:
+
+npm i -g @expo/ngrok
+npx expo start --tunnel
+This will serve your app from a public URL like: https://xxxxxxx.bacon.19000.exp.direct:80
+
+https://docs.expo.dev/more/expo-cli/
+*/
+
+/*
 
 handleSaveAndContinue() {
     // standardize algo to take in array of objects
