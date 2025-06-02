@@ -9,6 +9,8 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Feather } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { View, Text } from "react-native";
+import FlowBasic1BaseScrn from "./main/FlowBasic1BaseScrn";
+import CelebrationScreen from './screens/CelebrationScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -29,9 +31,11 @@ export function MainStack() {
     return (
         <Stack.Navigator
           screenOptions={{ headerShown: false }}
-          initialRouteName="HomeScrn"
+          initialRouteName="BottomTabsStack"
         >
-            <Stack.Screen name="HomeScrn" component={HomeScrn} />
+            <Stack.Screen name="BottomTabsStack" component={BottomTabsStack} />
+            <Stack.Screen name="FlowBasic1BaseScrn" component={FlowBasic1BaseScrn} />
+            <Stack.Screen name="CelebrationScreen" component={CelebrationScreen} />
         </Stack.Navigator>
     );
 }
