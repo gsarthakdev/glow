@@ -1,3 +1,5 @@
+// Ignore this file, it's an old version of HomeScrn.tsx
+
 import { StyleSheet, Text, View, SafeAreaView, TouchableOpacity, Platform, Modal, FlatList } from 'react-native'
 import { useState, useEffect } from 'react'
 import { Ionicons } from '@expo/vector-icons'
