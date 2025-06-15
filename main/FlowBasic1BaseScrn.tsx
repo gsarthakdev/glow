@@ -230,7 +230,8 @@ export default function FlowBasic1BaseScrn({ navigation }) {
         >
           <Text style={styles.progress}>Step {currentQuestion + 1} of {flow_basic_1.length}</Text>
           <Text style={styles.question}>{currentQ.question}</Text>
-
+          <Text style={{color: "grey", marginTop: -8, fontSize: 16, marginBottom: 20}}>{currentQ.subheading}</Text>
+          {/* Render answer choices */}
           {currentQ.answer_choices.map((choice) => (
             <TouchableOpacity
               key={choice.label}
