@@ -27,6 +27,11 @@ interface Answer {
   isCustom: boolean;
 }
 
+interface OtherModalState {
+  isEditing: boolean;
+  previousText?: string;
+}
+
 export default function FlowBasic1BaseScrn({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -35,7 +40,7 @@ export default function FlowBasic1BaseScrn({ navigation }) {
   const [otherText, setOtherText] = useState<{ [key: string]: string }>({});
   const [showCommentInput, setShowCommentInput] = useState<{ [key: string]: boolean }>({});
   const [currentChild, setCurrentChild] = useState<any>(null);
-  const [showOtherModal, setShowOtherModal] = useState(false);
+  const [showOtherModal, setShowOtherModal] = useState<OtherModalState | null>(null);
 
   // Add ref for ScrollView
   const scrollViewRef = React.useRef(null);
@@ -63,7 +68,20 @@ export default function FlowBasic1BaseScrn({ navigation }) {
 
   const handleAnswer = (questionId: string, answer: { label: string; emoji: string }) => {
     if (answer.label === 'Other') {
-      setShowOtherModal(true);
+      const customAnswer = selectedAnswers[questionId]?.find(a => a.isCustom);
+      if (customAnswer) {
+        // Already has custom text, show edit/deselect modal
+        setShowOtherModal({ 
+          isEditing: false, 
+          previousText: customAnswer.answer 
+        });
+      } else {
+        // New "Other" entry
+        setShowOtherModal({ 
+          isEditing: true,
+          previousText: otherText[questionId]  // Will be undefined for first time
+        });
+      }
       return;
     }
 
@@ -91,15 +109,30 @@ export default function FlowBasic1BaseScrn({ navigation }) {
 
   // Add new handleOtherSubmit function
   const handleOtherSubmit = () => {
-    if (otherText[currentQ.id]?.trim()) {
-      const newAnswers = selectedAnswers[currentQ.id]?.filter(a => !a.isCustom) || [];
-      newAnswers.push({ answer: otherText[currentQ.id], isCustom: true });
-      setSelectedAnswers(prev => ({
-        ...prev,
-        [currentQ.id]: newAnswers
-      }));
-      setShowOtherModal(false);
-    }
+    if (!showOtherModal?.isEditing || !otherText[currentQ.id]?.trim()) return;
+
+    const newAnswers = selectedAnswers[currentQ.id]?.filter(a => !a.isCustom) || [];
+    newAnswers.push({ answer: otherText[currentQ.id], isCustom: true });
+    setSelectedAnswers(prev => ({
+      ...prev,
+      [currentQ.id]: newAnswers
+    }));
+    setShowOtherModal(null);
+  };
+
+  const handleOtherDeselect = () => {
+    setSelectedAnswers(prev => ({
+      ...prev,
+      [currentQ.id]: (prev[currentQ.id] || []).filter(a => !a.isCustom)
+    }));
+    setShowOtherModal(null);
+  };
+
+  const handleOtherEdit = () => {
+    setShowOtherModal({ 
+      isEditing: true, 
+      previousText: selectedAnswers[currentQ.id]?.find(a => a.isCustom)?.answer 
+    });
   };
 
   const isAnswerSelected = (questionId: string, answerLabel: string) => {
@@ -242,42 +275,65 @@ export default function FlowBasic1BaseScrn({ navigation }) {
 
           {/* Add Modal for Other input */}
           <Modal
-            visible={showOtherModal}
+            visible={!!showOtherModal}
             transparent
             animationType="fade"
-            onRequestClose={() => setShowOtherModal(false)}
+            onRequestClose={() => setShowOtherModal(null)}
           >
             <TouchableOpacity
               style={styles.modalOverlay}
               activeOpacity={1}
-              onPress={() => setShowOtherModal(false)}
+              onPress={() => setShowOtherModal(null)}
             >
               <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>Add Other Option</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  placeholder="Type your answer here..."
-                  value={otherText[currentQ.id] || ''}
-                  onChangeText={(text) => setOtherText(prev => ({
-                    ...prev,
-                    [currentQ.id]: text
-                  }))}
-                  autoFocus
-                />
-                <View style={styles.modalButtons}>
-                  <TouchableOpacity
-                    style={styles.modalButton}
-                    onPress={() => setShowOtherModal(false)}
-                  >
-                    <Text style={styles.modalButtonText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.modalButton, styles.submitButton]}
-                    onPress={handleOtherSubmit}
-                  >
-                    <Text style={[styles.modalButtonText, { color: 'white' }]}>Submit</Text>
-                  </TouchableOpacity>
-                </View>
+                {showOtherModal?.isEditing ? (
+                  <>
+                    <Text style={styles.modalTitle}>Add Other Option</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      placeholder="Type your answer here..."
+                      value={otherText[currentQ.id] || showOtherModal.previousText || ''}
+                      onChangeText={(text) => setOtherText(prev => ({
+                        ...prev,
+                        [currentQ.id]: text
+                      }))}
+                      autoFocus
+                    />
+                    <View style={styles.modalButtons}>
+                      <TouchableOpacity
+                        style={styles.modalButton}
+                        onPress={() => setShowOtherModal(null)}
+                      >
+                        <Text style={styles.modalButtonText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.modalButton, styles.submitButton]}
+                        onPress={handleOtherSubmit}
+                      >
+                        <Text style={[styles.modalButtonText, { color: 'white' }]}>Submit</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.modalTitle}>Other Option</Text>
+                    <Text style={styles.modalText}>{showOtherModal?.previousText}</Text>
+                    <View style={styles.modalButtons}>
+                      <TouchableOpacity
+                        style={styles.modalButton}
+                        onPress={handleOtherDeselect}
+                      >
+                        <Text style={styles.modalButtonText}>Deselect</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.modalButton, styles.submitButton]}
+                        onPress={handleOtherEdit}
+                      >
+                        <Text style={[styles.modalButtonText, { color: 'white' }]}>Edit</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                )}
               </View>
             </TouchableOpacity>
           </Modal>
@@ -416,6 +472,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 15,
     marginBottom: 15,
+  },
+  modalText: {
+    fontSize: 16,
+    marginBottom: 15,
+    color: '#666',
   },
   modalButtons: {
     flexDirection: 'row',
