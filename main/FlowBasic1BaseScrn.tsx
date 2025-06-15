@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -15,11 +15,13 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { v4 as uuidv4 } from 'uuid';
 import { flow_basic_1 } from '../flows/flow_basic_1';
+import MoodBubbleSlider from '../components/MoodBubbleSlider';
 
 interface Question {
   id: string;
   question: string;
-  answer_choices: Array<{ label: string; emoji: string }>;
+  answer_choices?: Array<{ label: string; emoji: string }>;
+  subheading?: string;
 }
 
 interface Answer {
@@ -32,7 +34,7 @@ interface OtherModalState {
   previousText?: string;
 }
 
-export default function FlowBasic1BaseScrn({ navigation }) {
+export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) {
   const [loading, setLoading] = useState(true);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<{ [key: string]: Answer[] }>({});
@@ -41,10 +43,12 @@ export default function FlowBasic1BaseScrn({ navigation }) {
   const [showCommentInput, setShowCommentInput] = useState<{ [key: string]: boolean }>({});
   const [currentChild, setCurrentChild] = useState<any>(null);
   const [showOtherModal, setShowOtherModal] = useState<OtherModalState | null>(null);
+  const [moodBefore, setMoodBefore] = useState<number>(0);
+  const [moodAfter, setMoodAfter] = useState<number>(0);
 
   // Add ref for ScrollView
-  const scrollViewRef = React.useRef(null);
-  const commentInputRef = React.useRef(null);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const commentInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
     loadCurrentChild();
@@ -142,6 +146,9 @@ export default function FlowBasic1BaseScrn({ navigation }) {
 
   const canProceed = () => {
     const currentQuestionId = flow_basic_1[currentQuestion].id;
+    if (currentQuestionId === 'mood') {
+      return moodBefore !== 0 && moodAfter !== 0;
+    }
     return (selectedAnswers[currentQuestionId]?.length ?? 0) > 0;
   };
 
@@ -151,7 +158,9 @@ export default function FlowBasic1BaseScrn({ navigation }) {
         ...acc,
         [q.id]: {
           question: q.question,
-          answers: selectedAnswers[q.id] || [],
+          answers: q.id === 'mood' ? [
+            { answer: `Before: ${moodBefore}, After: ${moodAfter}`, isCustom: false }
+          ] : (selectedAnswers[q.id] || []),
           comment: comments[q.id] || ''
         }
       }), {});
@@ -174,7 +183,7 @@ export default function FlowBasic1BaseScrn({ navigation }) {
       };
 
       await AsyncStorage.setItem(currentChild.id, JSON.stringify(updatedData));
-      navigation.replace('CelebrationScreen'); // Changed from goBack() to replace()
+      navigation.replace('CelebrationScreen');
     } catch (error) {
       console.error('Error saving log:', error);
     }
@@ -196,24 +205,29 @@ export default function FlowBasic1BaseScrn({ navigation }) {
     return `${choice.emoji} ${choice.label}`;
   };
 
-  const handleCommentPress = (questionId) => {
+  const handleCommentPress = (questionId: string) => {
     const showing = !showCommentInput[questionId];
     setShowCommentInput(prev => ({
       ...prev,
       [questionId]: showing
     }));
     
-    if (showing) {
+    if (showing && commentInputRef.current && scrollViewRef.current) {
       // Wait for TextInput to render
       setTimeout(() => {
-        commentInputRef.current?.measureInWindow((x, y, width, height) => {
-          scrollViewRef.current?.scrollTo({
-            y: y - 100, // Account for some padding
-            animated: true
+        const input = findNodeHandle(commentInputRef.current);
+        if (input) {
+          commentInputRef.current?.measureInWindow((x: number, y: number, width: number, height: number) => {
+            if (scrollViewRef.current) {
+              scrollViewRef.current.scrollTo({
+                y: y - 100, // Account for some padding
+                animated: true
+              });
+            }
           });
-        });
+        }
       }, 100);
-    }
+    } 
   };
 
   return (
@@ -221,7 +235,7 @@ export default function FlowBasic1BaseScrn({ navigation }) {
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
-        keyboardVerticalOffset={20} // Reduced from previous values
+        keyboardVerticalOffset={20}
       >
         <ScrollView
           ref={scrollViewRef}
@@ -230,24 +244,42 @@ export default function FlowBasic1BaseScrn({ navigation }) {
         >
           <Text style={styles.progress}>Step {currentQuestion + 1} of {flow_basic_1.length}</Text>
           <Text style={styles.question}>{currentQ.question}</Text>
-          <Text style={{color: "grey", marginTop: -8, fontSize: 16, marginBottom: 20}}>{currentQ.subheading}</Text>
-          {/* Render answer choices */}
-          {currentQ.answer_choices.map((choice) => (
-            <TouchableOpacity
-              key={choice.label}
-              style={[
-                styles.choiceButton,
-                isAnswerSelected(currentQ.id, choice.label === 'Other' ? 
-                  selectedAnswers[currentQ.id]?.find(a => a.isCustom)?.answer || choice.label 
-                  : choice.label) && styles.selectedChoice
-              ]}
-              onPress={() => handleAnswer(currentQ.id, choice)}
-            >
-              <Text style={styles.choiceText}>
-                {getChoiceLabel(choice)}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          <Text style={styles.subheading}>{currentQ.subheading}</Text>
+
+          {currentQ.id === 'mood' ? (
+            <View style={styles.moodContainer}>
+              <MoodBubbleSlider
+                label="Before the incident"
+                value={moodBefore}
+                onValueChange={setMoodBefore}
+              />
+              <View style={styles.moodDivider} />
+              <MoodBubbleSlider
+                label="After the incident"
+                value={moodAfter}
+                onValueChange={setMoodAfter}
+              />
+            </View>
+          ) : (
+            <>
+              {currentQ.answer_choices?.map((choice) => (
+                <TouchableOpacity
+                  key={choice.label}
+                  style={[
+                    styles.choiceButton,
+                    isAnswerSelected(currentQ.id, choice.label === 'Other' ? 
+                      selectedAnswers[currentQ.id]?.find(a => a.isCustom)?.answer || choice.label 
+                      : choice.label) && styles.selectedChoice
+                  ]}
+                  onPress={() => handleAnswer(currentQ.id, choice)}
+                >
+                  <Text style={styles.choiceText}>
+                    {getChoiceLabel(choice)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </>
+          )}
 
           {/* Comment section */}
           <TouchableOpacity
@@ -377,17 +409,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   scrollContent: {
-    padding: 20,
+    padding: 24,
+    paddingBottom: 40,
   },
   progress: {
     fontSize: 14,
     color: '#666',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   question: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 12,
+  },
+  subheading: {
+    color: "#666",
+    fontSize: 16,
+    marginBottom: 32,
   },
   choiceButton: {
     padding: 15,
@@ -404,8 +442,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   commentButton: {
-    padding: 15,
+    padding: 16,
     alignItems: 'center',
+    marginTop: 8,
   },
   commentButtonText: {
     color: '#5B9AA0',
@@ -424,7 +463,7 @@ const styles = StyleSheet.create({
   navigationButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 20,
+    marginTop: 32,
   },
   backButton: {
     backgroundColor: '#c0c0c0',
@@ -496,5 +535,15 @@ const styles = StyleSheet.create({
   modalButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  moodContainer: {
+    marginTop: 24,
+    marginBottom: 32,
+    paddingHorizontal: 8,
+  },
+  moodDivider: {
+    height: 1,
+    backgroundColor: '#eee',
+    marginVertical: 40,
   },
 });
