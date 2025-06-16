@@ -48,13 +48,13 @@ export default function CelebrationScreen({ navigation }) {
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={styles.button}
-          onPress={() => navigation.navigate('HomeScrn')}
+          onPress={() => navigation.goBack()}
         >
           <SimpleLineIcons name="home" size={24} color="#3E3E6B" />
           <Text style={styles.buttonText}>Go Home</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={[styles.button, styles.primaryButton]}
           onPress={() => {
             // TODO: Implement share functionality
@@ -65,7 +65,7 @@ export default function CelebrationScreen({ navigation }) {
           <Text style={[styles.buttonText, styles.primaryButtonText]}>
             Send to Therapist
           </Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         <TouchableOpacity
           style={styles.button}
