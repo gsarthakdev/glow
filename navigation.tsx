@@ -11,6 +11,7 @@ import { BlurView } from 'expo-blur';
 import { View, Text } from "react-native";
 import FlowBasic1BaseScrn from "./main/FlowBasic1BaseScrn";
 import CelebrationScreen from './screens/CelebrationScreen';
+import PastLogsScreen from "./screens/PastLogsScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -44,7 +45,7 @@ export function MainStack() {
 const Tab = createBottomTabNavigator();
 
 // Placeholder screens
-const PastLogsScreen = () => <View style={{flex: 1}}><Text>Past Logs</Text></View>;
+// const PastLogsScreen = () => <View style={{flex: 1}}><Text>Past Logs</Text></View>;
 const SettingsScreen = () => <View style={{flex: 1}}><Text>Settings</Text></View>;
 const SummaryScreen = () => <View style={{flex: 1}}><Text>Summary</Text></View>;
 
