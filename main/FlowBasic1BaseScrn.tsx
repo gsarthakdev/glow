@@ -165,9 +165,11 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         }
       }), {});
 
+      const localTime = new Date();
       const newLog = {
         id: `log_${uuidv4()}`,
-        timestamp: new Date().toISOString(),
+        // timestamp: localTime.toLocaleString(), output: "7/4/2025, 10:35:25 PM"
+        timestamp: new Date(localTime.getTime() - localTime.getTimezoneOffset() * 60000).toISOString(),
         responses
       };
 
