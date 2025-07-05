@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Platform } from 'react-native';
-import { Calendar, WeekCalendar } from 'react-native-calendars';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Platform, SafeAreaView } from 'react-native';
+import { Calendar } from 'react-native-calendars';
 import * as MailComposer from 'expo-mail-composer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { useFocusEffect } from '@react-navigation/native';
 
 interface Log {
   id: string;
@@ -22,40 +24,167 @@ interface MarkedDates {
 
 const DURATION_OPTIONS = ['Today', 'Yesterday', 'This Week'];
 
+// Helper to format date as YYYY-MM-DD
+const formatDate = (date: Date) => {
+  return date.toISOString().split('T')[0];
+};
+
+// Helper: Uint8Array to base64 (Expo Go compatible)
+function uint8ToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  // btoa is available in React Native/Expo
+  return typeof btoa === 'function' ? btoa(binary) : globalThis.btoa(binary);
+}
+
+// Helper: Remove non-ASCII (WinAnsi) characters for pdf-lib compatibility
+function sanitizePdfText(text: string): string {
+  // Remove all non-ASCII characters (including emoji, fancy spaces, etc.)
+  return text.replace(/[^\x00-\x7F]/g, ' ');
+}
+
+// PDF generation using pdf-lib
+async function generatePDF(logs: Log[], childName: string, duration: string): Promise<string> {
+  const pdfDoc = await PDFDocument.create();
+  const page = pdfDoc.addPage();
+  const { width, height } = page.getSize();
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+  let y = height - 50;
+  const leftMargin = 40;
+  const lineHeight = 20;
+
+  // Title
+  page.drawText(sanitizePdfText(`${childName}'s Behavior Log - ${duration}`), {
+    x: leftMargin,
+    y,
+    size: 20,
+    font: fontBold,
+    color: rgb(0.24, 0.24, 0.42),
+  });
+  y -= lineHeight * 2;
+
+  if (logs.length === 0) {
+    page.drawText(sanitizePdfText('No logs found for this period.'), {
+      x: leftMargin,
+      y,
+      size: 14,
+      font,
+      color: rgb(0.5, 0.5, 0.5),
+    });
+  } else {
+    // Group logs by date
+    const logsByDate: { [date: string]: Log[] } = {};
+    logs.forEach((log) => {
+      const date = new Date(log.timestamp).toLocaleDateString();
+      if (!logsByDate[date]) logsByDate[date] = [];
+      logsByDate[date].push(log);
+    });
+    for (const [date, dayLogs] of Object.entries(logsByDate)) {
+      page.drawText(sanitizePdfText(date), {
+        x: leftMargin,
+        y,
+        size: 16,
+        font: fontBold,
+        color: rgb(0.36, 0.6, 0.63),
+      });
+      y -= lineHeight;
+      for (const log of dayLogs) {
+        page.drawText(sanitizePdfText(`Time: ${new Date(log.timestamp).toLocaleTimeString()}`), {
+          x: leftMargin + 10,
+          y,
+          size: 12,
+          font,
+          color: rgb(0.2, 0.2, 0.2),
+        });
+        y -= lineHeight;
+        for (const [key, value] of Object.entries(log.responses)) {
+          if (typeof value === 'object' && value !== null && 'question' in value && 'answers' in value) {
+            page.drawText(sanitizePdfText(`${(value as any).question}: ${(value as any).answers.map((a: any) => a.answer).join(', ')}`), {
+              x: leftMargin + 20,
+              y,
+              size: 12,
+              font,
+              color: rgb(0.2, 0.2, 0.2),
+            });
+            y -= lineHeight;
+            if ((value as any).comment) {
+              page.drawText(sanitizePdfText(`Comment: ${(value as any).comment}`), {
+                x: leftMargin + 30,
+                y,
+                size: 11,
+                font,
+                color: rgb(0.4, 0.4, 0.4),
+              });
+              y -= lineHeight;
+            }
+          }
+        }
+        y -= 6;
+        if (y < 60) {
+          y = height - 50;
+          pdfDoc.addPage();
+        }
+      }
+      y -= 10;
+    }
+  }
+
+  const pdfBytes = await pdfDoc.save();
+  // Convert Uint8Array to base64 (Expo Go compatible)
+  const base64String = uint8ToBase64(pdfBytes);
+  const fileName = `${childName}_behavior_logs_${duration.replace(/\s/g, '_').toLowerCase()}.pdf`;
+  const fileUri = FileSystem.cacheDirectory + fileName;
+  await FileSystem.writeAsStringAsync(fileUri, base64String, { encoding: FileSystem.EncodingType.Base64 });
+  return fileUri;
+}
+
 export default function PastLogsScreen({ navigation }: { navigation: any }) {
   const [selectedDuration, setSelectedDuration] = useState('Today');
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [markedDates, setMarkedDates] = useState<MarkedDates>({});
   const [logs, setLogs] = useState<Log[]>([]);
 
-  useEffect(() => {
-    loadLogs();
-  }, []);
+  // Reload logs every time the screen is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      loadLogs();
+    }, [])
+  );
 
   const loadLogs = async () => {
     try {
-      const storedData = await AsyncStorage.getItem('completed_logs');
-      if (storedData) {
-        const parsedData = JSON.parse(storedData);
-        const logsArray = parsedData.flow_basic_1 || [];
-        setLogs(logsArray);
-
-        // Process logs for calendar marking
-        const marked: MarkedDates = {};
-        logsArray.forEach((log: Log) => {
-          const date = log.timestamp.split('T')[0];
-          if (marked[date]) {
-            marked[date].count = (marked[date].count || 1) + 1;
-          } else {
-            marked[date] = {
-              marked: true,
-              dotColor: '#4CAF50',
-              count: 1
-            };
-          }
-        });
-        setMarkedDates(marked);
-      }
+      // Get the current selected child
+      const currentSelectedChildStr = await AsyncStorage.getItem('current_selected_child');
+      if (!currentSelectedChildStr) return;
+      const currentSelectedChild = JSON.parse(currentSelectedChildStr);
+      const childId = currentSelectedChild.id;
+      if (!childId) return;
+      // Get the full children data object
+      const allDataStr = await AsyncStorage.getItem(childId);
+      if (!allDataStr) return;
+      const childData = JSON.parse(allDataStr);
+      // Get completed logs for this child
+      const logsArray = childData.completed_logs?.flow_basic_1 || [];
+      setLogs(logsArray);
+      // Process logs for calendar marking
+      const marked: MarkedDates = {};
+      logsArray.forEach((log: Log) => {
+        const date = log.timestamp.split('T')[0];
+        if (marked[date]) {
+          marked[date].count = (marked[date].count || 1) + 1;
+        } else {
+          marked[date] = {
+            marked: true,
+            dotColor: '#4CAF50',
+            count: 1
+          };
+        }
+      });
+      setMarkedDates(marked);
     } catch (error) {
       console.error('Error loading logs:', error);
     }
@@ -66,63 +195,57 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-    const lastWeek = new Date(today);
-    lastWeek.setDate(lastWeek.getDate() - 7);
+    // Start of week (Sunday)
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
 
     return logs.filter((log: Log) => {
       const logDate = new Date(log.timestamp);
+      // Zero out time for comparison
+      const logDay = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate());
       switch (selectedDuration) {
         case 'Today':
-          return logDate >= today;
+          return logDay.getTime() === today.getTime();
         case 'Yesterday':
-          return logDate >= yesterday && logDate < today;
-        case 'Last Week':
-          return logDate >= lastWeek;
+          return logDay.getTime() === yesterday.getTime();
+        case 'This Week':
+          return logDay >= startOfWeek && logDay <= today;
         default:
           return false;
       }
     });
   };
 
-  const createLogSummary = (logs: Log[]) => {
-    return logs.map(log => {
-      const date = new Date(log.timestamp).toLocaleDateString();
-      const summary = Object.entries(log.responses)
-        .map(([key, value]: [string, any]) => {
-          return `${value.question}: ${value.answers.map((a: any) => a.answer).join(', ')}`;
-        })
-        .join('\n');
-      return `Date: ${date}\n${summary}`;
-    }).join('\n\n---\n\n');
-  };
-
   const sendLogs = async () => {
     try {
       const selectedLogs = getLogsForDuration();
-      const summary = createLogSummary(selectedLogs);
-
       const isAvailable = await MailComposer.isAvailableAsync();
       if (!isAvailable) {
         alert('Email composition is not available on this device');
         return;
       }
-
+      // Get current selected child's name
+      const currentSelectedChild = await AsyncStorage.getItem('current_selected_child');
+      const childName = currentSelectedChild ? JSON.parse(currentSelectedChild).child_name : 'Child';
+      // Generate PDF file
+      const fileUri = await generatePDF(selectedLogs, childName, selectedDuration);
       await MailComposer.composeAsync({
-        subject: `Behavior Logs - ${selectedDuration}`,
-        body: summary,
+        subject: `${childName}'s Behavior Logs - ${selectedDuration}`,
+        body: `Attached is the behavior log report for ${childName} from ${selectedDuration.toLowerCase()}.`,
         recipients: [], // Add therapist's email here
-        // attachments: [tempPdfPath],
-        attachments: [], // TODO: Add PDF attachment
+        attachments: [fileUri],
       });
+      // Optionally clean up the file after sending
+      // await FileSystem.deleteAsync(fileUri);
     } catch (error) {
       console.error('Error sending logs:', error);
-      alert('Failed to send logs. Please try again.');
+      alert('Failed to generate and send logs. Please try again.');
     }
   };
 
   const renderDayComponent = ({ date, marking }: any) => {
     return (
-      <View style={[styles.day, marking?.marked && styles.markedDay]}>
+      <View style={[styles.dayContainer, marking?.marked && styles.markedDayContainer]}>
         <Text style={styles.dayText}>{date.day}</Text>
         {marking?.count && (
           <View style={styles.countBadge}>
@@ -134,7 +257,7 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <TouchableOpacity
         style={styles.durationPicker}
         onPress={() => setIsModalVisible(true)}
@@ -175,34 +298,12 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
           textDayFontWeight: '600',
           textDayHeaderFontSize: 14,
           textDayHeaderFontWeight: '600',
-          'stylesheet.calendar.header': {
-            header: {
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              paddingVertical: 15,
-              paddingHorizontal: 10,
-              alignItems: 'center',
-            },
-            monthText: {
-              fontSize: 28,
-              fontWeight: '600',
-              color: '#3E3E6B',
-              margin: 10,
-            },
-            dayHeader: {
-              marginTop: 5,
-              marginBottom: 10,
-              width: 52,
-              textAlign: 'center',
-              fontSize: 14,
-              fontWeight: '600',
-              color: '#5B9AA0',
-            },
-          }
         }}
         style={styles.calendar}
         dayComponent={({ date, state, marking }) => {
-          const isMarked = marking?.marked;
+          // Extend marking type to include count
+          const typedMarking = marking as (typeof marking & { count?: number });
+          const isMarked = typedMarking?.marked;
           return (
             <View style={[
               styles.dayContainer,
@@ -215,12 +316,12 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
               ]}>
                 {date?.day}
               </Text>
-              {marking?.count && marking.count > 0 && (
+              {typedMarking?.count && typedMarking.count > 0 && (
                 <View style={[
                   styles.countBadge,
-                  marking.count >= 10 && { paddingHorizontal: 4 }
+                  typedMarking.count >= 10 && { paddingHorizontal: 4 }
                 ]}>
-                  <Text style={styles.countText}>{marking.count}</Text>
+                  <Text style={styles.countText}>{typedMarking.count}</Text>
                 </View>
               )}
             </View>
@@ -264,40 +365,31 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
           </View>
         </TouchableOpacity>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  
     backgroundColor: '#fff',
-    // padding: 16,
-  
-    backgroundColor: '#fff',
-    // padding: 16,
   },
   durationPicker: {
-    //   marginTop: 100,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#E8F3F4',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 25,
-    alignSelf: 'center',
-    marginTop: 65,
+    marginTop: 40,
+    margin: 20,
+    padding: 16,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#5B9AA0',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#5B9AA0',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-      }
-    }),
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F6F8FA',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   durationText: {
     fontSize: 17,
@@ -306,103 +398,104 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   sendButton: {
+    marginHorizontal: 20,
+    marginBottom: 10,
+    padding: 16,
+    borderRadius: 12,
     backgroundColor: '#4CAF50',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 25,
-    alignSelf: 'center',
-    marginTop: 16,
-    marginBottom: 24,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
+    alignItems: 'center',
   },
   sendButtonText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    fontWeight: 'bold',
+    fontSize: 18,
   },
   calendar: {
-    flex: 1,
-    marginTop: 10,
+    margin: 10,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#fff',
   },
   dayContainer: {
     width: 52,
-    height: 70,
+    height: 52,
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingTop: 6,
-    marginVertical: 2,
-    marginHorizontal: 1,
+    justifyContent: 'center',
+    borderRadius: 12,
+    margin: 2,
     backgroundColor: '#fff',
   },
   markedDayContainer: {
-    backgroundColor: '#E8F5E9',
+    backgroundColor: '#E6F4EA',
+    borderWidth: 1,
+    borderColor: '#4CAF50',
   },
   dayText: {
-    fontSize: 20,
+    fontSize: 18,
+    fontWeight: '600',
     color: '#3E3E6B',
-    fontWeight: '400',
-    marginBottom: 4,
-  },
-  disabledDayText: {
-    color: '#C6C6C8',
   },
   todayText: {
     color: '#4CAF50',
-    fontWeight: '600',
+    fontWeight: 'bold',
+  },
+  disabledDayText: {
+    color: '#d9e1e8',
   },
   countBadge: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
     backgroundColor: '#4CAF50',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-    marginTop: 2,
+    borderRadius: 8,
+    paddingHorizontal: 2,
+    paddingVertical: 1,
+    minWidth: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   countText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.2)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: 'white',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    padding: 16,
-    maxHeight: '70%',
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
   },
   modalHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 16,
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: 'bold',
+    color: '#3E3E6B',
   },
   durationOption: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#C6C6C8',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderColor: '#F0F0F0',
   },
   durationOptionText: {
-    fontSize: 17,
+    fontSize: 18,
+    color: '#3E3E6B',
   },
 });
