@@ -1,40 +1,11 @@
- {
-  "bob_b34dc036-a87c-416e-8f3e-a10113734811": {
+{
+  "emma_b8e06534-7293-44c3-a736-478e6954cca0": {
     "logs": [],
     "flow_basic_1": [
       {
-        "id": "whoWasInvolved",
-        "question": "Who was involved?",
-        "answer_choices": [
-          {
-            "label": "My child",
-            "emoji": "🧒"
-          },
-          {
-            "label": "Sibling",
-            "emoji": "👧"
-          },
-          {
-            "label": "Parent",
-            "emoji": "🧑‍🦰"
-          },
-          {
-            "label": "Teacher",
-            "emoji": "👩‍🏫"
-          },
-          {
-            "label": "Stranger",
-            "emoji": "🕵️"
-          },
-          {
-            "label": "Other",
-            "emoji": "➕"
-          }
-        ]
-      },
-      {
         "id": "whatDidTheyDo",
         "question": "What did they do?",
+        "subheading": "Describe your child’s specific behavior or action during the incident.",
         "answer_choices": [
           {
             "label": "Hit",
@@ -59,60 +30,9 @@
         ]
       },
       {
-        "id": "whatObjectOrPerson",
-        "question": "What object/person?",
-        "answer_choices": [
-          {
-            "label": "iPad",
-            "emoji": "📱"
-          },
-          {
-            "label": "Snack",
-            "emoji": "🍪"
-          },
-          {
-            "label": "Chair",
-            "emoji": "🪑"
-          },
-          {
-            "label": "Sibling",
-            "emoji": "👧"
-          },
-          {
-            "label": "Other",
-            "emoji": "➕"
-          }
-        ]
-      },
-      {
-        "id": "whatHappenedBefore",
-        "question": "What happened before?",
-        "answer_choices": [
-          {
-            "label": "After denied something",
-            "emoji": "🚫"
-          },
-          {
-            "label": "After being told no",
-            "emoji": "🙅‍♂️"
-          },
-          {
-            "label": "After nap",
-            "emoji": "😴"
-          },
-          {
-            "label": "During play",
-            "emoji": "🧩"
-          },
-          {
-            "label": "Other",
-            "emoji": "➕"
-          }
-        ]
-      },
-      {
         "id": "whenDidItHappen",
         "question": "When did it happen?",
+        "subheading": "Select the time of day the behavior occurred.",
         "answer_choices": [
           {
             "label": "Morning",
@@ -137,8 +57,36 @@
         ]
       },
       {
+        "id": "whatHappenedBefore",
+        "question": "What happened before?",
+        "subheading": "What led up to the behavior or what triggered it?",
+        "answer_choices": [
+          {
+            "label": "After denied something",
+            "emoji": "🚫"
+          },
+          {
+            "label": "After being told no",
+            "emoji": "🙅‍♂️"
+          },
+          {
+            "label": "After nap",
+            "emoji": "😴"
+          },
+          {
+            "label": "During play",
+            "emoji": "🧩"
+          },
+          {
+            "label": "Other",
+            "emoji": "➕"
+          }
+        ]
+      },
+      {
         "id": "whatHappenedAfter",
         "question": "What happened after?",
+        "subheading": "Share how your child or others responded following the behavior.",
         "answer_choices": [
           {
             "label": "No reaction",
@@ -169,25 +117,11 @@
             "emoji": "➕"
           }
         ]
-      }
-    ],
-    "completed_logs": {
-      "flow_basic_1": []
-    },
-    "is_deleted": false,
-    "child_name": "bob",
-    "child_name_capitalized": "Bob",
-    "pronouns": "he/him",
-    "created_at": "2025-06-01T19:36:04.157Z",
-    "updated_at": "2025-06-01T19:36:04.157Z",
-    "child_uuid": "b34dc036-a87c-416e-8f3e-a10113734811"
-  },
-  "ella_2fdbb45c-3cbd-4065-a6b0-fa28597efc9e": {
-    "logs": [],
-    "flow_basic_1": [
+      },
       {
         "id": "whoWasInvolved",
-        "question": "Who was involved?",
+        "question": "Who all was involved?",
+        "subheading": "Choose everyone who was present or directly part of the situation.",
         "answer_choices": [
           {
             "label": "My child",
@@ -216,342 +150,269 @@
         ]
       },
       {
-        "id": "whatDidTheyDo",
-        "question": "What did they do?",
-        "answer_choices": [
-          {
-            "label": "Hit",
-            "emoji": "🤛"
-          },
-          {
-            "label": "Screamed",
-            "emoji": "😫"
-          },
-          {
-            "label": "Refused instruction",
-            "emoji": "🙅"
-          },
-          {
-            "label": "Threw object",
-            "emoji": "🪣"
-          },
-          {
-            "label": "Other",
-            "emoji": "➕"
-          }
-        ]
-      },
-      {
-        "id": "whatObjectOrPerson",
-        "question": "What object/person?",
-        "answer_choices": [
-          {
-            "label": "iPad",
-            "emoji": "📱"
-          },
-          {
-            "label": "Snack",
-            "emoji": "🍪"
-          },
-          {
-            "label": "Chair",
-            "emoji": "🪑"
-          },
-          {
-            "label": "Sibling",
-            "emoji": "👧"
-          },
-          {
-            "label": "Other",
-            "emoji": "➕"
-          }
-        ]
-      },
-      {
-        "id": "whatHappenedBefore",
-        "question": "What happened before?",
-        "answer_choices": [
-          {
-            "label": "After denied something",
-            "emoji": "🚫"
-          },
-          {
-            "label": "After being told no",
-            "emoji": "🙅‍♂️"
-          },
-          {
-            "label": "After nap",
-            "emoji": "😴"
-          },
-          {
-            "label": "During play",
-            "emoji": "🧩"
-          },
-          {
-            "label": "Other",
-            "emoji": "➕"
-          }
-        ]
-      },
-      {
-        "id": "whenDidItHappen",
-        "question": "When did it happen?",
-        "answer_choices": [
-          {
-            "label": "Morning",
-            "emoji": "🌅"
-          },
-          {
-            "label": "Afternoon",
-            "emoji": "🌞"
-          },
-          {
-            "label": "Evening",
-            "emoji": "🌇"
-          },
-          {
-            "label": "Night",
-            "emoji": "🌙"
-          },
-          {
-            "label": "Other",
-            "emoji": "➕"
-          }
-        ]
-      },
-      {
-        "id": "whatHappenedAfter",
-        "question": "What happened after?",
-        "answer_choices": [
-          {
-            "label": "No reaction",
-            "emoji": "😐"
-          },
-          {
-            "label": "Happened again",
-            "emoji": "🔁"
-          },
-          {
-            "label": "Comforted",
-            "emoji": "🤗"
-          },
-          {
-            "label": "Removed item",
-            "emoji": "📤"
-          },
-          {
-            "label": "Given warning",
-            "emoji": "⚠️"
-          },
-          {
-            "label": "Sent to room",
-            "emoji": "🚪"
-          },
-          {
-            "label": "Other",
-            "emoji": "➕"
-          }
-        ]
+        "id": "mood",
+        "question": "How was your child feeling?",
+        "subheading": "Select the mood or emotional state of your child during the incident."
       }
     ],
     "completed_logs": {
-      "flow_basic_1": []
+      "flow_basic_1": [
+        {
+          "id": "log_5222fc35-b84d-431b-9b33-5e2d30062b54",
+          "timestamp": "2025-07-05T01:45:31.544Z",
+          "responses": {
+            "whatDidTheyDo": {
+              "question": "What did they do?",
+              "answers": [
+                {
+                  "answer": "Hit",
+                  "isCustom": false
+                },
+                {
+                  "answer": "Screamed",
+                  "isCustom": false
+                },
+                {
+                  "answer": "Threw object",
+                  "isCustom": false
+                }
+              ],
+              "comment": "Threw apple at teacher"
+            },
+            "whenDidItHappen": {
+              "question": "When did it happen?",
+              "answers": [
+                {
+                  "answer": "Morning",
+                  "isCustom": false
+                }
+              ],
+              "comment": ""
+            },
+            "whatHappenedBefore": {
+              "question": "What happened before?",
+              "answers": [
+                {
+                  "answer": "After being told no",
+                  "isCustom": false
+                }
+              ],
+              "comment": ""
+            },
+            "whatHappenedAfter": {
+              "question": "What happened after?",
+              "answers": [
+                {
+                  "answer": "Comforted",
+                  "isCustom": false
+                },
+                {
+                  "answer": "Given warning",
+                  "isCustom": false
+                }
+              ],
+              "comment": "Princip"
+            },
+            "whoWasInvolved": {
+              "question": "Who all was involved?",
+              "answers": [
+                {
+                  "answer": "Teacher",
+                  "isCustom": false
+                },
+                {
+                  "answer": "Parent",
+                  "isCustom": false
+                },
+                {
+                  "answer": "Sibling",
+                  "isCustom": false
+                },
+                {
+                  "answer": "My child",
+                  "isCustom": false
+                }
+              ],
+              "comment": ""
+            },
+            "mood": {
+              "question": "How was your child feeling?",
+              "answers": [
+                {
+                  "answer": "Before: 2, After: 7",
+                  "isCustom": false
+                }
+              ],
+              "comment": ""
+            }
+          }
+        },
+        {
+          "id": "log_08ccc15d-4e71-48e1-b615-2dec152dd0dc",
+          "timestamp": "2025-07-05T01:47:07.528Z",
+          "responses": {
+            "whatDidTheyDo": {
+              "question": "What did they do?",
+              "answers": [
+                {
+                  "answer": "Crying really loud",
+                  "isCustom": true
+                }
+              ],
+              "comment": ""
+            },
+            "whenDidItHappen": {
+              "question": "When did it happen?",
+              "answers": [
+                {
+                  "answer": "Night",
+                  "isCustom": false
+                }
+              ],
+              "comment": ""
+            },
+            "whatHappenedBefore": {
+              "question": "What happened before?",
+              "answers": [
+                {
+                  "answer": "During play",
+                  "isCustom": false
+                }
+              ],
+              "comment": ""
+            },
+            "whatHappenedAfter": {
+              "question": "What happened after?",
+              "answers": [
+                {
+                  "answer": "Comforted",
+                  "isCustom": false
+                },
+                {
+                  "answer": "Sent to room",
+                  "isCustom": false
+                }
+              ],
+              "comment": ""
+            },
+            "whoWasInvolved": {
+              "question": "Who all was involved?",
+              "answers": [
+                {
+                  "answer": "My child",
+                  "isCustom": false
+                },
+                {
+                  "answer": "Parent",
+                  "isCustom": false
+                },
+                {
+                  "answer": "Sibling",
+                  "isCustom": false
+                }
+              ],
+              "comment": ""
+            },
+            "mood": {
+              "question": "How was your child feeling?",
+              "answers": [
+                {
+                  "answer": "Before: 4, After: 8",
+                  "isCustom": false
+                }
+              ],
+              "comment": ""
+            }
+          }
+        },
+        {
+          "id": "log_8690b577-a80d-4e77-b75b-badc910f9982",
+          "timestamp": "2025-07-05T01:48:33.926Z",
+          "responses": {
+            "whatDidTheyDo": {
+              "question": "What did they do?",
+              "answers": [
+                {
+                  "answer": "Threw object",
+                  "isCustom": false
+                }
+              ],
+              "comment": "iPad at brother"
+            },
+            "whenDidItHappen": {
+              "question": "When did it happen?",
+              "answers": [
+                {
+                  "answer": "Morning",
+                  "isCustom": false
+                }
+              ],
+              "comment": ""
+            },
+            "whatHappenedBefore": {
+              "question": "What happened before?",
+              "answers": [
+                {
+                  "answer": "During play",
+                  "isCustom": false
+                }
+              ],
+              "comment": ""
+            },
+            "whatHappenedAfter": {
+              "question": "What happened after?",
+              "answers": [
+                {
+                  "answer": "Removed item",
+                  "isCustom": false
+                },
+                {
+                  "answer": "Given warning",
+                  "isCustom": false
+                }
+              ],
+              "comment": ""
+            },
+            "whoWasInvolved": {
+              "question": "Who all was involved?",
+              "answers": [
+                {
+                  "answer": "My child",
+                  "isCustom": false
+                },
+                {
+                  "answer": "Sibling",
+                  "isCustom": false
+                }
+              ],
+              "comment": ""
+            },
+            "mood": {
+              "question": "How was your child feeling?",
+              "answers": [
+                {
+                  "answer": "Before: 7, After: 5",
+                  "isCustom": false
+                }
+              ],
+              "comment": ""
+            }
+          }
+        }
+      ]
     },
     "is_deleted": false,
-    "child_name": "ella",
-    "child_name_capitalized": "Ella",
+    "child_name": "emma",
+    "child_name_capitalized": "Emma",
     "pronouns": "she/her",
-    "created_at": "2025-06-01T19:36:04.157Z",
-    "updated_at": "2025-06-01T19:36:04.157Z",
-    "child_uuid": "2fdbb45c-3cbd-4065-a6b0-fa28597efc9e"
-  },
-  "menlo_adc1ffb2-2f7a-4e96-8bb5-622ea57bc56c": {
-    "logs": [],
-    "flow_basic_1": [
-      {
-        "id": "whoWasInvolved",
-        "question": "Who was involved?",
-        "answer_choices": [
-          {
-            "label": "My child",
-            "emoji": "🧒"
-          },
-          {
-            "label": "Sibling",
-            "emoji": "👧"
-          },
-          {
-            "label": "Parent",
-            "emoji": "🧑‍🦰"
-          },
-          {
-            "label": "Teacher",
-            "emoji": "👩‍🏫"
-          },
-          {
-            "label": "Stranger",
-            "emoji": "🕵️"
-          },
-          {
-            "label": "Other",
-            "emoji": "➕"
-          }
-        ]
-      },
-      {
-        "id": "whatDidTheyDo",
-        "question": "What did they do?",
-        "answer_choices": [
-          {
-            "label": "Hit",
-            "emoji": "🤛"
-          },
-          {
-            "label": "Screamed",
-            "emoji": "😫"
-          },
-          {
-            "label": "Refused instruction",
-            "emoji": "🙅"
-          },
-          {
-            "label": "Threw object",
-            "emoji": "🪣"
-          },
-          {
-            "label": "Other",
-            "emoji": "➕"
-          }
-        ]
-      },
-      {
-        "id": "whatObjectOrPerson",
-        "question": "What object/person?",
-        "answer_choices": [
-          {
-            "label": "iPad",
-            "emoji": "📱"
-          },
-          {
-            "label": "Snack",
-            "emoji": "🍪"
-          },
-          {
-            "label": "Chair",
-            "emoji": "🪑"
-          },
-          {
-            "label": "Sibling",
-            "emoji": "👧"
-          },
-          {
-            "label": "Other",
-            "emoji": "➕"
-          }
-        ]
-      },
-      {
-        "id": "whatHappenedBefore",
-        "question": "What happened before?",
-        "answer_choices": [
-          {
-            "label": "After denied something",
-            "emoji": "🚫"
-          },
-          {
-            "label": "After being told no",
-            "emoji": "🙅‍♂️"
-          },
-          {
-            "label": "After nap",
-            "emoji": "😴"
-          },
-          {
-            "label": "During play",
-            "emoji": "🧩"
-          },
-          {
-            "label": "Other",
-            "emoji": "➕"
-          }
-        ]
-      },
-      {
-        "id": "whenDidItHappen",
-        "question": "When did it happen?",
-        "answer_choices": [
-          {
-            "label": "Morning",
-            "emoji": "🌅"
-          },
-          {
-            "label": "Afternoon",
-            "emoji": "🌞"
-          },
-          {
-            "label": "Evening",
-            "emoji": "🌇"
-          },
-          {
-            "label": "Night",
-            "emoji": "🌙"
-          },
-          {
-            "label": "Other",
-            "emoji": "➕"
-          }
-        ]
-      },
-      {
-        "id": "whatHappenedAfter",
-        "question": "What happened after?",
-        "answer_choices": [
-          {
-            "label": "No reaction",
-            "emoji": "😐"
-          },
-          {
-            "label": "Happened again",
-            "emoji": "🔁"
-          },
-          {
-            "label": "Comforted",
-            "emoji": "🤗"
-          },
-          {
-            "label": "Removed item",
-            "emoji": "📤"
-          },
-          {
-            "label": "Given warning",
-            "emoji": "⚠️"
-          },
-          {
-            "label": "Sent to room",
-            "emoji": "🚪"
-          },
-          {
-            "label": "Other",
-            "emoji": "➕"
-          }
-        ]
-      }
-    ],
-    "completed_logs": {
-      "flow_basic_1": []
-    },
-    "is_deleted": false,
-    "child_name": "menlo",
-    "child_name_capitalized": "Menlo",
-    "pronouns": null,
-    "created_at": "2025-06-01T19:36:04.157Z",
-    "updated_at": "2025-06-01T19:36:04.157Z",
-    "child_uuid": "adc1ffb2-2f7a-4e96-8bb5-622ea57bc56c"
+    "created_at": "2025-07-05T01:43:53.215Z",
+    "updated_at": "2025-07-05T01:43:53.215Z",
+    "child_uuid": "b8e06534-7293-44c3-a736-478e6954cca0"
   },
   "onboarding_completed": true,
   "current_selected_child": {
-    "id": "bob_b34dc036-a87c-416e-8f3e-a10113734811",
-    "child_uuid": "b34dc036-a87c-416e-8f3e-a10113734811",
-    "child_name": "Bob"
+    "id": "emma_b8e06534-7293-44c3-a736-478e6954cca0",
+    "child_uuid": "b8e06534-7293-44c3-a736-478e6954cca0",
+    "child_name": "Emma"
   }
 }
