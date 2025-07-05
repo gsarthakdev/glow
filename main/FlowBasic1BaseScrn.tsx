@@ -165,7 +165,8 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         }
       }), {});
 
-      const localTime = new Date();
+      // const localTime = new Date();
+      const localTime = new Date('2025-07-01T16:10:00');
       const newLog = {
         id: `log_${uuidv4()}`,
         // timestamp: localTime.toLocaleString(), output: "7/4/2025, 10:35:25 PM"
