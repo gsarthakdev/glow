@@ -688,9 +688,9 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
   let y = height - 40;
-  const leftMargin = 40;
-  const chartWidth = 220;
-  const chartHeight = 120;
+  const leftMargin = 20;
+  const chartWidth = 260;
+  const chartHeight = 150;
   const colGap = 30;
   const lineHeight = 18;
 
@@ -755,7 +755,7 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
     tableY -= 18;
     // Table rows (increased row height, reduced font size)
     for (const [combo, count] of combosTable.tableRows || []) {
-      page.drawText(sanitizePdfText(combo.length > 32 ? combo.slice(0, 29) + '...' : combo), {
+      page.drawText(sanitizePdfText(combo), {
         x: tableCol1,
         y: tableY,
         size: 11,
