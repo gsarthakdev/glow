@@ -352,14 +352,15 @@ function getMoodLineChartUrl(moodByDay: Record<string, { before: number[], after
       plugins: { legend: { position: 'bottom' } },
       title: { display: true, text: 'Mood Before vs. After', fontSize: 30 },
       scales: {
-        y: {
-          min: 0, max: 10, 
+        yAxes: [{
+          // min: 0, max: 10, 
           ticks: {
-            stepSize: 2,
-            beginAtZero: true,
-            precision: 0
+            stepSize: 1,
+            // beginAtZero: true,
+            min: 1,
+            max: 10
           }
-        }
+        }]
       }
     }
   }))}`;
