@@ -642,40 +642,43 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
   console.log('Logs:', logs);
 
   // --- Generate chart images ---
-  const chartImages: { base64: string }[] = [];
+  // Order: Antecedents, What was involved, Consequences, Who was involved, Mood before vs. after, Log distribution by day and time, Most Common Combinations (table)
+  const chartImages: { base64?: string, type: string, tableRows?: [string, number][] }[] = [];
 
-  // 1. Who Was Involved Pie
-  const whoPieUrl = getWhoPieChartUrl(who.participantCounts, chartColors);
-  const whoPieBase64 = await fetchChartImageBase64(whoPieUrl);
-  chartImages.push({ base64: whoPieBase64 });
-
-  // Removed Time of Day Scatter chart as requested
-
-  // 3. Mood Line
-  const moodLineUrl = getMoodLineChartUrl(mood.moodByDay, mood.dayLabels, moodColors);
-  const moodLineBase64 = await fetchChartImageBase64(moodLineUrl);
-  chartImages.push({ base64: moodLineBase64 });
-
-  // 4. Behaviors Bar (horizontal, always include all possible labels)
-  const behaviorsBarUrl = getBarChartUrl('What Was Involved', behaviors, barColor, true);
-  const behaviorsBarBase64 = await fetchChartImageBase64(behaviorsBarUrl);
-  chartImages.push({ base64: behaviorsBarBase64 });
-
-  // 5. Antecedents Bar
+  // 1. Antecedents Bar
   const antecedentsBarUrl = getBarChartUrl('Antecedents', antecedents, barColor);
   const antecedentsBarBase64 = await fetchChartImageBase64(antecedentsBarUrl);
-  chartImages.push({ base64: antecedentsBarBase64 });
+  chartImages.push({ base64: antecedentsBarBase64, type: 'antecedents' });
 
-  // 6. Consequences Bar
+  // 2. What Was Involved (Behaviors Bar)
+  const behaviorsBarUrl = getBarChartUrl('What Was Involved', behaviors, barColor, true);
+  const behaviorsBarBase64 = await fetchChartImageBase64(behaviorsBarUrl);
+  chartImages.push({ base64: behaviorsBarBase64, type: 'behaviors' });
+
+  // 3. Consequences Bar
   const consequencesBarUrl = getBarChartUrl('Consequences', consequences, barColor);
   const consequencesBarBase64 = await fetchChartImageBase64(consequencesBarUrl);
-  chartImages.push({ base64: consequencesBarBase64 });
+  chartImages.push({ base64: consequencesBarBase64, type: 'consequences' });
 
-  // 7. Time of Day Horizontal Stacked Bar (simulated heatmap)
+  // 4. Who Was Involved Pie
+  const whoPieUrl = getWhoPieChartUrl(who.participantCounts, chartColors);
+  const whoPieBase64 = await fetchChartImageBase64(whoPieUrl);
+  chartImages.push({ base64: whoPieBase64, type: 'who' });
+
+  // 5. Mood Line
+  const moodLineUrl = getMoodLineChartUrl(mood.moodByDay, mood.dayLabels, moodColors);
+  const moodLineBase64 = await fetchChartImageBase64(moodLineUrl);
+  chartImages.push({ base64: moodLineBase64, type: 'mood' });
+
+  // 6. Log Distribution by Day and Time (Horizontal Stacked Bar)
   const timeMatrix = aggregateTimeOfDayMatrix(logs);
   const horizontalStackedUrl = getTimeOfDayHorizontalStackedBarUrl(timeMatrix.matrix, ['Morning', 'Afternoon', 'Evening', 'Night', 'Other'], ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], chartColors);
   const horizontalStackedBase64 = await fetchChartImageBase64(horizontalStackedUrl);
-  chartImages.push({ base64: horizontalStackedBase64 });
+  chartImages.push({ base64: horizontalStackedBase64, type: 'logdist' });
+
+  // 7. Most Common Combinations table (as a special type, not an image)
+  const combos = Object.entries(who.comboCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  chartImages.push({ type: 'combos', tableRows: combos });
 
   // --- Create PDF ---
   const pdfDoc = await PDFDocument.create();
@@ -701,70 +704,74 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
   });
   y -= 30;
 
-  // --- Draw charts in two columns ---
-  for (let i = 0; i < chartImages.length; i++) {
+  // --- Draw charts in two columns, snaking order (first 6 items) ---
+  for (let i = 0; i < 6; i++) {
     const col = i % 2;
     const row = Math.floor(i / 2);
     const x = leftMargin + col * (chartWidth + colGap);
     const chartY = y - row * (chartHeight + 50);
-    // Embed image
-    const img = await pdfDoc.embedPng(chartImages[i].base64);
-    page.drawImage(img, {
-      x,
-      y: chartY - chartHeight,
-      width: chartWidth,
-      height: chartHeight,
-    });
+    if (chartImages[i].base64 != null) {
+      const img = await pdfDoc.embedPng(chartImages[i].base64 as string);
+      page.drawImage(img, {
+        x,
+        y: chartY - chartHeight,
+        width: chartWidth,
+        height: chartHeight,
+      });
+    }
   }
 
-  // --- Who Was Involved Table (unique combos, as table) ---
-  y -= (Math.ceil(chartImages.length / 2) * (chartHeight + 50)) + 10;
-  page.drawText('Most Common Combinations:', {
-    x: leftMargin,
-    y,
-    size: 13,
-    font: fontBold,
-    color: rgb(0.24, 0.24, 0.42),
-  });
-  y -= 18;
-  // Table headers
-  const tableCol1 = leftMargin + 10;
-  const tableCol2 = leftMargin + 220;
-  const tableHeaderHeight = 13;
-  page.drawText('People combination', {
-    x: tableCol1,
-    y,
-    size: tableHeaderHeight,
-    font: fontBold,
-    color: rgb(0.15, 0.15, 0.3),
-  });
-  page.drawText('Frequency', {
-    x: tableCol2,
-    y,
-    size: tableHeaderHeight,
-    font: fontBold,
-    color: rgb(0.15, 0.15, 0.3),
-  });
-  y -= 14;
-  // Table rows
-  const combos = Object.entries(who.comboCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  combos.forEach(([combo, count]) => {
-    page.drawText(sanitizePdfText(combo), {
+  // --- Draw Most Common Combinations table below the grid, full width ---
+  y -= (Math.ceil(6 / 2) * (chartHeight + 50)) + 10;
+  const combosTable = chartImages[6];
+  if (combosTable && combosTable.type === 'combos') {
+    let tableY = y;
+    page.drawText('Most Common Combinations:', {
+      x: leftMargin,
+      y: tableY,
+      size: 15,
+      font: fontBold,
+      color: rgb(0.24, 0.24, 0.42),
+    });
+    tableY -= 22;
+    // Table headers
+    const tableCol1 = leftMargin + 10;
+    const tableCol2 = leftMargin + 220;
+    const tableHeaderHeight = 13;
+    page.drawText('People combination', {
       x: tableCol1,
-      y,
-      size: 11,
-      font,
-      color: rgb(0.2, 0.2, 0.2),
+      y: tableY,
+      size: tableHeaderHeight,
+      font: fontBold,
+      color: rgb(0.15, 0.15, 0.3),
     });
-    page.drawText(String(count), {
+    page.drawText('Frequency', {
       x: tableCol2,
-      y,
-      size: 11,
-      font,
-      color: rgb(0.2, 0.2, 0.2),
+      y: tableY,
+      size: tableHeaderHeight,
+      font: fontBold,
+      color: rgb(0.15, 0.15, 0.3),
     });
-    y -= 14;
-  });
+    tableY -= 18;
+    // Table rows (increased row height, reduced font size)
+    for (const [combo, count] of combosTable.tableRows || []) {
+      page.drawText(sanitizePdfText(combo.length > 32 ? combo.slice(0, 29) + '...' : combo), {
+        x: tableCol1,
+        y: tableY,
+        size: 11,
+        font,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+      page.drawText(String(count), {
+        x: tableCol2,
+        y: tableY,
+        size: 11,
+        font,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+      tableY -= 18;
+    }
+  }
 
   const pdfBytes = await pdfDoc.save();
   // Convert Uint8Array to base64 (Expo Go compatible)
