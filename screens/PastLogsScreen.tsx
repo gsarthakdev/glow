@@ -203,8 +203,8 @@ function getWhoPieChartUrl(participantCounts: Record<string, number>, colors: st
       datasets: [{ data, backgroundColor: colors.slice(0, labels.length) }]
     },
     options: {
-      plugins: { legend: { position: 'bottom' } },
-      title: { display: true, text: 'Who Was Involved' },
+      legend: { position: 'bottom' },
+      title: { display: true, text: 'Who Was Involved', fontSize: 30 },
     }
   }))}`;
 }
@@ -318,9 +318,16 @@ function getMoodLineChartUrl(moodByDay: Record<string, { before: number[], after
     options: {
       spanGaps: true,
       plugins: { legend: { position: 'bottom' } },
-      title: { display: true, text: 'Mood Before vs. After' },
+      title: { display: true, text: 'Mood Before vs. After', fontSize: 30 },
       scales: {
-        y: { min: 0, max: 10, ticks: { stepSize: 2 } }
+        y: {
+          min: 0, max: 10, 
+          ticks: {
+            stepSize: 2,
+            beginAtZero: true,
+            precision: 0
+          }
+        }
       }
     }
   }))}`;
@@ -332,9 +339,14 @@ function getBarChartUrl(title: string, counts: Record<string, number>, color: st
   const labels = Object.keys(counts).map(l => l.trim());
   const data = labels.map(l => Number(counts[l]) || 0);
   const maxValue = Math.max(...data, 1);
-  const yAxisMax = maxValue === 1 ? 2 : maxValue;
+  const axisMax = Math.max(2, maxValue); // Force at least 2 to avoid 0.5 steps
   console.log('Bar Chart Config:', { title, labels, data }); // Debug log
-  return `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify({
+
+  // Disable legend for specific chart titles
+  const disableLegendTitles = ['What Was Involved', 'Antecedents', 'Consequences'];
+  const legendDisplay = !disableLegendTitles.includes(title);
+
+  const config = {
     type: horizontal ? 'bar' : 'bar',
     data: {
       labels,
@@ -342,14 +354,30 @@ function getBarChartUrl(title: string, counts: Record<string, number>, color: st
     },
     options: {
       indexAxis: horizontal ? 'y' : 'x',
-      plugins: { legend: { display: false } },
-      title: { display: true, text: title },
+      legend: { display: false },
+      title: { display: true, text: title, fontSize: 30, fontStyle: 'normal' },
       scales: {
-        x: horizontal ? { beginAtZero: true, min: 0, max: yAxisMax, ticks: { stepSize: 1, precision: 0 } } : undefined,
-        y: !horizontal ? { beginAtZero: true, min: 0, max: yAxisMax, ticks: { stepSize: 1, precision: 0 } } : undefined
+        x: horizontal ? {
+          type: 'linear',
+          min: 0,
+          max: axisMax,
+          ticks: {
+            stepSize: 1,  
+            beginAtZero: true,
+            precision: 0,
+            min: 0,
+            max: axisMax
+          }
+        } : undefined,
+        yAxes: [{
+          ticks: {
+            stepSize: 1
+          }
+        }]
       }
     }
-  }))}`;
+  };
+  return `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify(config))}`;
 }
 
 // Helper to aggregate log counts for each (time, day) cell
@@ -387,15 +415,17 @@ function getTimeOfDayHeatmapUrl(matrix: number[][], timeLabels: string[], dayLab
       datasets
     },
     options: {
-      indexAxis: 'x',
-      plugins: {
+      // indexAxis: 'x',
         legend: { position: 'right' },
-        title: { display: true, text: 'Log Distribution by Time of Day (Heatmap)' }
-      },
+        title: { display: true, text: 'Log Distribution by Time of Day (Heatmap)' },
       responsive: true,
       scales: {
-        x: { stacked: true, title: { display: true, text: 'Time of Day' } },
-        y: { stacked: true, title: { display: true, text: 'Count' }, beginAtZero: true, ticks: { stepSize: 1 } }
+        xAxes: [{ stacked: true, title: { display: true, text: 'Time of Day' } }],
+        yAxes: [{
+          ticks: {
+            stepSize: 1
+          }
+        }]
       }
     }
   };
@@ -488,6 +518,8 @@ function getTimeOfDayHorizontalStackedBarUrl(matrix: number[][], timeLabels: str
     stack: 'time',
     borderWidth: 1
   }));
+  const maxCount = Math.max(...matrix.map(row => Math.max(...row)));
+  const axisMax = Math.max(2, maxCount); // Force at least 2 to avoid 0.5 steps
   const chartConfig = {
     type: 'bar',
     data: {
@@ -496,22 +528,41 @@ function getTimeOfDayHorizontalStackedBarUrl(matrix: number[][], timeLabels: str
     },
     options: {
       indexAxis: 'y',
-      plugins: {
+      // plugins: {
         legend: { position: 'top' },
-        title: { display: true, text: 'Log Distribution by Day and Time (Stacked)' }
-      },
+        title: { display: true, text: 'Log Distribution by Day and Time', fontSize: 30 },
+      // },
       responsive: true,
       scales: {
-        x: { stacked: true, title: { display: true, text: 'Count' }, beginAtZero: true, ticks: { stepSize: 1 } },
-        y: { stacked: true, title: { display: true, text: 'Day of Week' } }
+        x: {
+          type: 'linear',
+          stacked: true,
+          title: { display: true, text: 'Count' },
+          min: 0,
+          max: axisMax,
+          ticks: {
+            stepSize: 1,
+            min: 0,
+            max: axisMax,
+            beginAtZero: true,
+            precision: 0
+          }
+        },
+        yAxes: [{
+          // type: 'category',
+          // stacked: true,
+          // title: { display: true, text: 'Day of Week' },
+          // labels: dayLabels,
+          ticks: {
+            stepSize: 1
+          }
+        }]
       }
     }
   };
   // Log config for debug
   console.log('Horizontal stacked bar chartConfig:', JSON.stringify(chartConfig, null, 2));
-  const url = `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify(chartConfig))}`;
-  console.log('Horizontal stacked bar chart URL:', url);
-  return url;
+  return `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify(chartConfig))}`;
 }
 
 // --- Helper to fetch chart image as base64 ---
