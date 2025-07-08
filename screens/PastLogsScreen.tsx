@@ -22,7 +22,7 @@ interface MarkedDates {
   };
 }
 
-const DURATION_OPTIONS = ['Today', 'Yesterday', 'This Week'];
+const DURATION_OPTIONS = ['This Week', 'Today', 'Yesterday'];
 
 // Helper to format date as YYYY-MM-DD
 const formatDate = (date: Date) => {
@@ -566,10 +566,7 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
   const whoPieBase64 = await fetchChartImageBase64(whoPieUrl);
   chartImages.push({ caption: 'Who Was Involved', base64: whoPieBase64 });
 
-  // 2. Time of Day Scatter
-  const timeScatterUrl = getTimeScatterChartUrl(time.points, time.timeLabels, time.dayLabels, scatterColor);
-  const timeScatterBase64 = await fetchChartImageBase64(timeScatterUrl);
-  chartImages.push({ caption: 'Log Distribution by Time of Day', base64: timeScatterBase64 });
+  // Removed Time of Day Scatter chart as requested
 
   // 3. Mood Line
   const moodLineUrl = getMoodLineChartUrl(mood.moodByDay, mood.dayLabels, moodColors);
@@ -645,7 +642,7 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
     });
   }
 
-  // --- Who Was Involved Table (unique combos) ---
+  // --- Who Was Involved Table (unique combos, as table) ---
   y -= (Math.ceil(chartImages.length / 2) * (chartHeight + 50)) + 10;
   page.drawText('Most Common Combinations:', {
     x: leftMargin,
@@ -655,10 +652,37 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
     color: rgb(0.24, 0.24, 0.42),
   });
   y -= 18;
+  // Table headers
+  const tableCol1 = leftMargin + 10;
+  const tableCol2 = leftMargin + 220;
+  const tableHeaderHeight = 13;
+  page.drawText('People combination', {
+    x: tableCol1,
+    y,
+    size: tableHeaderHeight,
+    font: fontBold,
+    color: rgb(0.15, 0.15, 0.3),
+  });
+  page.drawText('Frequency', {
+    x: tableCol2,
+    y,
+    size: tableHeaderHeight,
+    font: fontBold,
+    color: rgb(0.15, 0.15, 0.3),
+  });
+  y -= 14;
+  // Table rows
   const combos = Object.entries(who.comboCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
   combos.forEach(([combo, count]) => {
-    page.drawText(`${sanitizePdfText(combo)}: ${count}`, {
-      x: leftMargin + 10,
+    page.drawText(sanitizePdfText(combo), {
+      x: tableCol1,
+      y,
+      size: 11,
+      font,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+    page.drawText(String(count), {
+      x: tableCol2,
       y,
       size: 11,
       font,
@@ -677,7 +701,7 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
 }
 
 export default function PastLogsScreen({ navigation }: { navigation: any }) {
-  const [selectedDuration, setSelectedDuration] = useState('Today');
+  const [selectedDuration, setSelectedDuration] = useState('This Week');
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [markedDates, setMarkedDates] = useState<MarkedDates>({});
   const [logs, setLogs] = useState<Log[]>([]);
