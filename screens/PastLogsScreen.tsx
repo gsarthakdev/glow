@@ -200,12 +200,44 @@ function getWhoPieChartUrl(participantCounts: Record<string, number>, colors: st
     type: 'pie',
     data: {
       labels,
-      datasets: [{ data, backgroundColor: colors.slice(0, labels.length) }]
+      datasets: [{ 
+        data, 
+        backgroundColor: colors.slice(0, labels.length), 
+        fontColor: 'white',
+        fontStyle: 'bold',
+      }]
     },
     options: {
-      legend: { position: 'bottom' },
+      legend: { position: 'left', labels: {
+        fontSize: 20
+      } },
       title: { display: true, text: 'Who Was Involved', fontSize: 30 },
+      plugins: {
+        datalabels: {
+          "display": true,
+          "align": "center",
+          "anchor": "center",
+          // "backgroundColor": "#000000",
+          // "borderColor": "#ffffff",
+          // "borderRadius": 15,
+          // "borderWidth": 1,
+          // "padding": 4,
+          "color": "#ffffff",
+          "font": {
+            "family": "sans-serif",
+            "size": 17,
+            "style": "bold"
+          }
+        },
+        datalabelsZAxis: {
+          "enabled": false
+        },
+        googleSheets: {},
+        airtable: {},
+        tickFormat: ""
+        }
     }
+    
   }))}`;
 }
 
@@ -355,7 +387,7 @@ function getBarChartUrl(title: string, counts: Record<string, number>, color: st
     options: {
       indexAxis: horizontal ? 'y' : 'x',
       legend: { display: false },
-      title: { display: true, text: title, fontSize: 30, fontStyle: 'normal' },
+      title: { display: true, text: title, fontSize: 30, fontStyle: 'normal', fontFamily: 'sans-serif' },
       scales: {
         x: horizontal ? {
           type: 'linear',
@@ -610,40 +642,40 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
   console.log('Logs:', logs);
 
   // --- Generate chart images ---
-  const chartImages: { caption: string, base64: string }[] = [];
+  const chartImages: { base64: string }[] = [];
 
   // 1. Who Was Involved Pie
   const whoPieUrl = getWhoPieChartUrl(who.participantCounts, chartColors);
   const whoPieBase64 = await fetchChartImageBase64(whoPieUrl);
-  chartImages.push({ caption: 'Who Was Involved', base64: whoPieBase64 });
+  chartImages.push({ base64: whoPieBase64 });
 
   // Removed Time of Day Scatter chart as requested
 
   // 3. Mood Line
   const moodLineUrl = getMoodLineChartUrl(mood.moodByDay, mood.dayLabels, moodColors);
   const moodLineBase64 = await fetchChartImageBase64(moodLineUrl);
-  chartImages.push({ caption: 'Mood Before vs. After', base64: moodLineBase64 });
+  chartImages.push({ base64: moodLineBase64 });
 
   // 4. Behaviors Bar (horizontal, always include all possible labels)
   const behaviorsBarUrl = getBarChartUrl('What Was Involved', behaviors, barColor, true);
   const behaviorsBarBase64 = await fetchChartImageBase64(behaviorsBarUrl);
-  chartImages.push({ caption: 'What Was Involved', base64: behaviorsBarBase64 });
+  chartImages.push({ base64: behaviorsBarBase64 });
 
   // 5. Antecedents Bar
   const antecedentsBarUrl = getBarChartUrl('Antecedents', antecedents, barColor);
   const antecedentsBarBase64 = await fetchChartImageBase64(antecedentsBarUrl);
-  chartImages.push({ caption: 'Antecedents', base64: antecedentsBarBase64 });
+  chartImages.push({ base64: antecedentsBarBase64 });
 
   // 6. Consequences Bar
   const consequencesBarUrl = getBarChartUrl('Consequences', consequences, barColor);
   const consequencesBarBase64 = await fetchChartImageBase64(consequencesBarUrl);
-  chartImages.push({ caption: 'Consequences', base64: consequencesBarBase64 });
+  chartImages.push({ base64: consequencesBarBase64 });
 
   // 7. Time of Day Horizontal Stacked Bar (simulated heatmap)
   const timeMatrix = aggregateTimeOfDayMatrix(logs);
   const horizontalStackedUrl = getTimeOfDayHorizontalStackedBarUrl(timeMatrix.matrix, ['Morning', 'Afternoon', 'Evening', 'Night', 'Other'], ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], chartColors);
   const horizontalStackedBase64 = await fetchChartImageBase64(horizontalStackedUrl);
-  chartImages.push({ caption: 'Log Distribution by Day and Time', base64: horizontalStackedBase64 });
+  chartImages.push({ base64: horizontalStackedBase64 });
 
   // --- Create PDF ---
   const pdfDoc = await PDFDocument.create();
@@ -682,14 +714,6 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
       y: chartY - chartHeight,
       width: chartWidth,
       height: chartHeight,
-    });
-    // Caption
-    page.drawText(sanitizePdfText(chartImages[i].caption), {
-      x,
-      y: chartY - chartHeight - 16,
-      size: 12,
-      font,
-      color: rgb(0.2, 0.2, 0.2),
     });
   }
 
