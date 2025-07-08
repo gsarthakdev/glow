@@ -729,9 +729,9 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-    // Start of week (Sunday)
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay());
+    // Rolling 7-day window: today + previous 6 days
+    const startOfRollingWeek = new Date(today);
+    startOfRollingWeek.setDate(today.getDate() - 6);
 
     return logs.filter((log: Log) => {
       const logDate = new Date(log.timestamp);
@@ -743,7 +743,7 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
         case 'Yesterday':
           return logDay.getTime() === yesterday.getTime();
         case 'This Week':
-          return logDay >= startOfWeek && logDay <= today;
+          return logDay >= startOfRollingWeek && logDay <= today;
         default:
           return false;
       }
