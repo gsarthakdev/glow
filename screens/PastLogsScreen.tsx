@@ -70,7 +70,7 @@ function aggregateWhoWasInvolved(logs: Log[]) {
 // 2. Log Distribution by Time of Day
 function aggregateTimeOfDay(logs: Log[]) {
   // Map label to y-index (row)
-  const timeLabels = ['Morning', 'Afternoon', 'Evening', 'Night', 'Other'];
+  const timeLabels = ['Morning', 'Afternoon', 'Evening', 'Night'];
   const timeLabelToY = Object.fromEntries(timeLabels.map((l, i) => [l, i]));
   const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const points: { x: string, y: string }[] = [];
@@ -415,7 +415,7 @@ function getBarChartUrl(title: string, counts: Record<string, number>, color: st
 
 // Helper to aggregate log counts for each (time, day) cell
 function aggregateTimeOfDayMatrix(logs: Log[]) {
-  const timeLabels = ['Morning', 'Afternoon', 'Evening', 'Night', 'Other'];
+  const timeLabels = ['Morning', 'Afternoon', 'Evening', 'Night'];
   const dayLabels = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   // Initialize matrix
   const matrix: number[][] = Array(dayLabels.length).fill(0).map(() => Array(timeLabels.length).fill(0));
@@ -673,7 +673,7 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
 
   // 6. Log Distribution by Day and Time (Horizontal Stacked Bar)
   const timeMatrix = aggregateTimeOfDayMatrix(logs);
-  const horizontalStackedUrl = getTimeOfDayHorizontalStackedBarUrl(timeMatrix.matrix, ['Morning', 'Afternoon', 'Evening', 'Night', 'Other'], ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], chartColors);
+  const horizontalStackedUrl = getTimeOfDayHorizontalStackedBarUrl(timeMatrix.matrix, ['Morning', 'Afternoon', 'Evening', 'Night'], ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], chartColors);
   const horizontalStackedBase64 = await fetchChartImageBase64(horizontalStackedUrl);
   chartImages.push({ base64: horizontalStackedBase64, type: 'logdist' });
 
