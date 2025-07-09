@@ -644,38 +644,38 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
 
   // --- Generate chart images ---
   // Order: Antecedents, What was involved, Consequences, Who was involved, Mood before vs. after, Log distribution by day and time, Most Common Combinations (table)
-  const chartImages: { base64?: string, type: string, tableRows?: [string, number][] }[] = [];
+  const chartImages: { base64?: string, type: string, caption?: string, tableRows?: [string, number][] }[] = [];
 
   // 1. Antecedents Bar
   const antecedentsBarUrl = getBarChartUrl('Antecedents', antecedents, barColor);
   const antecedentsBarBase64 = await fetchChartImageBase64(antecedentsBarUrl);
-  chartImages.push({ base64: antecedentsBarBase64, type: 'antecedents' });
+  chartImages.push({ base64: antecedentsBarBase64, type: 'antecedents', caption: 'Antecedents' });
 
   // 2. What Was Involved (Behaviors Bar)
   const behaviorsBarUrl = getBarChartUrl('What happened', behaviors, barColor, true);
   const behaviorsBarBase64 = await fetchChartImageBase64(behaviorsBarUrl);
-  chartImages.push({ base64: behaviorsBarBase64, type: 'behaviors' });
+  chartImages.push({ base64: behaviorsBarBase64, type: 'behaviors', caption: 'What happened' });
 
   // 3. Consequences Bar
   const consequencesBarUrl = getBarChartUrl('Consequences', consequences, barColor);
   const consequencesBarBase64 = await fetchChartImageBase64(consequencesBarUrl);
-  chartImages.push({ base64: consequencesBarBase64, type: 'consequences' });
+  chartImages.push({ base64: consequencesBarBase64, type: 'consequences', caption: 'Consequences' });
 
   // 4. Who Was Involved Pie
   const whoPieUrl = getWhoPieChartUrl(who.participantCounts, chartColors);
   const whoPieBase64 = await fetchChartImageBase64(whoPieUrl);
-  chartImages.push({ base64: whoPieBase64, type: 'who' });
+  chartImages.push({ base64: whoPieBase64, type: 'who', caption: 'Who was involved' });
 
   // 5. Mood Line
   const moodLineUrl = getMoodLineChartUrl(mood.moodByDay, mood.dayLabels, moodColors);
   const moodLineBase64 = await fetchChartImageBase64(moodLineUrl);
-  chartImages.push({ base64: moodLineBase64, type: 'mood' });
+  chartImages.push({ base64: moodLineBase64, type: 'mood', caption: 'Mood before vs. after' });
 
   // 6. Log Distribution by Day and Time (Horizontal Stacked Bar)
   const timeMatrix = aggregateTimeOfDayMatrix(logs);
   const horizontalStackedUrl = getTimeOfDayHorizontalStackedBarUrl(timeMatrix.matrix, ['Morning', 'Afternoon', 'Evening', 'Night'], ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], chartColors);
   const horizontalStackedBase64 = await fetchChartImageBase64(horizontalStackedUrl);
-  chartImages.push({ base64: horizontalStackedBase64, type: 'logdist' });
+  chartImages.push({ base64: horizontalStackedBase64, type: 'logdist', caption: 'Log distribution by day and time' });
 
   // 7. Most Common Combinations table (as a special type, not an image)
   const combos = Object.entries(who.comboCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
@@ -712,6 +712,18 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
     const x = leftMargin + col * (chartWidth + colGap);
     const chartY = y - row * (chartHeight + 50);
     if (chartImages[i].base64 != null) {
+      // Draw caption at the top left of the chart, with numbering
+      if (typeof chartImages[i].caption === 'string') {
+        const caption = `${i + 1}. ${chartImages[i].caption}`;
+        page.drawText(caption, {
+          x: x,
+          y: chartY + 8,
+          size: 13,
+          font,
+          color: rgb(0.2, 0.2, 0.2),
+        });
+      }
+      // Draw chart image below the caption
       const img = await pdfDoc.embedPng(chartImages[i].base64 as string);
       page.drawImage(img, {
         x,
