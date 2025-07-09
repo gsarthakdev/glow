@@ -61,7 +61,7 @@ function aggregateWhoWasInvolved(logs: Log[]) {
     // Count unique combinations
     if (labels.length > 0) {
       const comboKey = labels.join(' + ');
-      comboCounts[comboKey] = (comboCounts[comboCounts] || 0) + 1;
+      comboCounts[comboKey] = (comboCounts[comboKey] || 0) + 1;
     }
   });
   return { participantCounts, comboCounts };
@@ -111,23 +111,21 @@ const ALL_BEHAVIOR_LABELS = [
   'Screamed',
   'Refused instruction',
   'Threw object',
-  'Other',
+  // 'Other',
   // 'Crying really loud' // add any custom/expected labels
 ];
 
-// 4. What Was Involved (ensure all possible behaviors are included)
-function aggregateBehaviors(logs: Log[], allBehaviorLabels: string[]) {
+// 4. What Was Involved (dynamic, only labels in data)
+function aggregateBehaviors(logs: Log[]) {
   const behaviorCounts: Record<string, number> = {};
-  allBehaviorLabels.forEach(label => {
-    behaviorCounts[label] = 0;
-  });
   logs.forEach(log => {
     const answers = log.responses?.whatDidTheyDo?.answers || [];
     answers.forEach((a: any) => {
+      if (a.answer === 'Other') return; // Exclude literal 'Other'
       if (behaviorCounts[a.answer] !== undefined) {
         behaviorCounts[a.answer] += 1;
       } else {
-        behaviorCounts[a.answer] = 1; // fallback for unexpected answers
+        behaviorCounts[a.answer] = 1;
       }
     });
   });
@@ -140,7 +138,8 @@ const ALL_ANTECEDENT_LABELS = [
   'After being told no',
   'After nap',
   'During play',
-  'Other'
+  // 'lol bruh'
+  // 'Other'
 ];
 const ALL_CONSEQUENCE_LABELS = [
   'No reaction',
@@ -149,7 +148,7 @@ const ALL_CONSEQUENCE_LABELS = [
   'Removed item',
   'Given warning',
   'Sent to room',
-  'Other'
+  // 'Other'
 ];
 
 // 5. Antecedents (ensure all possible antecedents are included)
@@ -161,29 +160,28 @@ function aggregateAntecedents(logs: Log[], allAntecedentLabels: string[]) {
   logs.forEach(log => {
     const answers = log.responses?.whatHappenedBefore?.answers || [];
     answers.forEach((a: any) => {
+      if (a.answer === 'Other') return; // Exclude literal 'Other'
       if (antecedentCounts[a.answer] !== undefined) {
         antecedentCounts[a.answer] += 1;
       } else {
-        antecedentCounts[a.answer] = 1; // fallback for unexpected answers
+        antecedentCounts[a.answer] = 1; // add new custom label
       }
     });
   });
   return antecedentCounts;
 }
 
-// 6. Consequences (ensure all possible consequences are included)
-function aggregateConsequences(logs: Log[], allConsequenceLabels: string[]) {
+// 6. Consequences (dynamic, only labels in data)
+function aggregateConsequences(logs: Log[]) {
   const consequenceCounts: Record<string, number> = {};
-  allConsequenceLabels.forEach(label => {
-    consequenceCounts[label] = 0;
-  });
   logs.forEach(log => {
     const answers = log.responses?.whatHappenedAfter?.answers || [];
     answers.forEach((a: any) => {
+      if (a.answer === 'Other') return; // Exclude literal 'Other'
       if (consequenceCounts[a.answer] !== undefined) {
         consequenceCounts[a.answer] += 1;
       } else {
-        consequenceCounts[a.answer] = 1; // fallback for unexpected answers
+        consequenceCounts[a.answer] = 1;
       }
     });
   });
@@ -368,19 +366,16 @@ function getMoodLineChartUrl(moodByDay: Record<string, { before: number[], after
 
 // 4. Histogram (Bar) for Behaviors, Antecedents, Consequences
 function getBarChartUrl(title: string, counts: Record<string, number>, color: string, horizontal = false) {
-  // Sanitize labels and ensure order matches data
-  const labels = Object.keys(counts).map(l => l.trim());
+  const labels = Object.keys(counts);
   const data = labels.map(l => Number(counts[l]) || 0);
   const maxValue = Math.max(...data, 1);
-  const axisMax = Math.max(2, maxValue); // Force at least 2 to avoid 0.5 steps
-  console.log('Bar Chart Config:', { title, labels, data }); // Debug log
+  const axisMax = Math.max(2, maxValue);
 
-  // Disable legend for specific chart titles
-  const disableLegendTitles = ['What happened', 'Antecedents', 'Consequences'];
-  const legendDisplay = !disableLegendTitles.includes(title);
+  // For 'What happened' and 'Consequences', as well as 'Antecedents', use the same dynamic axis logic
+  const isSpecial = ['What happened', 'Antecedents', 'Consequences'].includes(title);
 
   const config = {
-    type: horizontal ? 'bar' : 'bar',
+    type: 'bar',
     data: {
       labels,
       datasets: [{ data, backgroundColor: color, minBarLength: 4 }]
@@ -390,24 +385,39 @@ function getBarChartUrl(title: string, counts: Record<string, number>, color: st
       legend: { display: false },
       title: { display: true, text: title, fontSize: 30, fontStyle: 'normal', fontFamily: 'sans-serif' },
       scales: {
-        x: horizontal ? {
-          type: 'linear',
-          min: 0,
-          max: axisMax,
-          ticks: {
-            stepSize: 1,  
-            beginAtZero: true,
-            precision: 0,
-            min: 0,
-            max: axisMax
-          }
-        } : undefined,
         yAxes: [{
+          // min: 0, max: 10, 
           ticks: {
-            stepSize: 1
+            stepSize: 1,
+            beginAtZero: true,
+            // min: 1,
+            max: axisMax
           }
         }]
       }
+      // scales: isSpecial || horizontal
+      //   ? {
+      //       x: {
+      //         type: 'linear',
+      //         min: 0,
+      //         max: axisMax,
+      //         ticks: { stepSize: 1, min: 0, max: axisMax }
+      //       },
+      //       y: {
+      //         type: 'category'
+      //       }
+      //     }
+      //   : {
+      //       x: {
+      //         type: 'category'
+      //       },
+      //       y: {
+      //         type: 'linear',
+      //         min: 0,
+      //         max: axisMax,
+      //         ticks: { stepSize: 1, min: 0, max: axisMax }
+      //       }
+      //     }
     }
   };
   return `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify(config))}`;
@@ -594,7 +604,7 @@ function getTimeOfDayHorizontalStackedBarUrl(matrix: number[][], timeLabels: str
     }
   };
   // Log config for debug
-  console.log('Horizontal stacked bar chartConfig:', JSON.stringify(chartConfig, null, 2));
+  // console.log('Horizontal stacked bar chartConfig:', JSON.stringify(chartConfig, null, 2));
   return `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify(chartConfig))}`;
 }
 
@@ -628,9 +638,9 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
   const who = aggregateWhoWasInvolved(logs);
   const time = aggregateTimeOfDay(logs);
   const mood = aggregateMood(logs);
-  const behaviors = aggregateBehaviors(logs, ALL_BEHAVIOR_LABELS);
+  const behaviors = aggregateBehaviors(logs);
   const antecedents = aggregateAntecedents(logs, ALL_ANTECEDENT_LABELS);
-  const consequences = aggregateConsequences(logs, ALL_CONSEQUENCE_LABELS);
+  const consequences = aggregateConsequences(logs);
 
   // Debug logs
   console.log('PDF Export - Aggregated Data:');
@@ -638,7 +648,7 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
   console.log('Time of Day:', time);
   console.log('Mood:', mood);
   console.log('Behaviors:', behaviors);
-  console.log('Antecedents:', antecedents);
+  console.log('Antecedents **:', antecedents);
   console.log('Consequences:', consequences);
   console.log('Logs:', logs);
 
@@ -648,34 +658,38 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
 
   // 1. Antecedents Bar
   const antecedentsBarUrl = getBarChartUrl('Antecedents', antecedents, barColor);
+  console.error(antecedentsBarUrl)
   const antecedentsBarBase64 = await fetchChartImageBase64(antecedentsBarUrl);
-  chartImages.push({ base64: antecedentsBarBase64, type: 'antecedents', caption: 'Antecedents' });
+  chartImages.push({ base64: antecedentsBarBase64, type: 'antecedents', caption: 'User-entered or selected reasons that occurred before behaviors throughout the week.' });
 
   // 2. What Was Involved (Behaviors Bar)
   const behaviorsBarUrl = getBarChartUrl('What happened', behaviors, barColor, true);
+  console.error(behaviorsBarUrl)
   const behaviorsBarBase64 = await fetchChartImageBase64(behaviorsBarUrl);
-  chartImages.push({ base64: behaviorsBarBase64, type: 'behaviors', caption: 'What happened' });
+  chartImages.push({ base64: behaviorsBarBase64, type: 'behaviors', caption: 'Histogram showing how often each type of behavior occurred during the week.' });
 
   // 3. Consequences Bar
   const consequencesBarUrl = getBarChartUrl('Consequences', consequences, barColor);
+  console.error(consequencesBarUrl)
+
   const consequencesBarBase64 = await fetchChartImageBase64(consequencesBarUrl);
-  chartImages.push({ base64: consequencesBarBase64, type: 'consequences', caption: 'Consequences' });
+  chartImages.push({ base64: consequencesBarBase64, type: 'consequences', caption: 'Responses applied after behaviors during the week.' });
 
   // 4. Who Was Involved Pie
   const whoPieUrl = getWhoPieChartUrl(who.participantCounts, chartColors);
   const whoPieBase64 = await fetchChartImageBase64(whoPieUrl);
-  chartImages.push({ base64: whoPieBase64, type: 'who', caption: 'Who was involved' });
+  chartImages.push({ base64: whoPieBase64, type: 'who', caption: 'Pie chart showing who was involved in incidents this week, with most common person combinations listed.' });
 
   // 5. Mood Line
   const moodLineUrl = getMoodLineChartUrl(mood.moodByDay, mood.dayLabels, moodColors);
   const moodLineBase64 = await fetchChartImageBase64(moodLineUrl);
-  chartImages.push({ base64: moodLineBase64, type: 'mood', caption: 'Mood before vs. after' });
+  chartImages.push({ base64: moodLineBase64, type: 'mood', caption: 'Average mood tracked over the week for all negative behaviors' });
 
   // 6. Log Distribution by Day and Time (Horizontal Stacked Bar)
   const timeMatrix = aggregateTimeOfDayMatrix(logs);
   const horizontalStackedUrl = getTimeOfDayHorizontalStackedBarUrl(timeMatrix.matrix, ['Morning', 'Afternoon', 'Evening', 'Night'], ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], chartColors);
   const horizontalStackedBase64 = await fetchChartImageBase64(horizontalStackedUrl);
-  chartImages.push({ base64: horizontalStackedBase64, type: 'logdist', caption: 'Log distribution by day and time' });
+  chartImages.push({ base64: horizontalStackedBase64, type: 'logdist', caption: 'Heatmap of behavior logs by time of day across the week.' });
 
   // 7. Most Common Combinations table (as a special type, not an image)
   const combos = Object.entries(who.comboCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
@@ -691,7 +705,7 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
   let y = height - 40;
   const leftMargin = 20;
   const chartWidth = 260;
-  const chartHeight = 150;
+  const chartHeight = 140;
   const colGap = 30;
   const lineHeight = 18;
 
@@ -703,27 +717,62 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
     font: fontBold,
     color: rgb(0.24, 0.24, 0.42),
   });
-  y -= 30;
+  y -= 40;
 
   // --- Draw charts in two columns, snaking order (first 6 items) ---
+  // Helper to wrap text for captions
+  function wrapCaption(text: string, font: any, fontSize: number, maxWidth: number): string[] {
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let currentLine = '';
+    for (const word of words) {
+      const testLine = currentLine ? currentLine + ' ' + word : word;
+      const testWidth = font.widthOfTextAtSize(testLine, fontSize);
+      if (testWidth > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    }
+    if (currentLine) lines.push(currentLine);
+    return lines;
+  }
+
   for (let i = 0; i < 6; i++) {
     const col = i % 2;
     const row = Math.floor(i / 2);
     const x = leftMargin + col * (chartWidth + colGap);
-    const chartY = y - row * (chartHeight + 50);
+    const chartY = y - row * (chartHeight + 65); // slightly reduced vertical margin between rows
     if (chartImages[i].base64 != null) {
       // Draw caption at the top left of the chart, with numbering
       if (typeof chartImages[i].caption === 'string') {
         const caption = `${i + 1}. ${chartImages[i].caption}`;
-        page.drawText(caption, {
-          x: x,
-          y: chartY + 8,
-          size: 13,
-          font,
-          color: rgb(0.2, 0.2, 0.2),
+        const fontSize = 10;
+        const lines = wrapCaption(caption, font, fontSize, chartWidth);
+        let captionY = chartY + 8;
+        for (const line of lines) {
+          page.drawText(line, {
+            x: x,
+            y: captionY,
+            size: fontSize,
+            font,
+            color: rgb(0.2, 0.2, 0.2),
+          });
+          captionY -= fontSize + 2;
+        }
+        // Move chart image further down to avoid overlap
+        const chartYOffset = 8 - (fontSize + 2) * lines.length;
+        const img = await pdfDoc.embedPng(chartImages[i].base64 as string);
+        page.drawImage(img, {
+          x,
+          y: chartY - chartHeight + chartYOffset,
+          width: chartWidth,
+          height: chartHeight,
         });
+        continue;
       }
-      // Draw chart image below the caption
+      // Fallback: draw chart image without caption
       const img = await pdfDoc.embedPng(chartImages[i].base64 as string);
       page.drawImage(img, {
         x,
@@ -735,22 +784,22 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
   }
 
   // --- Draw Most Common Combinations table below the grid, full width ---
-  y -= (Math.ceil(6 / 2) * (chartHeight + 50)) + 10;
+  y -= (Math.ceil(6 / 2) * (chartHeight + 65)) + 10;
   const combosTable = chartImages[6];
   if (combosTable && combosTable.type === 'combos') {
     let tableY = y;
     page.drawText('Most Common Combinations:', {
       x: leftMargin,
       y: tableY,
-      size: 15,
+      size: 13,
       font: fontBold,
       color: rgb(0.24, 0.24, 0.42),
     });
-    tableY -= 22;
+    tableY -= 18;
     // Table headers
     const tableCol1 = leftMargin + 10;
     const tableCol2 = leftMargin + 220;
-    const tableHeaderHeight = 13;
+    const tableHeaderHeight = 10;
     page.drawText('People combination', {
       x: tableCol1,
       y: tableY,
@@ -765,24 +814,24 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
       font: fontBold,
       color: rgb(0.15, 0.15, 0.3),
     });
-    tableY -= 18;
-    // Table rows (increased row height, reduced font size)
+    tableY -= 15;
+    // Table rows (reduced row height, reduced font size)
     for (const [combo, count] of combosTable.tableRows || []) {
       page.drawText(sanitizePdfText(combo), {
         x: tableCol1,
         y: tableY,
-        size: 11,
+        size: 9,
         font,
         color: rgb(0.2, 0.2, 0.2),
       });
       page.drawText(String(count), {
         x: tableCol2,
         y: tableY,
-        size: 11,
+        size: 9,
         font,
         color: rgb(0.2, 0.2, 0.2),
       });
-      tableY -= 18;
+      tableY -= 15;
     }
   }
 
