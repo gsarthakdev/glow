@@ -376,7 +376,7 @@ function getBarChartUrl(title: string, counts: Record<string, number>, color: st
   console.log('Bar Chart Config:', { title, labels, data }); // Debug log
 
   // Disable legend for specific chart titles
-  const disableLegendTitles = ['What Was Involved', 'Antecedents', 'Consequences'];
+  const disableLegendTitles = ['What happened', 'Antecedents', 'Consequences'];
   const legendDisplay = !disableLegendTitles.includes(title);
 
   const config = {
@@ -652,7 +652,7 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
   chartImages.push({ base64: antecedentsBarBase64, type: 'antecedents' });
 
   // 2. What Was Involved (Behaviors Bar)
-  const behaviorsBarUrl = getBarChartUrl('What Was Involved', behaviors, barColor, true);
+  const behaviorsBarUrl = getBarChartUrl('What happened', behaviors, barColor, true);
   const behaviorsBarBase64 = await fetchChartImageBase64(behaviorsBarUrl);
   chartImages.push({ base64: behaviorsBarBase64, type: 'behaviors' });
 
