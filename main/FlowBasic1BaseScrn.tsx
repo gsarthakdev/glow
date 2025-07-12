@@ -1,3 +1,4 @@
+//@ts-ignore
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -15,12 +16,13 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { v4 as uuidv4 } from 'uuid';
 import { flow_basic_1 } from '../flows/flow_basic_1';
+import { flow_basic_1 as positive_flow_basic_1 } from '../flows/positive_flow_basic_1';
 import MoodBubbleSlider from '../components/MoodBubbleSlider';
 
 interface Question {
   id: string;
   question: string;
-  answer_choices?: Array<{ label: string; emoji: string }>;
+  answer_choices?: Array<{ label: string; emoji: string; sentiment?: string | null }>;
   subheading?: string;
 }
 
@@ -45,6 +47,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
   const [showOtherModal, setShowOtherModal] = useState<OtherModalState | null>(null);
   const [moodBefore, setMoodBefore] = useState<number>(0);
   const [moodAfter, setMoodAfter] = useState<number>(0);
+  const [flowSentiment, setFlowSentiment] = useState<'positive' | 'negative' | null>(null);
+  const [currentFlow, setCurrentFlow] = useState<Question[]>([]);
+  const [pendingFirstAnswer, setPendingFirstAnswer] = useState<null | { label: string; emoji: string; sentiment?: string | null }>(null);
 
   // Add ref for ScrollView
   const scrollViewRef = useRef<ScrollView>(null);
@@ -53,6 +58,25 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
   useEffect(() => {
     loadCurrentChild();
   }, []);
+
+  // Initialize flow after sentiment is determined
+  useEffect(() => {
+    if (flowSentiment) {
+      const flow = flowSentiment === 'positive' ? positive_flow_basic_1 : flow_basic_1;
+      setCurrentFlow(flow);
+    }
+  }, [flowSentiment]);
+
+  // Apply pending first answer after sentiment/flow resets
+  useEffect(() => {
+    if (pendingFirstAnswer && currentFlow.length > 0 && currentFlow[0].id === 'whatDidTheyDo') {
+      setSelectedAnswers({
+        whatDidTheyDo: [{ answer: pendingFirstAnswer.label, isCustom: false }]
+      });
+      setPendingFirstAnswer(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentFlow, pendingFirstAnswer]);
 
   const loadCurrentChild = async () => {
     try {
@@ -70,7 +94,8 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     }
   };
 
-  const handleAnswer = (questionId: string, answer: { label: string; emoji: string }) => {
+  const handleAnswer = (questionId: string, answer: { label: string; emoji: string; sentiment?: string | null }) => {
+    // Handle "Other" option first
     if (answer.label === 'Other') {
       const customAnswer = selectedAnswers[questionId]?.find(a => a.isCustom);
       if (customAnswer) {
@@ -92,6 +117,31 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     const isOther = answer.label === 'Other';
     if (isOther && !otherText[questionId]) return;
 
+    // Handle first question sentiment detection first
+    if (questionId === 'whatDidTheyDo') {
+      let newSentiment: 'positive' | 'negative' | null = null;
+      if (answer.sentiment === 'positive') {
+        newSentiment = 'positive';
+      } else if (answer.sentiment === 'negative') {
+        newSentiment = 'negative';
+      }
+      
+      // Only reset flow if sentiment is actually changing from a previous selection
+      if (newSentiment && flowSentiment && newSentiment !== flowSentiment) {
+        setFlowSentiment(newSentiment);
+        setCurrentQuestion(0);
+        setSelectedAnswers({});
+        setPendingFirstAnswer(answer); // <-- Store the answer to apply after reset
+        return;
+      }
+      
+      // Set initial sentiment if not already set
+      if (newSentiment && !flowSentiment) {
+        setFlowSentiment(newSentiment);
+      }
+    }
+
+    // Process answer selection
     setSelectedAnswers(prev => {
       const current = prev[questionId] || [];
       const answerText = isOther ? otherText[questionId] : answer.label;
@@ -101,6 +151,14 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         return {
           ...prev,
           [questionId]: current.filter((_, i) => i !== existingIndex)
+        };
+      }
+
+      // For the first question, replace any existing selection with the new one
+      if (questionId === 'whatDidTheyDo') {
+        return {
+          ...prev,
+          [questionId]: [{ answer: answerText, isCustom: isOther }]
         };
       }
 
@@ -145,7 +203,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
   };
 
   const canProceed = () => {
-    const currentQuestionId = flow_basic_1[currentQuestion].id;
+    if (!currentFlow.length) return false;
+    
+    const currentQuestionId = currentFlow[currentQuestion].id;
     if (currentQuestionId === 'mood') {
       return moodBefore !== 0 && moodAfter !== 0;
     }
@@ -154,32 +214,33 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
 
   const handleSave = async () => {
     try {
-      const responses = flow_basic_1.reduce((acc, q) => ({
+      const responses = currentFlow.reduce((acc, q) => ({
         ...acc,
         [q.id]: {
           question: q.question,
           answers: q.id === 'mood' ? [
             { answer: `Before: ${moodBefore}, After: ${moodAfter}`, isCustom: false }
           ] : (selectedAnswers[q.id] || []),
-          comment: comments[q.id] || ''
+          comment: comments[q.id] || '',
+          sentiment: flowSentiment
         }
       }), {});
 
       const localTime = new Date();
-      // const localTime = new Date('2025-07-01T16:10:00');
       const newLog = {
         id: `log_${uuidv4()}`,
-        // timestamp: localTime.toLocaleString(), output: "7/4/2025, 10:35:25 PM"
         timestamp: new Date(localTime.getTime() - localTime.getTimezoneOffset() * 60000).toISOString(),
         responses
       };
 
+      const storageKey = flowSentiment === 'positive' ? 'flow_basic_1_positive' : 'flow_basic_1_negative';
+      
       const updatedData = {
         ...currentChild.data,
         completed_logs: {
           ...currentChild.data.completed_logs,
-          flow_basic_1: [
-            ...(currentChild.data.completed_logs.flow_basic_1 || []),
+          [storageKey]: [
+            ...(currentChild.data.completed_logs?.[storageKey] || []),
             newLog
           ]
         }
@@ -196,7 +257,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     return <View style={styles.container}><Text>Loading...</Text></View>;
   }
 
-  const currentQ = flow_basic_1[currentQuestion];
+  // Use first question from negative flow for initial question
+  const firstQuestion = flow_basic_1[0];
+  const currentQ = currentFlow.length > 0 ? currentFlow[currentQuestion] : firstQuestion;
 
   const getChoiceLabel = (choice: { label: string; emoji: string }) => {
     if (choice.label === 'Other') {
@@ -245,7 +308,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.progress}>Step {currentQuestion + 1} of {flow_basic_1.length}</Text>
+          <Text style={styles.progress}>
+            Step {currentQuestion + 1} of {currentFlow.length > 0 ? currentFlow.length : 1}
+          </Text>
           <Text style={styles.question}>{currentQ.question}</Text>
           <Text style={styles.subheading}>{currentQ.subheading}</Text>
 
@@ -388,7 +453,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
               style={[styles.nextButton, !canProceed() && styles.disabledButton]}
               disabled={!canProceed()}
               onPress={() => {
-                if (currentQuestion === flow_basic_1.length - 1) {
+                if (currentQuestion === (currentFlow.length - 1)) {
                   handleSave();
                 } else {
                   setCurrentQuestion(prev => prev + 1);
@@ -396,7 +461,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
               }}
             >
               <Text style={styles.buttonText}>
-                {currentQuestion === flow_basic_1.length - 1 ? 'Submit' : 'Next'}
+                {currentQuestion === (currentFlow.length - 1) ? 'Submit' : 'Next'}
               </Text>
             </TouchableOpacity>
           </View>
