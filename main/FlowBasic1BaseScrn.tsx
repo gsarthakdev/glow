@@ -173,11 +173,10 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
   const handleOtherSubmit = () => {
     if (!showOtherModal?.isEditing || !otherText[currentQ.id]?.trim()) return;
 
-    const newAnswers = selectedAnswers[currentQ.id]?.filter(a => !a.isCustom) || [];
-    newAnswers.push({ answer: otherText[currentQ.id], isCustom: true });
+    // Clear all existing answers and add only the custom answer
     setSelectedAnswers(prev => ({
       ...prev,
-      [currentQ.id]: newAnswers
+      [currentQ.id]: [{ answer: otherText[currentQ.id], isCustom: true }]
     }));
     setShowOtherModal(null);
   };
