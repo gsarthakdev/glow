@@ -462,27 +462,29 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                       </>
                     ) : (
                       <>
-                        <Text style={styles.modalTitle}>Is this behavior positive or negative?</Text>
+                        <Text style={styles.modalTitle}>Is this a challenge or win?</Text>
                         <Text style={styles.modalText}>{otherText[currentQ.id]}</Text>
                         
                         <View style={styles.sentimentButtons}>
                           <TouchableOpacity
                             style={[
                               styles.sentimentButton,
-                              showOtherModal.sentiment === 'positive' && styles.selectedSentiment
+                              showOtherModal.sentiment === 'positive' && styles.selectedSentiment,
+                              {backgroundColor: "lightgreen"}
                             ]}
                             onPress={() => setShowOtherModal(prev => prev ? { ...prev, sentiment: 'positive' } : null)}
                           >
-                            <Text style={styles.sentimentButtonText}>😊 Positive</Text>
+                            <Text style={styles.sentimentButtonText}>🎉 Win</Text>
                           </TouchableOpacity>
                           <TouchableOpacity
                             style={[
                               styles.sentimentButton,
-                              showOtherModal.sentiment === 'negative' && styles.selectedSentiment
+                              showOtherModal.sentiment === 'negative' && styles.selectedSentiment,
+                              {backgroundColor: "orange"}
                             ]}
                             onPress={() => setShowOtherModal(prev => prev ? { ...prev, sentiment: 'negative' } : null)}
                           >
-                            <Text style={styles.sentimentButtonText}>😞 Negative</Text>
+                            <Text style={styles.sentimentButtonText}>⚔️ Challenge</Text>
                           </TouchableOpacity>
                         </View>
                         
@@ -718,6 +720,7 @@ const styles = StyleSheet.create({
   sentimentButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: 20
   },
   sentimentButton: {
     flex: 1,
