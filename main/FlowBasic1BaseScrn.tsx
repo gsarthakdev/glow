@@ -143,9 +143,10 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       }
     }
 
-    // Process answer selection - always replace for first question, add for others
+    // Process answer selection - always replace for first question, toggle for others
     setSelectedAnswers(prev => {
       const answerText = answer.label;
+      const current = prev[questionId] || [];
       
       // For the first question, always replace any existing selection
       if (questionId === 'whatDidTheyDo') {
@@ -155,12 +156,21 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         };
       }
 
-      // For other questions, add to existing selections
-      const current = prev[questionId] || [];
-      return {
-        ...prev,
-        [questionId]: [...current, { answer: answerText, isCustom: false }]
-      };
+      // For other questions, toggle the selection
+      const existingIndex = current.findIndex(a => a.answer === answerText);
+      if (existingIndex >= 0) {
+        // Remove if already selected
+        return {
+          ...prev,
+          [questionId]: current.filter((_, i) => i !== existingIndex)
+        };
+      } else {
+        // Add if not selected
+        return {
+          ...prev,
+          [questionId]: [...current, { answer: answerText, isCustom: false }]
+        };
+      }
     });
   };
 
