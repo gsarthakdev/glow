@@ -34,7 +34,8 @@ interface Answer {
 interface OtherModalState {
   isEditing: boolean;
   previousText?: string;
-  isFirstQuestion?: boolean;
+  sentiment?: 'positive' | 'negative';
+  step: 'text' | 'sentiment';
 }
 
 export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) {
@@ -50,8 +51,6 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
   const [moodAfter, setMoodAfter] = useState<number>(0);
   const [flowSentiment, setFlowSentiment] = useState<'positive' | 'negative' | null>(null);
   const [currentFlow, setCurrentFlow] = useState<Question[]>([]);
-  const [pendingFirstAnswer, setPendingFirstAnswer] = useState<null | { label: string; emoji: string; sentiment?: string | null }>(null);
-  const [pendingFirstQuestionSentiment, setPendingFirstQuestionSentiment] = useState<'positive' | 'negative' | null>(null);
 
   // Add ref for ScrollView
   const scrollViewRef = useRef<ScrollView>(null);
@@ -69,28 +68,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     }
   }, [flowSentiment]);
 
-  // Apply pending first answer after sentiment/flow resets
-  useEffect(() => {
-    if (pendingFirstAnswer && currentFlow.length > 0 && currentFlow[0].id === 'whatDidTheyDo') {
-      setSelectedAnswers({
-        whatDidTheyDo: [{ 
-          answer: pendingFirstAnswer.label, 
-          isCustom: pendingFirstAnswer.sentiment !== undefined // If it has sentiment, it's from "Other" modal
-        }]
-      });
-      setPendingFirstAnswer(null);
-    }
-    
-    // Handle pending first question sentiment for "Other" option
-    if (pendingFirstQuestionSentiment && currentFlow.length > 0 && currentFlow[0].id === 'whatDidTheyDo') {
-      const customAnswer = selectedAnswers.whatDidTheyDo?.find(a => a.isCustom);
-      if (customAnswer) {
-        setFlowSentiment(pendingFirstQuestionSentiment);
-        setPendingFirstQuestionSentiment(null);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentFlow, pendingFirstAnswer, pendingFirstQuestionSentiment]);
+
 
   const loadCurrentChild = async () => {
     try {
@@ -112,40 +90,29 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     // Handle "Other" option first
     if (answer.label === 'Other') {
       const customAnswer = selectedAnswers[questionId]?.find(a => a.isCustom);
-      
-      // Special handling for first question
-      if (questionId === 'whatDidTheyDo') {
-        if (customAnswer) {
-          // Already has custom text, show edit/deselect modal
-          setShowOtherModal({ 
-            isEditing: false, 
-            previousText: customAnswer.answer,
-            isFirstQuestion: true
-          });
-        } else {
-          // New "Other" entry for first question - show sentiment classification modal
-          setShowOtherModal({ 
-            isEditing: true,
-            previousText: otherText[questionId],
-            isFirstQuestion: true
-          });
-        }
-        return;
-      }
-      
-      // Regular "Other" handling for non-first questions
       if (customAnswer) {
         // Already has custom text, show edit/deselect modal
         setShowOtherModal({ 
           isEditing: false, 
-          previousText: customAnswer.answer 
+          previousText: customAnswer.answer,
+          step: 'text'
         });
       } else {
-        // New "Other" entry
-        setShowOtherModal({ 
-          isEditing: true,
-          previousText: otherText[questionId]  // Will be undefined for first time
-        });
+        // New "Other" entry - only for first question, we need sentiment selection
+        if (questionId === 'whatDidTheyDo') {
+          setShowOtherModal({ 
+            isEditing: true,
+            previousText: otherText[questionId],  // Will be undefined for first time
+            sentiment: undefined, // Will be selected by user
+            step: 'text'
+          });
+        } else {
+          setShowOtherModal({ 
+            isEditing: true,
+            previousText: otherText[questionId],  // Will be undefined for first time
+            step: 'text'
+          });
+        }
       }
       return;
     }
@@ -167,7 +134,6 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         setFlowSentiment(newSentiment);
         setCurrentQuestion(0);
         setSelectedAnswers({});
-        setPendingFirstAnswer(answer); // <-- Store the answer to apply after reset
         return;
       }
       
@@ -207,25 +173,35 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
 
   // Add new handleOtherSubmit function
   const handleOtherSubmit = () => {
-    if (!showOtherModal?.isEditing || !otherText[currentQ.id]?.trim()) return;
+    if (!showOtherModal?.isEditing) return;
 
-    // Clear all existing answers and add only the custom answer
-    setSelectedAnswers(prev => ({
-      ...prev,
-      [currentQ.id]: [{ answer: otherText[currentQ.id], isCustom: true }]
-    }));
-    
-    // Special handling for first question - transition to sentiment classification
-    if (showOtherModal.isFirstQuestion) {
-      setShowOtherModal({ 
-        isEditing: false, 
-        previousText: otherText[currentQ.id],
-        isFirstQuestion: true
-      });
+    // If we're on the text step and it's the first question, move to sentiment step
+    if (showOtherModal.step === 'text' && currentQ.id === 'whatDidTheyDo') {
+      handleNextStep();
       return;
     }
-    
-    setShowOtherModal(null);
+
+    // If we're on the sentiment step or it's not the first question
+    if (showOtherModal.step === 'sentiment' || currentQ.id !== 'whatDidTheyDo') {
+      if (!otherText[currentQ.id]?.trim()) return;
+
+      // For the first question, we need to handle sentiment
+      if (currentQ.id === 'whatDidTheyDo' && showOtherModal.sentiment) {
+        // Set the sentiment and store the custom answer directly
+        setFlowSentiment(showOtherModal.sentiment);
+        setSelectedAnswers(prev => ({
+          ...prev,
+          [currentQ.id]: [{ answer: otherText[currentQ.id], isCustom: true }]
+        }));
+      } else {
+        // Clear all existing answers and add only the custom answer
+        setSelectedAnswers(prev => ({
+          ...prev,
+          [currentQ.id]: [{ answer: otherText[currentQ.id], isCustom: true }]
+        }));
+      }
+      setShowOtherModal(null);
+    }
   };
 
   const handleOtherDeselect = () => {
@@ -239,47 +215,25 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
   const handleOtherEdit = () => {
     setShowOtherModal({ 
       isEditing: true, 
-      previousText: selectedAnswers[currentQ.id]?.find(a => a.isCustom)?.answer 
-    });
-  };
-
-  const handleFirstQuestionSentiment = (sentiment: 'positive' | 'negative') => {
-    if (!showOtherModal?.isFirstQuestion || !showOtherModal.previousText?.trim()) return;
-    
-    // Set the sentiment and flow
-    setFlowSentiment(sentiment);
-    setCurrentQuestion(0);
-    setSelectedAnswers({});
-    
-    // Store the custom answer to be applied after flow resets
-    setPendingFirstAnswer({ 
-      label: showOtherModal.previousText, 
-      emoji: '➕', 
-      sentiment: sentiment 
-    });
-    
-    setShowOtherModal(null);
-  };
-
-  const handleFirstQuestionOtherDeselect = () => {
-    setSelectedAnswers(prev => ({
-      ...prev,
-      [currentQ.id]: (prev[currentQ.id] || []).filter(a => !a.isCustom)
-    }));
-    setShowOtherModal(null);
-  };
-
-  const handleFirstQuestionOtherEdit = () => {
-    setShowOtherModal({ 
-      isEditing: true, 
       previousText: selectedAnswers[currentQ.id]?.find(a => a.isCustom)?.answer,
-      isFirstQuestion: true
+      sentiment: currentQ.id === 'whatDidTheyDo' ? (flowSentiment || undefined) : undefined,
+      step: 'text'
     });
+  };
+
+  const handleNextStep = () => {
+    if (!otherText[currentQ.id]?.trim()) return;
+    setShowOtherModal(prev => prev ? { ...prev, step: 'sentiment' } : null);
   };
 
   const isAnswerSelected = (questionId: string, answerLabel: string) => {
     const answers = selectedAnswers[questionId] || [];
     return answers.some(a => a.answer === answerLabel);
+  };
+
+  const isOtherSelected = (questionId: string) => {
+    const answers = selectedAnswers[questionId] || [];
+    return answers.some(a => a.isCustom);
   };
 
   const canProceed = () => {
@@ -415,9 +369,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                   key={choice.label}
                   style={[
                     styles.choiceButton,
-                    isAnswerSelected(currentQ.id, choice.label === 'Other' ? 
-                      selectedAnswers[currentQ.id]?.find(a => a.isCustom)?.answer || choice.label 
-                      : choice.label) && styles.selectedChoice
+                    (choice.label === 'Other' ? isOtherSelected(currentQ.id) : isAnswerSelected(currentQ.id, choice.label)) && styles.selectedChoice
                   ]}
                   onPress={() => handleAnswer(currentQ.id, choice)}
                 >
@@ -469,83 +421,89 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
               <View style={styles.modalContent}>
                 {showOtherModal?.isEditing ? (
                   <>
-                    <Text style={styles.modalTitle}>
-                      {showOtherModal.isFirstQuestion ? 'Describe what happened' : 'Add Other Option'}
-                    </Text>
-                    <TextInput
-                      style={styles.modalInput}
-                      placeholder="Type your answer here..."
-                      value={otherText[currentQ.id] || showOtherModal.previousText || ''}
-                      onChangeText={(text) => setOtherText(prev => ({
-                        ...prev,
-                        [currentQ.id]: text
-                      }))}
-                      autoFocus
-                    />
-                    {showOtherModal.isFirstQuestion ? (
-                      <View style={styles.modalButtons}>
-                        <TouchableOpacity
-                          style={styles.modalButton}
-                          onPress={() => setShowOtherModal(null)}
-                        >
-                          <Text style={styles.modalButtonText}>Cancel</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[styles.modalButton, styles.submitButton]}
-                          onPress={handleOtherSubmit}
-                        >
-                          <Text style={[styles.modalButtonText, { color: 'white' }]}>Next</Text>
-                        </TouchableOpacity>
-                      </View>
+                    {showOtherModal.step === 'text' ? (
+                      <>
+                        <Text style={styles.modalTitle}>Add Other Option</Text>
+                        <TextInput
+                          style={styles.modalInput}
+                          placeholder="Type your answer here..."
+                          value={otherText[currentQ.id] || showOtherModal.previousText || ''}
+                          onChangeText={(text) => setOtherText(prev => ({
+                            ...prev,
+                            [currentQ.id]: text
+                          }))}
+                          autoFocus
+                        />
+                        
+                        <View style={styles.modalButtons}>
+                          <TouchableOpacity
+                            style={styles.modalButton}
+                            onPress={() => setShowOtherModal(null)}
+                          >
+                            <Text style={styles.modalButtonText}>Cancel</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[
+                              styles.modalButton, 
+                              styles.submitButton,
+                              !otherText[currentQ.id]?.trim() && styles.disabledButton
+                            ]}
+                            disabled={!otherText[currentQ.id]?.trim()}
+                            onPress={currentQ.id === 'whatDidTheyDo' ? handleNextStep : handleOtherSubmit}
+                          >
+                            <Text style={[styles.modalButtonText, { color: 'white' }]}>
+                              {currentQ.id === 'whatDidTheyDo' ? 'Next' : 'Submit'}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </>
                     ) : (
-                      <View style={styles.modalButtons}>
-                        <TouchableOpacity
-                          style={styles.modalButton}
-                          onPress={() => setShowOtherModal(null)}
-                        >
-                          <Text style={styles.modalButtonText}>Cancel</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[styles.modalButton, styles.submitButton]}
-                          onPress={handleOtherSubmit}
-                        >
-                          <Text style={[styles.modalButtonText, { color: 'white' }]}>Submit</Text>
-                        </TouchableOpacity>
-                      </View>
+                      <>
+                        <Text style={styles.modalTitle}>Is this behavior positive or negative?</Text>
+                        <Text style={styles.modalText}>{otherText[currentQ.id]}</Text>
+                        
+                        <View style={styles.sentimentButtons}>
+                          <TouchableOpacity
+                            style={[
+                              styles.sentimentButton,
+                              showOtherModal.sentiment === 'positive' && styles.selectedSentiment
+                            ]}
+                            onPress={() => setShowOtherModal(prev => prev ? { ...prev, sentiment: 'positive' } : null)}
+                          >
+                            <Text style={styles.sentimentButtonText}>😊 Positive</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[
+                              styles.sentimentButton,
+                              showOtherModal.sentiment === 'negative' && styles.selectedSentiment
+                            ]}
+                            onPress={() => setShowOtherModal(prev => prev ? { ...prev, sentiment: 'negative' } : null)}
+                          >
+                            <Text style={styles.sentimentButtonText}>😞 Negative</Text>
+                          </TouchableOpacity>
+                        </View>
+                        
+                        <View style={styles.modalButtons}>
+                          <TouchableOpacity
+                            style={styles.modalButton}
+                            onPress={() => setShowOtherModal(prev => prev ? { ...prev, step: 'text' } : null)}
+                          >
+                            <Text style={styles.modalButtonText}>Back</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[
+                              styles.modalButton, 
+                              styles.submitButton,
+                              !showOtherModal.sentiment && styles.disabledButton
+                            ]}
+                            disabled={!showOtherModal.sentiment}
+                            onPress={handleOtherSubmit}
+                          >
+                            <Text style={[styles.modalButtonText, { color: 'white' }]}>Submit</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </>
                     )}
-                  </>
-                ) : showOtherModal?.isFirstQuestion ? (
-                  <>
-                    <Text style={styles.modalTitle}>Classify this behavior</Text>
-                    <Text style={styles.modalText}>{showOtherModal?.previousText}</Text>
-                    <View style={styles.sentimentButtons}>
-                      <TouchableOpacity
-                        style={[styles.sentimentButton, styles.winButton]}
-                        onPress={() => handleFirstQuestionSentiment('positive')}
-                      >
-                        <Text style={[styles.sentimentButtonText, { color: 'white' }]}>🎉 This was a win</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.sentimentButton, styles.challengeButton]}
-                        onPress={() => handleFirstQuestionSentiment('negative')}
-                      >
-                        <Text style={[styles.sentimentButtonText, { color: 'white' }]}>😔 This was a challenge</Text>
-                      </TouchableOpacity>
-                    </View>
-                    <View style={styles.modalButtons}>
-                      <TouchableOpacity
-                        style={styles.modalButton}
-                        onPress={handleFirstQuestionOtherDeselect}
-                      >
-                        <Text style={styles.modalButtonText}>Deselect</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.modalButton, styles.submitButton]}
-                        onPress={handleFirstQuestionOtherEdit}
-                      >
-                        <Text style={[styles.modalButtonText, { color: 'white' }]}>Edit</Text>
-                      </TouchableOpacity>
-                    </View>
                   </>
                 ) : (
                   <>
@@ -746,31 +704,33 @@ const styles = StyleSheet.create({
     backgroundColor: '#eee',
     marginVertical: 40,
   },
+  sentimentContainer: {
+    marginBottom: 15,
+  },
+  sentimentLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
   sentimentButtons: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    marginBottom: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   sentimentButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 20,
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#5B9AA0',
-    marginBottom: 10,
-    width: '100%',
+    borderColor: '#ddd',
+    marginHorizontal: 5,
     alignItems: 'center',
   },
-  winButton: {
-    backgroundColor: '#5B9AA0',
+  selectedSentiment: {
+    backgroundColor: '#E8F3F4',
     borderColor: '#5B9AA0',
   },
-  challengeButton: {
-    backgroundColor: '#FF6B6B',
-    borderColor: '#FF6B6B',
-  },
   sentimentButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
   },
 });
