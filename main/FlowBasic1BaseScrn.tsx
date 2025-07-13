@@ -117,8 +117,8 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       return;
     }
 
-    const isOther = answer.label === 'Other';
-    if (isOther && !otherText[questionId]) return;
+    // isOther is already handled above, so we can skip this check
+    if (answer.label === 'Other') return;
 
     // Handle first question sentiment detection first
     if (questionId === 'whatDidTheyDo') {
@@ -143,30 +143,23 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       }
     }
 
-    // Process answer selection
+    // Process answer selection - always replace for first question, add for others
     setSelectedAnswers(prev => {
-      const current = prev[questionId] || [];
-      const answerText = isOther ? otherText[questionId] : answer.label;
-      const existingIndex = current.findIndex(a => a.answer === answerText);
-
-      if (existingIndex >= 0) {
-        return {
-          ...prev,
-          [questionId]: current.filter((_, i) => i !== existingIndex)
-        };
-      }
-
-      // For the first question, replace any existing selection with the new one
+      const answerText = answer.label;
+      
+      // For the first question, always replace any existing selection
       if (questionId === 'whatDidTheyDo') {
         return {
           ...prev,
-          [questionId]: [{ answer: answerText, isCustom: isOther }]
+          [questionId]: [{ answer: answerText, isCustom: false }]
         };
       }
 
+      // For other questions, add to existing selections
+      const current = prev[questionId] || [];
       return {
         ...prev,
-        [questionId]: [...current, { answer: answerText, isCustom: isOther }]
+        [questionId]: [...current, { answer: answerText, isCustom: false }]
       };
     });
   };
