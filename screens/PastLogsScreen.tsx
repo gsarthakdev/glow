@@ -494,9 +494,9 @@ function getTimeOfDayMatrixHeatmapUrl(matrix: number[][], timeLabels: string[], 
       datasets: [{
         label: 'Log Count',
         data,
-        width: ({chart}) => (chart.chartArea || {}).width / timeLabels.length - 2,
-        height: ({chart}) => (chart.chartArea || {}).height / dayLabels.length - 2,
-        backgroundColor: function(ctx) {
+        width: ({chart}: {chart: any}) => (chart.chartArea || {}).width / timeLabels.length - 2,
+        height: ({chart}: {chart: any}) => (chart.chartArea || {}).height / dayLabels.length - 2,
+        backgroundColor: function(ctx: any) {
           const value = ctx.dataset.data[ctx.dataIndex].v;
           if (value === 0) return '#f0f0f0';
           // Color scale: light to dark red
@@ -513,11 +513,11 @@ function getTimeOfDayMatrixHeatmapUrl(matrix: number[][], timeLabels: string[], 
         title: { display: true, text: 'Log Distribution Heatmap' },
         tooltip: {
           callbacks: {
-            title: function(ctx) {
+            title: function(ctx: any) {
               const d = ctx[0].raw;
               return `${dayLabels[d.y]}, ${timeLabels[d.x]}`;
             },
-            label: function(ctx) {
+            label: function(ctx: any) {
               return `Logs: ${ctx.raw.v}`;
             }
           }
@@ -634,92 +634,15 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
   const barColor = '#5B9AA0';
   const scatterColor = '#FF6F61';
 
-  // --- Aggregate data ---
-  const who = aggregateWhoWasInvolved(logs);
-  const time = aggregateTimeOfDay(logs);
-  const mood = aggregateMood(logs);
-  const behaviors = aggregateBehaviors(logs);
-  const antecedents = aggregateAntecedents(logs, ALL_ANTECEDENT_LABELS);
-  const consequences = aggregateConsequences(logs);
-
-  // Debug logs
-  console.log('PDF Export - Aggregated Data:');
-  console.log('Who Was Involved:', who);
-  console.log('Time of Day:', time);
-  console.log('Mood:', mood);
-  console.log('Behaviors:', behaviors);
-  console.log('Antecedents **:', antecedents);
-  console.log('Consequences:', consequences);
-  console.log('Logs:', logs);
-
-  // --- Generate chart images ---
-  // Order: Antecedents, What was involved, Consequences, Who was involved, Mood before vs. after, Log distribution by day and time, Most Common Combinations (table)
-  const chartImages: { base64?: string, type: string, caption?: string, tableRows?: [string, number][] }[] = [];
-
-  // 1. Antecedents Bar
-  const antecedentsBarUrl = getBarChartUrl('Antecedents', antecedents, barColor);
-  console.error(antecedentsBarUrl)
-  const antecedentsBarBase64 = await fetchChartImageBase64(antecedentsBarUrl);
-  chartImages.push({ base64: antecedentsBarBase64, type: 'antecedents', caption: 'User-entered or selected reasons that occurred before behaviors throughout the week.' });
-
-  // 2. What Was Involved (Behaviors Bar)
-  const behaviorsBarUrl = getBarChartUrl('What happened', behaviors, barColor, true);
-  console.error(behaviorsBarUrl)
-  const behaviorsBarBase64 = await fetchChartImageBase64(behaviorsBarUrl);
-  chartImages.push({ base64: behaviorsBarBase64, type: 'behaviors', caption: 'Histogram showing how often each type of behavior occurred during the week.' });
-
-  // 3. Consequences Bar
-  const consequencesBarUrl = getBarChartUrl('Consequences', consequences, barColor);
-  console.error(consequencesBarUrl)
-
-  const consequencesBarBase64 = await fetchChartImageBase64(consequencesBarUrl);
-  chartImages.push({ base64: consequencesBarBase64, type: 'consequences', caption: 'Responses applied after behaviors during the week.' });
-
-  // 4. Who Was Involved Pie
-  const whoPieUrl = getWhoPieChartUrl(who.participantCounts, chartColors);
-  const whoPieBase64 = await fetchChartImageBase64(whoPieUrl);
-  chartImages.push({ base64: whoPieBase64, type: 'who', caption: 'Pie chart showing who was involved in incidents this week, with most common person combinations listed.' });
-
-  // 5. Mood Line
-  const moodLineUrl = getMoodLineChartUrl(mood.moodByDay, mood.dayLabels, moodColors);
-  const moodLineBase64 = await fetchChartImageBase64(moodLineUrl);
-  chartImages.push({ base64: moodLineBase64, type: 'mood', caption: 'Average mood tracked over the week for all negative behaviors' });
-
-  // 6. Log Distribution by Day and Time (Horizontal Stacked Bar)
-  const timeMatrix = aggregateTimeOfDayMatrix(logs);
-  const horizontalStackedUrl = getTimeOfDayHorizontalStackedBarUrl(timeMatrix.matrix, ['Morning', 'Afternoon', 'Evening', 'Night'], ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], chartColors);
-  const horizontalStackedBase64 = await fetchChartImageBase64(horizontalStackedUrl);
-  chartImages.push({ base64: horizontalStackedBase64, type: 'logdist', caption: 'Heatmap of behavior logs by time of day across the week.' });
-
-  // 7. Most Common Combinations table (as a special type, not an image)
-  const combos = Object.entries(who.comboCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  chartImages.push({ type: 'combos', tableRows: combos });
+  // --- Separate logs by sentiment ---
+  const negativeLogs = logs.filter(log => log.responses?.whatDidTheyDo?.sentiment === 'negative');
+  const positiveLogs = logs.filter(log => log.responses?.whatDidTheyDo?.sentiment === 'positive');
 
   // --- Create PDF ---
   const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage([595, 842]); // A4 size
-  const { width, height } = page.getSize();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-  let y = height - 40;
-  const leftMargin = 20;
-  const chartWidth = 260;
-  const chartHeight = 140;
-  const colGap = 30;
-  const lineHeight = 18;
-
-  // Title
-  page.drawText(sanitizePdfText(`${childName}'s Weekly Behavior Log Visualizations - ${duration}`), {
-    x: leftMargin,
-    y,
-    size: 18,
-    font: fontBold,
-    color: rgb(0.24, 0.24, 0.42),
-  });
-  y -= 40;
-
-  // --- Draw charts in two columns, snaking order (first 6 items) ---
   // Helper to wrap text for captions
   function wrapCaption(text: string, font: any, fontSize: number, maxWidth: number): string[] {
     const words = text.split(' ');
@@ -739,101 +662,211 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
     return lines;
   }
 
-  for (let i = 0; i < 6; i++) {
-    const col = i % 2;
-    const row = Math.floor(i / 2);
-    const x = leftMargin + col * (chartWidth + colGap);
-    const chartY = y - row * (chartHeight + 65); // slightly reduced vertical margin between rows
-    if (chartImages[i].base64 != null) {
-      // Draw caption at the top left of the chart, with numbering
-      if (typeof chartImages[i].caption === 'string') {
-        const caption = `${i + 1}. ${chartImages[i].caption}`;
-        const fontSize = 10;
-        const lines = wrapCaption(caption, font, fontSize, chartWidth);
-        let captionY = chartY + 8;
-        for (const line of lines) {
-          page.drawText(line, {
-            x: x,
-            y: captionY,
-            size: fontSize,
-            font,
-            color: rgb(0.2, 0.2, 0.2),
-          });
-          captionY -= fontSize + 2;
-        }
-        // Move chart image further down to avoid overlap
-        const chartYOffset = 8 - (fontSize + 2) * lines.length;
-        const img = await pdfDoc.embedPng(chartImages[i].base64 as string);
-        page.drawImage(img, {
-          x,
-          y: chartY - chartHeight + chartYOffset,
-          width: chartWidth,
-          height: chartHeight,
-        });
-        continue;
-      }
-      // Fallback: draw chart image without caption
-      const img = await pdfDoc.embedPng(chartImages[i].base64 as string);
-      page.drawImage(img, {
-        x,
-        y: chartY - chartHeight,
-        width: chartWidth,
-        height: chartHeight,
-      });
-    }
-  }
+  // Helper to create a page with charts
+  async function createPage(logs: Log[], pageTitle: string, behaviorType: 'negative' | 'positive') {
+    const page = pdfDoc.addPage([595, 842]); // A4 size
+    const { width, height } = page.getSize();
+    
+    let y = height - 40;
+    const leftMargin = 20;
+    const chartWidth = 260;
+    const chartHeight = 140;
+    const colGap = 30;
 
-  // --- Draw Most Common Combinations table below the grid, full width ---
-  y -= (Math.ceil(6 / 2) * (chartHeight + 65)) + 10;
-  const combosTable = chartImages[6];
-  if (combosTable && combosTable.type === 'combos') {
-    let tableY = y;
-    page.drawText('Most Common Combinations:', {
+    // Page title
+    page.drawText(sanitizePdfText(`${childName}'s ${pageTitle} - ${duration}`), {
       x: leftMargin,
-      y: tableY,
-      size: 13,
+      y,
+      size: 18,
       font: fontBold,
       color: rgb(0.24, 0.24, 0.42),
     });
-    tableY -= 18;
-    // Table headers
-    const tableCol1 = leftMargin + 10;
-    const tableCol2 = leftMargin + 220;
-    const tableHeaderHeight = 10;
-    page.drawText('People combination', {
-      x: tableCol1,
-      y: tableY,
-      size: tableHeaderHeight,
-      font: fontBold,
-      color: rgb(0.15, 0.15, 0.3),
+    y -= 40;
+
+    // Check if we have data
+    if (logs.length === 0) {
+      // No data message
+      page.drawText(sanitizePdfText(`No ${behaviorType} behavior data available for ${duration.toLowerCase()}.`), {
+        x: leftMargin,
+        y,
+        size: 14,
+        font: font,
+        color: rgb(0.5, 0.5, 0.5),
+      });
+      return;
+    }
+
+    // --- Aggregate data ---
+    const who = aggregateWhoWasInvolved(logs);
+    const time = aggregateTimeOfDay(logs);
+    const mood = aggregateMood(logs);
+    const behaviors = aggregateBehaviors(logs);
+    const antecedents = aggregateAntecedents(logs, ALL_ANTECEDENT_LABELS);
+    const consequences = aggregateConsequences(logs);
+
+    // --- Generate chart images ---
+    const chartImages: { base64?: string, type: string, caption?: string, tableRows?: [string, number][] }[] = [];
+
+    // 1. Antecedents Bar
+    const antecedentsBarUrl = getBarChartUrl('Antecedents', antecedents, barColor);
+    const antecedentsBarBase64 = await fetchChartImageBase64(antecedentsBarUrl);
+    chartImages.push({ 
+      base64: antecedentsBarBase64, 
+      type: 'antecedents', 
+      caption: `User-entered or selected reasons that occurred before ${behaviorType} behaviors throughout the week.` 
     });
-    page.drawText('Frequency', {
-      x: tableCol2,
-      y: tableY,
-      size: tableHeaderHeight,
-      font: fontBold,
-      color: rgb(0.15, 0.15, 0.3),
+
+    // 2. What Was Involved (Behaviors Bar)
+    const behaviorsBarUrl = getBarChartUrl('What happened', behaviors, barColor, true);
+    const behaviorsBarBase64 = await fetchChartImageBase64(behaviorsBarUrl);
+    chartImages.push({ 
+      base64: behaviorsBarBase64, 
+      type: 'behaviors', 
+      caption: `Histogram showing how often each type of ${behaviorType} behavior occurred during the week.` 
     });
-    tableY -= 15;
-    // Table rows (reduced row height, reduced font size)
-    for (const [combo, count] of combosTable.tableRows || []) {
-      page.drawText(sanitizePdfText(combo), {
+
+    // 3. Consequences Bar
+    const consequencesBarUrl = getBarChartUrl('Consequences', consequences, barColor);
+    const consequencesBarBase64 = await fetchChartImageBase64(consequencesBarUrl);
+    chartImages.push({ 
+      base64: consequencesBarBase64, 
+      type: 'consequences', 
+      caption: `Responses applied after ${behaviorType} behaviors during the week.` 
+    });
+
+    // 4. Who Was Involved Pie
+    const whoPieUrl = getWhoPieChartUrl(who.participantCounts, chartColors);
+    const whoPieBase64 = await fetchChartImageBase64(whoPieUrl);
+    chartImages.push({ 
+      base64: whoPieBase64, 
+      type: 'who', 
+      caption: `Pie chart showing who was involved in ${behaviorType} incidents this week, with most common person combinations listed.` 
+    });
+
+    // 5. Mood Line
+    const moodLineUrl = getMoodLineChartUrl(mood.moodByDay, mood.dayLabels, moodColors);
+    const moodLineBase64 = await fetchChartImageBase64(moodLineUrl);
+    chartImages.push({ 
+      base64: moodLineBase64, 
+      type: 'mood', 
+      caption: `Average mood tracked over the week for all ${behaviorType} behaviors` 
+    });
+
+    // 6. Log Distribution by Day and Time (Horizontal Stacked Bar)
+    const timeMatrix = aggregateTimeOfDayMatrix(logs);
+    const horizontalStackedUrl = getTimeOfDayHorizontalStackedBarUrl(timeMatrix.matrix, ['Morning', 'Afternoon', 'Evening', 'Night'], ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], chartColors);
+    const horizontalStackedBase64 = await fetchChartImageBase64(horizontalStackedUrl);
+    chartImages.push({ 
+      base64: horizontalStackedBase64, 
+      type: 'logdist', 
+      caption: `Heatmap of ${behaviorType} behavior logs by time of day across the week.` 
+    });
+
+    // 7. Most Common Combinations table (as a special type, not an image)
+    const combos = Object.entries(who.comboCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    chartImages.push({ type: 'combos', tableRows: combos });
+
+    // --- Draw charts in two columns, snaking order (first 6 items) ---
+    for (let i = 0; i < 6; i++) {
+      const col = i % 2;
+      const row = Math.floor(i / 2);
+      const x = leftMargin + col * (chartWidth + colGap);
+      const chartY = y - row * (chartHeight + 65);
+      if (chartImages[i].base64 != null) {
+        // Draw caption at the top left of the chart, with numbering
+        if (typeof chartImages[i].caption === 'string') {
+          const caption = `${i + 1}. ${chartImages[i].caption}`;
+          const fontSize = 10;
+          const lines = wrapCaption(caption, font, fontSize, chartWidth);
+          let captionY = chartY + 8;
+          for (const line of lines) {
+            page.drawText(line, {
+              x: x,
+              y: captionY,
+              size: fontSize,
+              font,
+              color: rgb(0.2, 0.2, 0.2),
+            });
+            captionY -= fontSize + 2;
+          }
+          // Move chart image further down to avoid overlap
+          const chartYOffset = 8 - (fontSize + 2) * lines.length;
+          const img = await pdfDoc.embedPng(chartImages[i].base64 as string);
+          page.drawImage(img, {
+            x,
+            y: chartY - chartHeight + chartYOffset,
+            width: chartWidth,
+            height: chartHeight,
+          });
+          continue;
+        }
+        // Fallback: draw chart image without caption
+        const img = await pdfDoc.embedPng(chartImages[i].base64 as string);
+        page.drawImage(img, {
+          x,
+          y: chartY - chartHeight,
+          width: chartWidth,
+          height: chartHeight,
+        });
+      }
+    }
+
+    // --- Draw Most Common Combinations table below the grid, full width ---
+    y -= (Math.ceil(6 / 2) * (chartHeight + 65)) + 10;
+    const combosTable = chartImages[6];
+    if (combosTable && combosTable.type === 'combos') {
+      let tableY = y;
+      page.drawText('Most Common Combinations:', {
+        x: leftMargin,
+        y: tableY,
+        size: 13,
+        font: fontBold,
+        color: rgb(0.24, 0.24, 0.42),
+      });
+      tableY -= 18;
+      // Table headers
+      const tableCol1 = leftMargin + 10;
+      const tableCol2 = leftMargin + 220;
+      const tableHeaderHeight = 10;
+      page.drawText('People combination', {
         x: tableCol1,
         y: tableY,
-        size: 9,
-        font,
-        color: rgb(0.2, 0.2, 0.2),
+        size: tableHeaderHeight,
+        font: fontBold,
+        color: rgb(0.15, 0.15, 0.3),
       });
-      page.drawText(String(count), {
+      page.drawText('Frequency', {
         x: tableCol2,
         y: tableY,
-        size: 9,
-        font,
-        color: rgb(0.2, 0.2, 0.2),
+        size: tableHeaderHeight,
+        font: fontBold,
+        color: rgb(0.15, 0.15, 0.3),
       });
       tableY -= 15;
+      // Table rows (reduced row height, reduced font size)
+      for (const [combo, count] of combosTable.tableRows || []) {
+        page.drawText(sanitizePdfText(combo), {
+          x: tableCol1,
+          y: tableY,
+          size: 9,
+          font,
+          color: rgb(0.2, 0.2, 0.2),
+        });
+        page.drawText(String(count), {
+          x: tableCol2,
+          y: tableY,
+          size: 9,
+          font,
+          color: rgb(0.2, 0.2, 0.2),
+        });
+        tableY -= 15;
+      }
     }
   }
+
+  // Create both pages
+  await createPage(negativeLogs, 'Negative Behavior Log Visualizations', 'negative');
+  await createPage(positiveLogs, 'Positive Behavior Log Visualizations', 'positive');
 
   const pdfBytes = await pdfDoc.save();
   // Convert Uint8Array to base64 (Expo Go compatible)
@@ -869,12 +902,14 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
       const allDataStr = await AsyncStorage.getItem(childId);
       if (!allDataStr) return;
       const childData = JSON.parse(allDataStr);
-      // Get completed logs for this child
-      const logsArray = childData.completed_logs?.flow_basic_1 || [];
-      setLogs(logsArray);
+      // Get completed logs for this child - both positive and negative
+      const positiveLogs = childData.completed_logs?.flow_basic_1_positive || [];
+      const negativeLogs = childData.completed_logs?.flow_basic_1_negative || [];
+      const allLogs = [...positiveLogs, ...negativeLogs];
+      setLogs(allLogs);
       // Process logs for calendar marking
       const marked: MarkedDates = {};
-      logsArray.forEach((log: Log) => {
+      allLogs.forEach((log: Log) => {
         const date = log.timestamp.split('T')[0];
         if (marked[date]) {
           marked[date].count = (marked[date].count || 1) + 1;
