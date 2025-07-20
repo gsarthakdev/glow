@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { useFocusEffect } from '@react-navigation/native';
+import AffirmationModal from '../components/AffirmationModal';
 
 interface Log {
   id: string;
@@ -882,6 +883,16 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [markedDates, setMarkedDates] = useState<MarkedDates>({});
   const [logs, setLogs] = useState<Log[]>([]);
+  const [sending, setSending] = useState(false);
+  const [affirmationModalVisible, setAffirmationModalVisible] = useState(false);
+
+  const AFFIRMATIONS = [
+    "Every step you take helps your child grow.",
+    "Remember to take care of yourself, too.",
+    "Small wins are still wins!",
+    "You’re doing an amazing job.",
+    "Thank you for being a caring parent.",
+  ];
 
   // Reload logs every time the screen is focused
   useFocusEffect(
@@ -955,9 +966,13 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
 
   const sendLogs = async () => {
     try {
+      setSending(true);
+      setAffirmationModalVisible(true);
       const selectedLogs = getLogsForDuration();
       const isAvailable = await MailComposer.isAvailableAsync();
       if (!isAvailable) {
+        setAffirmationModalVisible(false);
+        setSending(false);
         alert('Email composition is not available on this device');
         return;
       }
@@ -972,9 +987,12 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
         recipients: [], // Add therapist's email here
         attachments: [fileUri],
       });
-      // Optionally clean up the file after sending
-      // await FileSystem.deleteAsync(fileUri);
+      setAffirmationModalVisible(false);
+      setSending(false);
+      // Optionally show a success message here
     } catch (error) {
+      setAffirmationModalVisible(false);
+      setSending(false);
       console.error('Error sending logs:', error);
       alert('Failed to generate and send logs. Please try again.');
     }
@@ -995,6 +1013,11 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
 
   return (
     <SafeAreaView style={styles.container}>
+      <AffirmationModal
+        visible={affirmationModalVisible}
+        affirmations={AFFIRMATIONS}
+        onRequestClose={() => setAffirmationModalVisible(false)}
+      />
       <TouchableOpacity
         style={styles.durationPicker}
         onPress={() => setIsModalVisible(true)}
@@ -1006,8 +1029,9 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={styles.sendButton}
+        style={[styles.sendButton, sending && { opacity: 0.6 }]}
         onPress={sendLogs}
+        disabled={sending}
       >
         <Text style={styles.sendButtonText}>Send logs to therapist</Text>
       </TouchableOpacity>
