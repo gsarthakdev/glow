@@ -1,12 +1,11 @@
 {
-  "onboarding_completed": true,
-  "jason_800f3562-4996-43cd-ab4d-333f343be38c": {
+  "bob_a81d4563-7ca6-4ff2-b334-65ebbb90cefc": {
     "logs": [],
     "flow_basic_1": [
       {
         "id": "whatDidTheyDo",
         "question": "What did they do?",
-        "subheading": "Describe your child’s specific behavior or action during the incident.",
+        "subheading": "Describe your child’s specific behavior or action during the event.",
         "answer_choices": [
           {
             "label": "Hit",
@@ -21,8 +20,8 @@
             "emoji": "🙅"
           },
           {
-            "label": "Threw object",
-            "emoji": "🪣"
+            "label": "Followed instructions",
+            "emoji": "✅"
           },
           {
             "label": "Other",
@@ -157,106 +156,22 @@
       }
     ],
     "completed_logs": {
-      "flow_basic_1": [
+      "flow_basic_1": [],
+      "flow_basic_1_positive": [
         {
-          "id": "log_7f088a19-f183-432e-877e-968f4740ae07",
-          "timestamp": "2025-07-05T01:06:22.223Z",
+          "id": "log_a95e47ab-955b-4341-b9fc-f25e43cf65dc",
+          "timestamp": "2025-07-12T03:20:19.327Z",
           "responses": {
             "whatDidTheyDo": {
-              "question": "What did they do?",
+              "question": "What happened?",
               "answers": [
                 {
-                  "answer": "Hit",
-                  "isCustom": false
-                },
-                {
-                  "answer": "Screamed",
+                  "answer": "Stayed calm during frustration",
                   "isCustom": false
                 }
               ],
-              "comment": ""
-            },
-            "whenDidItHappen": {
-              "question": "When did it happen?",
-              "answers": [
-                {
-                  "answer": "Morning",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            },
-            "whatHappenedBefore": {
-              "question": "What happened before?",
-              "answers": [
-                {
-                  "answer": "After denied something",
-                  "isCustom": false
-                },
-                {
-                  "answer": "After being told no",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            },
-            "whatHappenedAfter": {
-              "question": "What happened after?",
-              "answers": [
-                {
-                  "answer": "Comforted",
-                  "isCustom": false
-                },
-                {
-                  "answer": "Given warning",
-                  "isCustom": false
-                },
-                {
-                  "answer": "Sent to room",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            },
-            "whoWasInvolved": {
-              "question": "Who all was involved?",
-              "answers": [
-                {
-                  "answer": "My child",
-                  "isCustom": false
-                },
-                {
-                  "answer": "Parent",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            },
-            "mood": {
-              "question": "How was your child feeling?",
-              "answers": [
-                {
-                  "answer": "Before: 2, After: 7",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            }
-          }
-        },
-        {
-          "id": "log_231fbda9-36e2-41e7-bdec-b511fe15f439",
-          "timestamp": "2025-07-05T01:06:47.241Z",
-          "responses": {
-            "whatDidTheyDo": {
-              "question": "What did they do?",
-              "answers": [
-                {
-                  "answer": "Threw object",
-                  "isCustom": false
-                }
-              ],
-              "comment": "iPad \n"
+              "comment": "",
+              "sentiment": "positive"
             },
             "whenDidItHappen": {
               "question": "When did it happen?",
@@ -266,375 +181,34 @@
                   "isCustom": false
                 }
               ],
-              "comment": ""
+              "comment": "",
+              "sentiment": "positive"
             },
             "whatHappenedBefore": {
-              "question": "What happened before?",
+              "question": "What helped make this happen?",
               "answers": [
                 {
-                  "answer": "During play",
+                  "answer": "Routine was followed",
                   "isCustom": false
                 }
               ],
-              "comment": ""
+              "comment": "",
+              "sentiment": "positive"
             },
             "whatHappenedAfter": {
               "question": "What happened after?",
               "answers": [
                 {
-                  "answer": "Given warning",
-                  "isCustom": false
-                },
-                {
-                  "answer": "Sent to room",
+                  "answer": "Asked to do it again",
                   "isCustom": false
                 }
               ],
-              "comment": ""
+              "comment": "",
+              "sentiment": "positive"
             },
             "whoWasInvolved": {
               "question": "Who all was involved?",
               "answers": [
-                {
-                  "answer": "My child",
-                  "isCustom": false
-                },
-                {
-                  "answer": "Parent",
-                  "isCustom": false
-                },
-                {
-                  "answer": "Sibling",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            },
-            "mood": {
-              "question": "How was your child feeling?",
-              "answers": [
-                {
-                  "answer": "Before: 3, After: 10",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            }
-          }
-        },
-        {
-          "id": "log_d03190fa-b639-463b-a275-f161122d1594",
-          "timestamp": "2025-07-05T01:07:10.595Z",
-          "responses": {
-            "whatDidTheyDo": {
-              "question": "What did they do?",
-              "answers": [
-                {
-                  "answer": "Hit",
-                  "isCustom": false
-                },
-                {
-                  "answer": "Screamed",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            },
-            "whenDidItHappen": {
-              "question": "When did it happen?",
-              "answers": [
-                {
-                  "answer": "Morning",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            },
-            "whatHappenedBefore": {
-              "question": "What happened before?",
-              "answers": [
-                {
-                  "answer": "During play",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            },
-            "whatHappenedAfter": {
-              "question": "What happened after?",
-              "answers": [
-                {
-                  "answer": "Given warning",
-                  "isCustom": false
-                },
-                {
-                  "answer": "Comforted",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            },
-            "whoWasInvolved": {
-              "question": "Who all was involved?",
-              "answers": [
-                {
-                  "answer": "My child",
-                  "isCustom": false
-                },
-                {
-                  "answer": "Parent",
-                  "isCustom": false
-                },
-                {
-                  "answer": "Sibling",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            },
-            "mood": {
-              "question": "How was your child feeling?",
-              "answers": [
-                {
-                  "answer": "Before: 3, After: 8",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            }
-          }
-        },
-        {
-          "id": "log_fccd7f9d-5edf-4696-9470-b7a8a1fa997a",
-          "timestamp": "2025-07-05T02:22:42.406Z",
-          "responses": {
-            "whatDidTheyDo": {
-              "question": "What did they do?",
-              "answers": [
-                {
-                  "answer": "Refused instruction",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            },
-            "whenDidItHappen": {
-              "question": "When did it happen?",
-              "answers": [
-                {
-                  "answer": "Night",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            },
-            "whatHappenedBefore": {
-              "question": "What happened before?",
-              "answers": [
-                {
-                  "answer": "After nap",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            },
-            "whatHappenedAfter": {
-              "question": "What happened after?",
-              "answers": [
-                {
-                  "answer": "No reaction",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            },
-            "whoWasInvolved": {
-              "question": "Who all was involved?",
-              "answers": [
-                {
-                  "answer": "Stranger",
-                  "isCustom": false
-                },
-                {
-                  "answer": "Teacher",
-                  "isCustom": false
-                },
-                {
-                  "answer": "My child",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            },
-            "mood": {
-              "question": "How was your child feeling?",
-              "answers": [
-                {
-                  "answer": "Before: 8, After: 2",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            }
-          }
-        },
-        {
-          "id": "log_237d7b94-5159-4a0a-afb7-6480e1ede9cf",
-          "timestamp": "2025-07-05T02:25:51.317Z",
-          "responses": {
-            "whatDidTheyDo": {
-              "question": "What did they do?",
-              "answers": [
-                {
-                  "answer": "Hit",
-                  "isCustom": false
-                },
-                {
-                  "answer": "Screamed",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            },
-            "whenDidItHappen": {
-              "question": "When did it happen?",
-              "answers": [
-                {
-                  "answer": "Morning",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            },
-            "whatHappenedBefore": {
-              "question": "What happened before?",
-              "answers": [
-                {
-                  "answer": "During play",
-                  "isCustom": false
-                },
-                {
-                  "answer": "Crying custom",
-                  "isCustom": true
-                }
-              ],
-              "comment": ""
-            },
-            "whatHappenedAfter": {
-              "question": "What happened after?",
-              "answers": [
-                {
-                  "answer": "Given warning",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            },
-            "whoWasInvolved": {
-              "question": "Who all was involved?",
-              "answers": [
-                {
-                  "answer": "My child",
-                  "isCustom": false
-                },
-                {
-                  "answer": "Parent",
-                  "isCustom": false
-                },
-                {
-                  "answer": "Sibling",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            },
-            "mood": {
-              "question": "How was your child feeling?",
-              "answers": [
-                {
-                  "answer": "Before: 2, After: 5",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            }
-          }
-        },
-        {
-          "id": "log_39cb5f22-f0ca-4dd7-8196-98d74612087f",
-          "timestamp": "2025-07-02T14:30:00.000Z",
-          "responses": {
-            "whatDidTheyDo": {
-              "question": "What did they do?",
-              "answers": [
-                {
-                  "answer": "Hit",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            },
-            "whenDidItHappen": {
-              "question": "When did it happen?",
-              "answers": [
-                {
-                  "answer": "Night",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            },
-            "whatHappenedBefore": {
-              "question": "What happened before?",
-              "answers": [
-                {
-                  "answer": "After nap",
-                  "isCustom": false
-                },
-                {
-                  "answer": "After being told no",
-                  "isCustom": false
-                },
-                {
-                  "answer": "After denied something",
-                  "isCustom": false
-                },
-                {
-                  "answer": "During play",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            },
-            "whatHappenedAfter": {
-              "question": "What happened after?",
-              "answers": [
-                {
-                  "answer": "No reaction",
-                  "isCustom": false
-                },
-                {
-                  "answer": "Happened again",
-                  "isCustom": false
-                },
-                {
-                  "answer": "Removed item",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            },
-            "whoWasInvolved": {
-              "question": "Who all was involved?",
-              "answers": [
-                {
-                  "answer": "Teacher",
-                  "isCustom": false
-                },
-                {
-                  "answer": "Parent",
-                  "isCustom": false
-                },
                 {
                   "answer": "Sibling",
                   "isCustom": false
@@ -642,35 +216,42 @@
                 {
                   "answer": "My child",
                   "isCustom": false
+                },
+                {
+                  "answer": "Parent",
+                  "isCustom": false
                 }
               ],
-              "comment": ""
+              "comment": "",
+              "sentiment": "positive"
             },
             "mood": {
               "question": "How was your child feeling?",
               "answers": [
                 {
-                  "answer": "Before: 3, After: 8",
+                  "answer": "Before: 3, After: 7",
                   "isCustom": false
                 }
               ],
-              "comment": ""
+              "comment": "",
+              "sentiment": "positive"
             }
           }
         },
         {
-          "id": "log_60a164b9-4df5-4915-b26c-a070c4037520",
-          "timestamp": "2025-07-01T16:10:00.000Z",
+          "id": "log_7bcd57c5-3914-40be-ae98-17cb9cc622c3",
+          "timestamp": "2025-07-13T01:25:17.655Z",
           "responses": {
             "whatDidTheyDo": {
-              "question": "What did they do?",
+              "question": "What happened?",
               "answers": [
                 {
-                  "answer": "Meltdown",
-                  "isCustom": true
+                  "answer": "Followed instructions",
+                  "isCustom": false
                 }
               ],
-              "comment": ""
+              "comment": "",
+              "sentiment": "positive"
             },
             "whenDidItHappen": {
               "question": "When did it happen?",
@@ -680,7 +261,82 @@
                   "isCustom": false
                 }
               ],
-              "comment": ""
+              "comment": "",
+              "sentiment": "positive"
+            },
+            "whatHappenedBefore": {
+              "question": "What helped make this happen?",
+              "answers": [
+                {
+                  "answer": "After praise",
+                  "isCustom": false
+                }
+              ],
+              "comment": "",
+              "sentiment": "positive"
+            },
+            "whatHappenedAfter": {
+              "question": "What happened after?",
+              "answers": [
+                {
+                  "answer": "Asked to do it again",
+                  "isCustom": false
+                }
+              ],
+              "comment": "",
+              "sentiment": "positive"
+            },
+            "whoWasInvolved": {
+              "question": "Who all was involved?",
+              "answers": [
+                {
+                  "answer": "Parent",
+                  "isCustom": false
+                }
+              ],
+              "comment": "",
+              "sentiment": "positive"
+            },
+            "mood": {
+              "question": "How was your child feeling?",
+              "answers": [
+                {
+                  "answer": "Before: 4, After: 8",
+                  "isCustom": false
+                }
+              ],
+              "comment": "",
+              "sentiment": "positive"
+            }
+          }
+        }
+      ],
+      "flow_basic_1_negative": [
+        {
+          "id": "log_7ca7f03b-fd8a-4dd0-a7d1-cb784793fe68",
+          "timestamp": "2025-07-13T01:27:29.425Z",
+          "responses": {
+            "whatDidTheyDo": {
+              "question": "What happened?",
+              "answers": [
+                {
+                  "answer": "Hit",
+                  "isCustom": false
+                }
+              ],
+              "comment": "",
+              "sentiment": "negative"
+            },
+            "whenDidItHappen": {
+              "question": "When did it happen?",
+              "answers": [
+                {
+                  "answer": "Morning",
+                  "isCustom": false
+                }
+              ],
+              "comment": "",
+              "sentiment": "negative"
             },
             "whatHappenedBefore": {
               "question": "What happened before?",
@@ -690,7 +346,160 @@
                   "isCustom": false
                 }
               ],
-              "comment": ""
+              "comment": "",
+              "sentiment": "negative"
+            },
+            "whatHappenedAfter": {
+              "question": "What happened after?",
+              "answers": [
+                {
+                  "answer": "Happened again",
+                  "isCustom": false
+                }
+              ],
+              "comment": "",
+              "sentiment": "negative"
+            },
+            "whoWasInvolved": {
+              "question": "Who all was involved?",
+              "answers": [
+                {
+                  "answer": "My child",
+                  "isCustom": false
+                }
+              ],
+              "comment": "",
+              "sentiment": "negative"
+            },
+            "mood": {
+              "question": "How was your child feeling?",
+              "answers": [
+                {
+                  "answer": "Before: 2, After: 10",
+                  "isCustom": false
+                }
+              ],
+              "comment": "",
+              "sentiment": "negative"
+            }
+          }
+        },
+        {
+          "id": "log_4ba84a9d-fcd3-49c4-b471-4abcb73f129a",
+          "timestamp": "2025-07-13T01:28:25.142Z",
+          "responses": {
+            "whatDidTheyDo": {
+              "question": "What happened?",
+              "answers": [
+                {
+                  "answer": "Hit",
+                  "isCustom": false
+                }
+              ],
+              "comment": "",
+              "sentiment": "negative"
+            },
+            "whenDidItHappen": {
+              "question": "When did it happen?",
+              "answers": [
+                {
+                  "answer": "Afternoon",
+                  "isCustom": false
+                }
+              ],
+              "comment": "",
+              "sentiment": "negative"
+            },
+            "whatHappenedBefore": {
+              "question": "What happened before?",
+              "answers": [
+                {
+                  "answer": "During play",
+                  "isCustom": false
+                }
+              ],
+              "comment": "",
+              "sentiment": "negative"
+            },
+            "whatHappenedAfter": {
+              "question": "What happened after?",
+              "answers": [
+                {
+                  "answer": "Happened again",
+                  "isCustom": false
+                },
+                {
+                  "answer": "Removed item",
+                  "isCustom": false
+                }
+              ],
+              "comment": "",
+              "sentiment": "negative"
+            },
+            "whoWasInvolved": {
+              "question": "Who all was involved?",
+              "answers": [
+                {
+                  "answer": "Parent",
+                  "isCustom": false
+                },
+                {
+                  "answer": "Sibling",
+                  "isCustom": false
+                }
+              ],
+              "comment": "",
+              "sentiment": "negative"
+            },
+            "mood": {
+              "question": "How was your child feeling?",
+              "answers": [
+                {
+                  "answer": "Before: 3, After: 10",
+                  "isCustom": false
+                }
+              ],
+              "comment": "",
+              "sentiment": "negative"
+            }
+          }
+        },
+        {
+          "id": "log_0b6d3653-ca2a-44c4-a12e-0abb902e9b3d",
+          "timestamp": "2025-07-13T01:29:19.113Z",
+          "responses": {
+            "whatDidTheyDo": {
+              "question": "What happened?",
+              "answers": [
+                {
+                  "answer": "Screamed",
+                  "isCustom": false
+                }
+              ],
+              "comment": "",
+              "sentiment": "negative"
+            },
+            "whenDidItHappen": {
+              "question": "When did it happen?",
+              "answers": [
+                {
+                  "answer": "Afternoon",
+                  "isCustom": false
+                }
+              ],
+              "comment": "",
+              "sentiment": "negative"
+            },
+            "whatHappenedBefore": {
+              "question": "What happened before?",
+              "answers": [
+                {
+                  "answer": "During play",
+                  "isCustom": false
+                }
+              ],
+              "comment": "",
+              "sentiment": "negative"
             },
             "whatHappenedAfter": {
               "question": "What happened after?",
@@ -700,195 +509,47 @@
                   "isCustom": false
                 }
               ],
-              "comment": ""
+              "comment": "",
+              "sentiment": "negative"
             },
             "whoWasInvolved": {
               "question": "Who all was involved?",
               "answers": [
                 {
-                  "answer": "My child",
-                  "isCustom": false
-                },
-                {
-                  "answer": "Parent",
-                  "isCustom": false
-                },
-                {
-                  "answer": "Stranger",
+                  "answer": "Teacher",
                   "isCustom": false
                 }
               ],
-              "comment": ""
+              "comment": "",
+              "sentiment": "negative"
             },
             "mood": {
               "question": "How was your child feeling?",
               "answers": [
                 {
-                  "answer": "Before: 2, After: 5",
+                  "answer": "Before: 1, After: 2",
                   "isCustom": false
                 }
               ],
-              "comment": ""
-            }
-          }
-        },
-        {
-          "id": "log_2f5e2599-3e30-4847-90c8-a71b4a78177e",
-          "timestamp": "2025-07-01T16:10:00.000Z",
-          "responses": {
-            "whatDidTheyDo": {
-              "question": "What did they do?",
-              "answers": [
-                {
-                  "answer": "Apple custom",
-                  "isCustom": true
-                }
-              ],
-              "comment": ""
-            },
-            "whenDidItHappen": {
-              "question": "When did it happen?",
-              "answers": [
-                {
-                  "answer": "Night",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            },
-            "whatHappenedBefore": {
-              "question": "What happened before?",
-              "answers": [
-                {
-                  "answer": "Roblox custom",
-                  "isCustom": true
-                }
-              ],
-              "comment": ""
-            },
-            "whatHappenedAfter": {
-              "question": "What happened after?",
-              "answers": [
-                {
-                  "answer": "no icecream custom",
-                  "isCustom": true
-                }
-              ],
-              "comment": ""
-            },
-            "whoWasInvolved": {
-              "question": "Who all was involved?",
-              "answers": [
-                {
-                  "answer": "Parent",
-                  "isCustom": false
-                },
-                {
-                  "answer": "My child",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            },
-            "mood": {
-              "question": "How was your child feeling?",
-              "answers": [
-                {
-                  "answer": "Before: 2, After: 7",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            }
-          }
-        },
-        {
-          "id": "log_c39e2da6-ccea-4211-9a80-5cdb7d8d483a",
-          "timestamp": "2025-07-08T01:22:00.445Z",
-          "responses": {
-            "whatDidTheyDo": {
-              "question": "What did they do?",
-              "answers": [
-                {
-                  "answer": "Apple custom",
-                  "isCustom": true
-                }
-              ],
-              "comment": ""
-            },
-            "whenDidItHappen": {
-              "question": "When did it happen?",
-              "answers": [
-                {
-                  "answer": "Night",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            },
-            "whatHappenedBefore": {
-              "question": "What happened before?",
-              "answers": [
-                {
-                  "answer": "Tantrum custom",
-                  "isCustom": true
-                }
-              ],
-              "comment": ""
-            },
-            "whatHappenedAfter": {
-              "question": "What happened after?",
-              "answers": [
-                {
-                  "answer": "No icecream custom",
-                  "isCustom": true
-                }
-              ],
-              "comment": ""
-            },
-            "whoWasInvolved": {
-              "question": "Who all was involved?",
-              "answers": [
-                {
-                  "answer": "boss custom",
-                  "isCustom": true
-                },
-                {
-                  "answer": "My child",
-                  "isCustom": false
-                },
-                {
-                  "answer": "Sibling",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
-            },
-            "mood": {
-              "question": "How was your child feeling?",
-              "answers": [
-                {
-                  "answer": "Before: 3, After: 8",
-                  "isCustom": false
-                }
-              ],
-              "comment": ""
+              "comment": "",
+              "sentiment": "negative"
             }
           }
         }
       ]
     },
     "is_deleted": false,
-    "child_name": "jason",
-    "child_name_capitalized": "Jason",
+    "child_name": "bob",
+    "child_name_capitalized": "Bob",
     "pronouns": "he/him",
-    "created_at": "2025-07-05T05:06:01.303Z",
-    "updated_at": "2025-07-05T05:06:01.303Z",
-    "child_uuid": "800f3562-4996-43cd-ab4d-333f343be38c"
+    "created_at": "2025-07-12T06:29:01.667Z",
+    "updated_at": "2025-07-12T06:29:01.667Z",
+    "child_uuid": "a81d4563-7ca6-4ff2-b334-65ebbb90cefc"
   },
+  "onboarding_completed": true,
   "current_selected_child": {
-    "id": "jason_800f3562-4996-43cd-ab4d-333f343be38c",
-    "child_uuid": "800f3562-4996-43cd-ab4d-333f343be38c",
-    "child_name": "Jason"
+    "id": "bob_a81d4563-7ca6-4ff2-b334-65ebbb90cefc",
+    "child_uuid": "a81d4563-7ca6-4ff2-b334-65ebbb90cefc",
+    "child_name": "Bob"
   }
 }
