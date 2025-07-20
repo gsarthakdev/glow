@@ -886,14 +886,32 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
   const [sending, setSending] = useState(false);
   const [affirmationModalVisible, setAffirmationModalVisible] = useState(false);
 
-  const AFFIRMATIONS = [
+  var AFFIRMATIONS = [
     "Every step you take helps your child grow.",
     "Remember to take care of yourself, too.",
     "Small wins are still wins!",
     "You’re doing an amazing job.",
     "Thank you for being a caring parent.",
+    "Your presence means the world to your child.",
+    "It’s okay to not have all the answers.",
+    "You are enough, just as you are.",
+    "Parenting is hard, and you’re showing up — that matters.",
+    "You’re building something beautiful, one moment at a time.",
+    "Your love is the greatest gift you give every day.",
+    "You’re stronger than you think.",
+    "It’s normal to feel overwhelmed — you’re not alone.",
+    "Your effort is seen and appreciated.",
+    "Even on tough days, your heart shines through.",
   ];
-
+  function shuffleArray(array) {
+    const shuffled = [...array]; // Create a copy to avoid mutating the original
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1)); // random index from 0 to i
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]; // swap
+    }
+    return shuffled;
+  }
+  AFFIRMATIONS = shuffleArray(AFFIRMATIONS);
   // Reload logs every time the screen is focused
   useFocusEffect(
     React.useCallback(() => {
