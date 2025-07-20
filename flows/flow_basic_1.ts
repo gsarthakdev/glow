@@ -13,18 +13,18 @@ export const flow_basic_1 = [
       // { "label": "Refused instruction", "emoji": "🙅" },
     ]
   },
-  {
-    "id": "whenDidItHappen",
-    "question": "When did it happen?",
-    "subheading": "Select the time of day the behavior occurred.",
-    "answer_choices": [
-      { "label": "Morning", "emoji": "🌅", "sentiment": "negative" },
-      { "label": "Afternoon", "emoji": "🌞", "sentiment": "negative" },
-      { "label": "Evening", "emoji": "🌇", "sentiment": "negative" },
-      { "label": "Night", "emoji": "🌙", "sentiment": "negative" },
-      { "label": "Other", "emoji": "➕", "sentiment": null }
-    ]
-  },
+  // {
+  //   "id": "whenDidItHappen",
+  //   "question": "When did it happen?",
+  //   "subheading": "Select the time of day the behavior occurred.",
+  //   "answer_choices": [
+  //     { "label": "Morning", "emoji": "🌅", "sentiment": "negative" },
+  //     { "label": "Afternoon", "emoji": "🌞", "sentiment": "negative" },
+  //     { "label": "Evening", "emoji": "🌇", "sentiment": "negative" },
+  //     { "label": "Night", "emoji": "🌙", "sentiment": "negative" },
+  //     { "label": "Other", "emoji": "➕", "sentiment": null }
+  //   ]
+  // },
   {
     "id": "whatHappenedBefore",
     "question": "What happened before?",
@@ -51,22 +51,22 @@ export const flow_basic_1 = [
       { "label": "Other", "emoji": "➕", "sentiment": null }
     ]
   },
-  {
-    "id": "whoWasInvolved",
-    "question": "Who all was involved?",
-    "subheading": "Choose everyone who was present or directly part of the situation.",
-    "answer_choices": [
-      { "label": "My child", "emoji": "🧒", "sentiment": "negative" },
-      { "label": "Sibling", "emoji": "👧", "sentiment": "negative" },
-      { "label": "Parent", "emoji": "🧑‍🦰", "sentiment": "negative" },
-      { "label": "Teacher", "emoji": "👩‍🏫", "sentiment": "negative" },
-      { "label": "Stranger", "emoji": "🕵️", "sentiment": "negative" },
-      { "label": "Other", "emoji": "➕", "sentiment": null }
-    ]
-  },
-  {
-    "id": "mood",
-    "question": "How was your child feeling?",
-    "subheading": "Select the mood or emotional state of your child during the incident.",
-  }
+  // {
+  //   "id": "whoWasInvolved",
+  //   "question": "Who all was involved?",
+  //   "subheading": "Choose everyone who was present or directly part of the situation.",
+  //   "answer_choices": [
+  //     { "label": "My child", "emoji": "🧒", "sentiment": "negative" },
+  //     { "label": "Sibling", "emoji": "👧", "sentiment": "negative" },
+  //     { "label": "Parent", "emoji": "🧑‍🦰", "sentiment": "negative" },
+  //     { "label": "Teacher", "emoji": "👩‍🏫", "sentiment": "negative" },
+  //     { "label": "Stranger", "emoji": "🕵️", "sentiment": "negative" },
+  //     { "label": "Other", "emoji": "➕", "sentiment": null }
+  //   ]
+  // },
+  // {
+  //   "id": "mood",
+  //   "question": "How was your child feeling?",
+  //   "subheading": "Select the mood or emotional state of your child during the incident.",
+  // }
 ];
