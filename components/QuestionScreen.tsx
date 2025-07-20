@@ -52,8 +52,23 @@ export default function QuestionScreen({
   const [showCommentInput, setShowCommentInput] = useState(false);
   const [comment, setComment] = useState(currentAnswer?.comment || '');
 
+  // Only initialize otherText when the modal is first opened
+  useEffect(() => {
+    if (showOtherModal) {
+      // Only set if just opened
+      const custom = selectedAnswers.find(a => a.isCustom);
+      setOtherText(custom ? custom.answer : '');
+      console.log('[DEBUG] Modal opened. Initializing otherText to:', custom ? custom.answer : '');
+    } else {
+      console.log('[DEBUG] Modal closed. otherText was:', otherText);
+    }
+    // Do not reset on close, let handleOtherSubmit handle clearing
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showOtherModal]);
+
   const handleOptionSelect = (option: Option) => {
     if (option.label === 'Other') {
+      console.log('[DEBUG] handleOptionSelect: Opening modal for Other.');
       setShowOtherModal(true);
       return;
     }
@@ -72,10 +87,16 @@ export default function QuestionScreen({
   };
 
   const handleOtherSubmit = () => {
+    console.log('[DEBUG] handleOtherSubmit called. otherText:', otherText);
     if (otherText.trim()) {
       // Remove any previous custom answers
       const newAnswers = selectedAnswers.filter(a => !a.isCustom);
       newAnswers.push({ answer: otherText.trim(), isCustom: true });
+      setSelectedAnswers(newAnswers);
+      onAnswer({ answers: newAnswers, comment });
+    } else {
+      // If empty, remove any custom answer
+      const newAnswers = selectedAnswers.filter(a => !a.isCustom);
       setSelectedAnswers(newAnswers);
       onAnswer({ answers: newAnswers, comment });
     }
@@ -133,7 +154,10 @@ export default function QuestionScreen({
                 style={styles.modalInput}
                 placeholder="Type your answer here..."
                 value={otherText}
-                onChangeText={setOtherText}
+                onChangeText={text => {
+                  setOtherText(text);
+                  console.log('[DEBUG] TextInput onChangeText:', text);
+                }}
                 autoFocus
               />
               <View style={styles.modalButtons}>

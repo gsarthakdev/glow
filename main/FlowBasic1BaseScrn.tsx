@@ -92,6 +92,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       const customAnswer = selectedAnswers[questionId]?.find(a => a.isCustom);
       if (customAnswer) {
         // Already has custom text, show edit/deselect modal
+        console.log('[DEBUG] Opening Other modal for edit. previousText:', customAnswer.answer);
         setShowOtherModal({ 
           isEditing: false, 
           previousText: customAnswer.answer,
@@ -100,6 +101,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       } else {
         // New "Other" entry - only for first question, we need sentiment selection
         if (questionId === 'whatDidTheyDo') {
+          console.log('[DEBUG] Opening Other modal for new entry (whatDidTheyDo). previousText:', otherText[questionId]);
           setShowOtherModal({ 
             isEditing: true,
             previousText: otherText[questionId],  // Will be undefined for first time
@@ -107,6 +109,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
             step: 'text'
           });
         } else {
+          console.log('[DEBUG] Opening Other modal for new entry. previousText:', otherText[questionId]);
           setShowOtherModal({ 
             isEditing: true,
             previousText: otherText[questionId],  // Will be undefined for first time
@@ -176,6 +179,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
 
   // Add new handleOtherSubmit function
   const handleOtherSubmit = () => {
+    console.log('[DEBUG] handleOtherSubmit called. showOtherModal:', showOtherModal, 'otherText:', otherText);
     if (!showOtherModal?.isEditing) return;
 
     // If we're on the text step and it's the first question, move to sentiment step
@@ -186,8 +190,15 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
 
     // If we're on the sentiment step or it's not the first question
     if (showOtherModal.step === 'sentiment' || currentQ.id !== 'whatDidTheyDo') {
-      if (!otherText[currentQ.id]?.trim()) return;
-
+      if (!otherText[currentQ.id]?.trim()) {
+        // If input is empty, remove custom answer
+        setSelectedAnswers(prev => ({
+          ...prev,
+          [currentQ.id]: (prev[currentQ.id] || []).filter(a => !a.isCustom)
+        }));
+        setShowOtherModal(null);
+        return;
+      }
       // For the first question, we need to handle sentiment
       if (currentQ.id === 'whatDidTheyDo' && showOtherModal.sentiment) {
         // Set the sentiment and store the custom answer directly
@@ -208,6 +219,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
   };
 
   const handleOtherDeselect = () => {
+    console.log('[DEBUG] handleOtherDeselect called. currentQ.id:', currentQ.id);
     setSelectedAnswers(prev => ({
       ...prev,
       [currentQ.id]: (prev[currentQ.id] || []).filter(a => !a.isCustom)
@@ -216,6 +228,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
   };
 
   const handleOtherEdit = () => {
+    console.log('[DEBUG] handleOtherEdit called. previousText:', selectedAnswers[currentQ.id]?.find(a => a.isCustom)?.answer);
     setShowOtherModal({ 
       isEditing: true, 
       previousText: selectedAnswers[currentQ.id]?.find(a => a.isCustom)?.answer,
@@ -414,7 +427,17 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
             visible={!!showOtherModal}
             transparent
             animationType="fade"
-            onRequestClose={() => setShowOtherModal(null)}
+            onRequestClose={() => {
+              console.log('[DEBUG] Modal closed via onRequestClose.');
+              // If input is empty, remove custom answer
+              if (!otherText[currentQ.id]?.trim()) {
+                setSelectedAnswers(prev => ({
+                  ...prev,
+                  [currentQ.id]: (prev[currentQ.id] || []).filter(a => !a.isCustom)
+                }));
+              }
+              setShowOtherModal(null);
+            }}
           >
             <TouchableOpacity
               style={styles.modalOverlay}
@@ -430,18 +453,31 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                         <TextInput
                           style={styles.modalInput}
                           placeholder="Type your answer here..."
-                          value={otherText[currentQ.id] || showOtherModal.previousText || ''}
-                          onChangeText={(text) => setOtherText(prev => ({
-                            ...prev,
-                            [currentQ.id]: text
-                          }))}
+                          value={otherText[currentQ.id] !== undefined ? otherText[currentQ.id] : (showOtherModal.previousText || '')}
+                          onChangeText={(text) => {
+                            console.log('[DEBUG] TextInput onChangeText:', text, 'for question:', currentQ.id);
+                            setOtherText(prev => ({
+                              ...prev,
+                              [currentQ.id]: text
+                            }));
+                          }}
                           autoFocus
                         />
                         
                         <View style={styles.modalButtons}>
                           <TouchableOpacity
                             style={styles.modalButton}
-                            onPress={() => setShowOtherModal(null)}
+                            onPress={() => {
+                              console.log('[DEBUG] Modal closed via Cancel button.');
+                              // If input is empty, remove custom answer
+                              if (!otherText[currentQ.id]?.trim()) {
+                                setSelectedAnswers(prev => ({
+                                  ...prev,
+                                  [currentQ.id]: (prev[currentQ.id] || []).filter(a => !a.isCustom)
+                                }));
+                              }
+                              setShowOtherModal(null);
+                            }}
                           >
                             <Text style={styles.modalButtonText}>Cancel</Text>
                           </TouchableOpacity>
