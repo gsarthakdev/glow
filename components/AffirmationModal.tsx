@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Modal, View, Text, StyleSheet, Animated, Easing, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-const DOT_COUNT = 3;
+const DOT_COUNT = 4;
 const DOT_BOUNCE_HEIGHT = 10;
 const DOT_SIZE = 12;
 const DOT_SPACING = 12;
@@ -32,7 +32,7 @@ const AffirmationModal: React.FC<AffirmationModalProps> = ({
   visible,
   affirmations,
   onRequestClose,
-  cycleInterval = 1000,
+  cycleInterval = 1400,
 }) => {
   const [currentIdx, setCurrentIdx] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -148,6 +148,7 @@ const AffirmationModal: React.FC<AffirmationModalProps> = ({
           >
             {affirmations[currentIdx]}
           </Animated.Text>
+          <Text style={{fontSize: 12, marginTop: -25}}>Your PDF Export is being generated</Text>
           <View style={styles.dotsRow}>{dotNodes}</View>
         </View>
       </View>
