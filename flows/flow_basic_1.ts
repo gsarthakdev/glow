@@ -27,7 +27,7 @@ export const flow_basic_1 = [
   // },
   {
     "id": "whatHappenedBefore",
-    "question": "What happened before?",
+    "question": "What caused the behavior?",
     "subheading": "What led up to the behavior or what triggered it?",
     "answer_choices": [
       { "label": "After denied something", "emoji": "🚫", "sentiment": "negative" },

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Platform, SafeAreaView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Platform, SafeAreaView, Linking, Pressable, Switch } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import * as MailComposer from 'expo-mail-composer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -8,6 +8,7 @@ import * as FileSystem from 'expo-file-system';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { useFocusEffect } from '@react-navigation/native';
 import AffirmationModal from '../components/AffirmationModal';
+import { useEmailShare } from '../utils/useEmailShare';
 
 interface Log {
   id: string;
@@ -883,6 +884,59 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
   return fileUri;
 }
 
+// Email providers and their deep link info
+const EMAIL_APPS = [
+  {
+    key: 'gmail',
+    name: 'Gmail',
+    icon: 'logo-google',
+    color: '#EA4335',
+    getUrl: ({ to, subject, body }: any) =>
+      `googlegmail://co?to=${encodeURIComponent(to)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
+    canOpen: Platform.OS === 'ios' || Platform.OS === 'android',
+  },
+  {
+    key: 'outlook',
+    name: 'Outlook',
+    icon: 'logo-microsoft',
+    color: '#0072C6',
+    getUrl: ({ to, subject, body }: any) =>
+      `ms-outlook://compose?to=${encodeURIComponent(to)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
+    canOpen: Platform.OS === 'ios' || Platform.OS === 'android',
+  },
+  {
+    key: 'icloud',
+    name: 'iCloud Mail',
+    icon: 'cloud-outline',
+    color: '#3693F3',
+    getUrl: ({ to, subject, body }: any) =>
+      `message://?to=${encodeURIComponent(to)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
+    canOpen: Platform.OS === 'ios',
+  },
+  {
+    key: 'yahoo',
+    name: 'Yahoo',
+    icon: 'logo-yahoo',
+    color: '#6001D2',
+    getUrl: ({ to, subject, body }: any) =>
+      `ymail://mail/compose?to=${encodeURIComponent(to)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
+    canOpen: Platform.OS === 'ios' || Platform.OS === 'android',
+  },
+  {
+    key: 'other',
+    name: 'Other',
+    icon: 'mail-outline',
+    color: '#3E3E6B',
+    getUrl: ({ to, subject, body }: any) =>
+      `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
+    canOpen: true,
+  },
+];
+
+function getProviderByKey(key: string) {
+  return EMAIL_APPS.find(app => app.key === key) || EMAIL_APPS[EMAIL_APPS.length - 1];
+}
+
 export default function PastLogsScreen({ navigation }: { navigation: any }) {
   const [selectedDuration, setSelectedDuration] = useState('This Week');
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -890,6 +944,12 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
   const [logs, setLogs] = useState<Log[]>([]);
   const [sending, setSending] = useState(false);
   const [affirmationModalVisible, setAffirmationModalVisible] = useState(false);
+  const [emailModalVisible, setEmailModalVisible] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
+  const [setDefault, setSetDefault] = useState(false);
+  const [defaultProvider, setDefaultProvider] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const { shareEmail } = useEmailShare();
 
   var AFFIRMATIONS: string[] = [
     "Every step you take helps your child grow.",
@@ -923,6 +983,52 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
       loadLogs();
     }, [])
   );
+
+  // Load default provider on mount
+  React.useEffect(() => {
+    AsyncStorage.getItem('default_email_provider').then(setDefaultProvider);
+  }, []);
+
+  // Helper to open email app
+  const openEmailApp = async (providerKey: string, fileUri: string, subject: string, body: string) => {
+    const provider = getProviderByKey(providerKey);
+    let url = provider.getUrl({
+      to: '', // therapist's email if available
+      subject,
+      body,
+    });
+    // Attachments are not supported in mailto: or deep links, so we fallback to MailComposer for attachment
+    if (providerKey === 'other') {
+      // Fallback to MailComposer for attachment
+      try {
+        await MailComposer.composeAsync({
+          subject,
+          body,
+          recipients: [],
+          attachments: [fileUri],
+        });
+        return true;
+      } catch (e) {
+        setEmailError('Could not open email composer.');
+        return false;
+      }
+    } else {
+      // Try to open the app
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        try {
+          await Linking.openURL(url);
+          return true;
+        } catch (e) {
+          setEmailError(`Could not open ${provider.name}.`);
+          return false;
+        }
+      } else {
+        setEmailError(`${provider.name} is not installed or cannot be opened.`);
+        return false;
+      }
+    }
+  };
 
   const loadLogs = async () => {
     try {
@@ -987,37 +1093,58 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
     });
   };
 
+  // Modified sendLogs
   const sendLogs = async () => {
     try {
       setSending(true);
       setAffirmationModalVisible(true);
       const selectedLogs = getLogsForDuration();
-      const isAvailable = await MailComposer.isAvailableAsync();
-      if (!isAvailable) {
-        setAffirmationModalVisible(false);
-        setSending(false);
-        alert('Email composition is not available on this device');
-        return;
-      }
       // Get current selected child's name
       const currentSelectedChild = await AsyncStorage.getItem('current_selected_child');
       const childName = currentSelectedChild ? JSON.parse(currentSelectedChild).child_name : 'Child';
       // Generate PDF file
       const fileUri = await generatePDF(selectedLogs, childName, selectedDuration);
-      await MailComposer.composeAsync({
-        subject: `${childName}'s Behavior Logs - ${selectedDuration}`,
-        body: `Attached is the behavior log report for ${childName} from ${selectedDuration.toLowerCase()}.`,
-        recipients: [], // Add therapist's email here
-        attachments: [fileUri],
-      });
+      const subject = `${childName}'s Behavior Logs - ${selectedDuration}`;
+      const body = `Attached is the behavior log report for ${childName} from ${selectedDuration.toLowerCase()}.`;
+      await shareEmail({ fileUri, subject, body });
       setAffirmationModalVisible(false);
       setSending(false);
-      // Optionally show a success message here
     } catch (error) {
       setAffirmationModalVisible(false);
       setSending(false);
+      setEmailError('Failed to generate and send logs. Please try again.');
       console.error('Error sending logs:', error);
-      alert('Failed to generate and send logs. Please try again.');
+    }
+  };
+
+  // Handler for selecting provider
+  const handleProviderSelect = async (providerKey: string) => {
+    setSelectedProvider(providerKey);
+    setEmailError(null);
+    setSending(true);
+    setAffirmationModalVisible(true);
+    try {
+      // Get current selected child's name
+      const currentSelectedChild = await AsyncStorage.getItem('current_selected_child');
+      const childName = currentSelectedChild ? JSON.parse(currentSelectedChild).child_name : 'Child';
+      const selectedLogs = getLogsForDuration();
+      const fileUri = await generatePDF(selectedLogs, childName, selectedDuration);
+      const subject = `${childName}'s Behavior Logs - ${selectedDuration}`;
+      const body = `Attached is the behavior log report for ${childName} from ${selectedDuration.toLowerCase()}.`;
+      const ok = await openEmailApp(providerKey, fileUri, subject, body);
+      if (ok) {
+        setEmailModalVisible(false);
+        if (setDefault) {
+          await AsyncStorage.setItem('default_email_provider', providerKey);
+          setDefaultProvider(providerKey);
+        }
+      }
+    } catch (error) {
+      setEmailError('Failed to generate and send logs. Please try again.');
+      console.error('Error sending logs:', error);
+    } finally {
+      setAffirmationModalVisible(false);
+      setSending(false);
     }
   };
 
@@ -1148,6 +1275,50 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
             ))}
           </View>
         </TouchableOpacity>
+      </Modal>
+
+      <Modal
+        visible={emailModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setEmailModalVisible(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setEmailModalVisible(false)}
+        >
+          <View style={styles.emailModalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Choose Email App</Text>
+              <TouchableOpacity onPress={() => setEmailModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#007AFF" />
+              </TouchableOpacity>
+            </View>
+            {EMAIL_APPS.filter(app => app.canOpen).map(app => (
+              <TouchableOpacity
+                key={app.key}
+                style={styles.providerOption}
+                onPress={() => handleProviderSelect(app.key)}
+              >
+                <Ionicons name={app.icon as any} size={28} color={app.color} style={{ marginRight: 16 }} />
+                <Text style={styles.providerName}>{app.name}</Text>
+                {defaultProvider === app.key && (
+                  <Ionicons name="star" size={20} color="#FFD700" style={{ marginLeft: 8 }} />
+                )}
+              </TouchableOpacity>
+            ))}
+            <View style={styles.setDefaultRow}>
+              <Text style={styles.setDefaultText}>Set as default</Text>
+              <Switch
+                value={setDefault}
+                onValueChange={setSetDefault}
+                thumbColor={setDefault ? '#4CAF50' : '#ccc'}
+                trackColor={{ false: '#ccc', true: '#A5D6A7' }}
+              />
+            </View>
+            {emailError && <Text style={styles.errorText}>{emailError}</Text>}
+          </View>
+        </Pressable>
       </Modal>
     </SafeAreaView>
   );
@@ -1281,5 +1452,45 @@ const styles = StyleSheet.create({
   durationOptionText: {
     fontSize: 18,
     color: '#3E3E6B',
+  },
+  emailModalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  providerOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderColor: '#F0F0F0',
+  },
+  providerName: {
+    fontSize: 18,
+    color: '#3E3E6B',
+    fontWeight: '500',
+  },
+  setDefaultRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 18,
+    marginBottom: 8,
+  },
+  setDefaultText: {
+    fontSize: 16,
+    color: '#3E3E6B',
+  },
+  errorText: {
+    color: '#EA4335',
+    marginTop: 10,
+    fontSize: 15,
+    textAlign: 'center',
   },
 });

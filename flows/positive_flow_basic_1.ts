@@ -25,7 +25,7 @@ export const flow_basic_1 = [
     // },
     {
         "id": "whatHappenedBefore",
-        "question": "What helped make this happen?",
+        "question": "What caused the behavior?",
         "subheading": "Think about what contributed to the positive behavior.",
         answer_choices: [
             { label: "After praise", emoji: "👏", "sentiment": "positive" },
