@@ -123,7 +123,8 @@ function aggregateBehaviors(logs: Log[]) {
   logs.forEach(log => {
     const answers = log.responses?.whatDidTheyDo?.answers || [];
     answers.forEach((a: any) => {
-      if (a.answer === 'Other') return; // Exclude literal 'Other'
+      // Always use a.answer as the label, regardless of isCustom
+      if (a.answer === 'Other') return; // Exclude literal 'Other' if present
       if (behaviorCounts[a.answer] !== undefined) {
         behaviorCounts[a.answer] += 1;
       } else {
@@ -142,6 +143,12 @@ const ALL_ANTECEDENT_LABELS = [
   'During play',
   // 'lol bruh'
   // 'Other'
+];
+const ALL_POSITIVE_ANTECEDENT_LABELS = [
+  'After praise',
+  'Routine was followed',
+  'Transition went well',
+  'Felt supported',
 ];
 const ALL_CONSEQUENCE_LABELS = [
   'No reaction',
@@ -640,6 +647,20 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
   const negativeLogs = logs.filter(log => log.responses?.whatDidTheyDo?.sentiment === 'negative');
   const positiveLogs = logs.filter(log => log.responses?.whatDidTheyDo?.sentiment === 'positive');
 
+  // Helper to get unique positive antecedents from positive logs
+  function getUniquePositiveAntecedents(logs: Log[]) {
+    const set = new Set<string>();
+    logs.forEach(log => {
+      const answers = log.responses?.whatHappenedBefore?.answers || [];
+      answers.forEach((a: any) => {
+        if (a.answer !== 'Other' && ALL_POSITIVE_ANTECEDENT_LABELS.includes(a.answer)) {
+          set.add(a.answer);
+        }
+      });
+    });
+    return Array.from(set);
+  }
+
   // --- Create PDF ---
   const pdfDoc = await PDFDocument.create();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -703,7 +724,18 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
     // const time = aggregateTimeOfDay(logs);
     // const mood = aggregateMood(logs);
     const behaviors = aggregateBehaviors(logs);
-    const antecedents = aggregateAntecedents(logs, ALL_ANTECEDENT_LABELS);
+    let antecedents: Record<string, number> = {};
+    if (behaviorType === 'negative') {
+      antecedents = aggregateAntecedents(logs, ALL_ANTECEDENT_LABELS);
+    } else {
+      // For positive, only show those that actually appear in the logs and are in the positive list
+      const uniqueAntecedents = getUniquePositiveAntecedents(logs);
+      if (uniqueAntecedents.length === 0) {
+        antecedents = {}; // No data for chart
+      } else {
+        antecedents = aggregateAntecedents(logs, uniqueAntecedents);
+      }
+    }
     const consequences = aggregateConsequences(logs);
 
     // --- Generate chart images ---
