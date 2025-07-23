@@ -32,7 +32,7 @@ const AffirmationModal: React.FC<AffirmationModalProps> = ({
   visible,
   affirmations,
   onRequestClose,
-  cycleInterval = 1400,
+  cycleInterval = 1500,
 }) => {
   const [currentIdx, setCurrentIdx] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
