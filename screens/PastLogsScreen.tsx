@@ -49,25 +49,25 @@ function sanitizePdfText(text: string): string {
 
 // --- Chart Data Aggregation Helpers ---
 
-// // 1. Who Was Involved
-// function aggregateWhoWasInvolved(logs: Log[]) {
-//   const participantCounts: Record<string, number> = {};
-//   const comboCounts: Record<string, number> = {};
-//   logs.forEach(log => {
-//     const answers = log.responses?.whoWasInvolved?.answers || [];
-//     const labels = answers.map((a: any) => a.answer).sort();
-//     // Count each participant
-//     labels.forEach((label: string) => {
-//       participantCounts[label] = (participantCounts[label] || 0) + 1;
-//     });
-//     // Count unique combinations
-//     if (labels.length > 0) {
-//       const comboKey = labels.join(' + ');
-//       comboCounts[comboKey] = (comboCounts[comboKey] || 0) + 1;
-//     }
-//   });
-//   return { participantCounts, comboCounts };
-// }
+// 1. Who Was Involved
+function aggregateWhoWasInvolved(logs: Log[]) {
+  const participantCounts: Record<string, number> = {};
+  const comboCounts: Record<string, number> = {};
+  logs.forEach(log => {
+    const answers = log.responses?.whoWasInvolved?.answers || [];
+    const labels = answers.map((a: any) => a.answer).sort();
+    // Count each participant
+    labels.forEach((label: string) => {
+      participantCounts[label] = (participantCounts[label] || 0) + 1;
+    });
+    // Count unique combinations
+    if (labels.length > 0) {
+      const comboKey = labels.join(' + ');
+      comboCounts[comboKey] = (comboCounts[comboKey] || 0) + 1;
+    }
+  });
+  return { participantCounts, comboCounts };
+}
 
 // 2. Log Distribution by Time of Day
 function aggregateTimeOfDay(logs: Log[]) {
@@ -87,25 +87,25 @@ function aggregateTimeOfDay(logs: Log[]) {
 }
 
 // 3. Mood Before vs. After
-// function aggregateMood(logs: Log[]) {
-//   // { [day]: { before: number[], after: number[] } }
-//   const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-//   const moodByDay: Record<string, { before: number[], after: number[] }> = {};
-//   logs.forEach(log => {
-//     const date = new Date(log.timestamp);
-//     const day = dayLabels[date.getDay()];
-//     const moodStr = log.responses?.mood?.answers?.[0]?.answer || '';
-//     const match = moodStr.match(/Before: (\d+), After: (\d+)/);
-//     if (match) {
-//       const before = parseInt(match[1], 10);
-//       const after = parseInt(match[2], 10);
-//       if (!moodByDay[day]) moodByDay[day] = { before: [], after: [] };
-//       moodByDay[day].before.push(before);
-//       moodByDay[day].after.push(after);
-//     }
-//   });
-//   return { moodByDay, dayLabels };
-// }
+function aggregateMood(logs: Log[]) {
+  // { [day]: { before: number[], after: number[] } }
+  const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const moodByDay: Record<string, { before: number[], after: number[] }> = {};
+  logs.forEach(log => {
+    const date = new Date(log.timestamp);
+    const day = dayLabels[date.getDay()];
+    const moodStr = log.responses?.mood?.answers?.[0]?.answer || '';
+    const match = moodStr.match(/Before: (\d+), After: (\d+)/);
+    if (match) {
+      const before = parseInt(match[1], 10);
+      const after = parseInt(match[2], 10);
+      if (!moodByDay[day]) moodByDay[day] = { before: [], after: [] };
+      moodByDay[day].before.push(before);
+      moodByDay[day].after.push(after);
+    }
+  });
+  return { moodByDay, dayLabels };
+}
 
 // List of all possible behaviors (update as needed)
 const ALL_BEHAVIOR_LABELS = [
@@ -647,7 +647,6 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
   const negativeLogs = logs.filter(log => log.responses?.whatDidTheyDo?.sentiment === 'negative');
   const positiveLogs = logs.filter(log => log.responses?.whatDidTheyDo?.sentiment === 'positive');
 
-  // Helper to get unique positive antecedents from positive logs
   function getUniquePositiveAntecedents(logs: Log[]) {
     const set = new Set<string>();
     logs.forEach(log => {
@@ -660,7 +659,6 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
     });
     return Array.from(set);
   }
-
   // --- Create PDF ---
   const pdfDoc = await PDFDocument.create();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -720,9 +718,9 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
     }
 
     // --- Aggregate data ---
-    // const who = aggregateWhoWasInvolved(logs);
-    // const time = aggregateTimeOfDay(logs);
-    // const mood = aggregateMood(logs);
+    const who = aggregateWhoWasInvolved(logs);
+    const time = aggregateTimeOfDay(logs);
+    const mood = aggregateMood(logs);
     const behaviors = aggregateBehaviors(logs);
     let antecedents: Record<string, number> = {};
     if (behaviorType === 'negative') {
@@ -768,43 +766,40 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
       caption: `Responses applied after ${behaviorType} behaviors during the week.` 
     });
 
-    // --- The following chart logic is commented out as per request to only show the three main graphs ---
-    /*
     // 4. Who Was Involved Pie
-    // const whoPieUrl = getWhoPieChartUrl(who.participantCounts, chartColors);
-    // const whoPieBase64 = await fetchChartImageBase64(whoPieUrl);
-    // chartImages.push({ 
-    //   base64: whoPieBase64, 
-    //   type: 'who', 
-    //   caption: `Pie chart showing who was involved in ${behaviorType} incidents this week, with most common person combinations listed.` 
-    // });
+    const whoPieUrl = getWhoPieChartUrl(who.participantCounts, chartColors);
+    const whoPieBase64 = await fetchChartImageBase64(whoPieUrl);
+    chartImages.push({ 
+      base64: whoPieBase64, 
+      type: 'who', 
+      caption: `Pie chart showing who was involved in ${behaviorType} incidents this week, with most common person combinations listed.` 
+    });
 
     // 5. Mood Line
-    // const moodLineUrl = getMoodLineChartUrl(mood.moodByDay, mood.dayLabels, moodColors);
-    // const moodLineBase64 = await fetchChartImageBase64(moodLineUrl);
-    // chartImages.push({ 
-    //   base64: moodLineBase64, 
-    //   type: 'mood', 
-    //   caption: `Average mood tracked over the week for all ${behaviorType} behaviors` 
-    // });
+    const moodLineUrl = getMoodLineChartUrl(mood.moodByDay, mood.dayLabels, moodColors);
+    const moodLineBase64 = await fetchChartImageBase64(moodLineUrl);
+    chartImages.push({ 
+      base64: moodLineBase64, 
+      type: 'mood', 
+      caption: `Average mood tracked over the week for all ${behaviorType} behaviors` 
+    });
 
     // 6. Log Distribution by Day and Time (Horizontal Stacked Bar)
-    // const timeMatrix = aggregateTimeOfDayMatrix(logs);
-    // const horizontalStackedUrl = getTimeOfDayHorizontalStackedBarUrl(timeMatrix.matrix, ['Morning', 'Afternoon', 'Evening', 'Night'], ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], chartColors);
-    // const horizontalStackedBase64 = await fetchChartImageBase64(horizontalStackedUrl);
-    // chartImages.push({ 
-    //   base64: horizontalStackedBase64, 
-    //   type: 'logdist', 
-    //   caption: `Heatmap of ${behaviorType} behavior logs by time of day across the week.` 
-    // });
+    const timeMatrix = aggregateTimeOfDayMatrix(logs);
+    const horizontalStackedUrl = getTimeOfDayHorizontalStackedBarUrl(timeMatrix.matrix, ['Morning', 'Afternoon', 'Evening', 'Night'], ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], chartColors);
+    const horizontalStackedBase64 = await fetchChartImageBase64(horizontalStackedUrl);
+    chartImages.push({ 
+      base64: horizontalStackedBase64, 
+      type: 'logdist', 
+      caption: `Heatmap of ${behaviorType} behavior logs by time of day across the week.` 
+    });
 
     // 7. Most Common Combinations table (as a special type, not an image)
-    // const combos = Object.entries(who.comboCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
-    // chartImages.push({ type: 'combos', tableRows: combos });
-    */
+    const combos = Object.entries(who.comboCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    chartImages.push({ type: 'combos', tableRows: combos });
 
-    // --- Draw only the first 3 charts (Antecedents, What happened, Consequences) ---
-    for (let i = 0; i < 3; i++) {
+    // --- Draw charts in two columns, snaking order (first 6 items) ---
+    for (let i = 0; i < 6; i++) {
       const col = i % 2;
       const row = Math.floor(i / 2);
       const x = leftMargin + col * (chartWidth + colGap);
@@ -848,8 +843,7 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
       }
     }
 
-    // --- The following table logic is commented out as it is not needed ---
-    /*
+    // --- Draw Most Common Combinations table below the grid, full width ---
     y -= (Math.ceil(6 / 2) * (chartHeight + 65)) + 10;
     const combosTable = chartImages[6];
     if (combosTable && combosTable.type === 'combos') {
@@ -900,7 +894,6 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
         tableY -= 15;
       }
     }
-    */
   }
 
   // Create both pages
@@ -983,7 +976,7 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
   const [emailError, setEmailError] = useState<string | null>(null);
   const { shareEmail } = useEmailShare();
 
-  var AFFIRMATIONS: string[] = [
+  var AFFIRMATIONS = [
     "Every step you take helps your child grow.",
     "Remember to take care of yourself, too.",
     "Small wins are still wins!",
@@ -1000,7 +993,7 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
     "Your effort is seen and appreciated.",
     "Even on tough days, your heart shines through.",
   ];
-  function shuffleArray(array: string[]) {
+  function shuffleArray(array) {
     const shuffled = [...array]; // Create a copy to avoid mutating the original
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1)); // random index from 0 to i
@@ -1015,7 +1008,6 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
       loadLogs();
     }, [])
   );
-
   // Load default provider on mount
   React.useEffect(() => {
     AsyncStorage.getItem('default_email_provider').then(setDefaultProvider);
@@ -1125,7 +1117,6 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
     });
   };
 
-  // Modified sendLogs
   const sendLogs = async () => {
     try {
       setSending(true);
@@ -1141,6 +1132,7 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
       await shareEmail({ fileUri, subject, body });
       setAffirmationModalVisible(false);
       setSending(false);
+      // Optionally show a success message here
     } catch (error) {
       setAffirmationModalVisible(false);
       setSending(false);
@@ -1149,8 +1141,8 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
     }
   };
 
-  // Handler for selecting provider
-  const handleProviderSelect = async (providerKey: string) => {
+   // Handler for selecting provider
+   const handleProviderSelect = async (providerKey: string) => {
     setSelectedProvider(providerKey);
     setEmailError(null);
     setSending(true);
@@ -1308,7 +1300,6 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
           </View>
         </TouchableOpacity>
       </Modal>
-
       <Modal
         visible={emailModalVisible}
         animationType="slide"
