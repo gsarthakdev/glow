@@ -41,7 +41,7 @@ export default function CelebrationScreen({ navigation }) {
           You've helped your therapist better understand what happened at home.
         </Text>
         <Text style={styles.streakText}>
-          You've logged 3 days this week — keep it up!
+          Thanks for doing your part in logging!
         </Text>
       </View>
 

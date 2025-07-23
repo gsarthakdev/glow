@@ -12,6 +12,7 @@ import { View, Text } from "react-native";
 import FlowBasic1BaseScrn from "./main/FlowBasic1BaseScrn";
 import CelebrationScreen from './screens/CelebrationScreen';
 import PastLogsScreen from "./screens/PastLogsScreen";
+import SettingsScreen from "./screens/SettingsScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -46,9 +47,8 @@ const Tab = createBottomTabNavigator();
 
 // Placeholder screens
 // const PastLogsScreen = () => <View style={{flex: 1}}><Text>Past Logs</Text></View>;
-const SettingsScreen = () => <View style={{flex: 1}}><Text>Settings</Text></View>;
-const SummaryScreen = () => <View style={{flex: 1}}><Text>Summary</Text></View>;
-
+// const SettingsScreen = () => <View style={{flex: 1}}><Text>Settings</Text></View>;
+// const SummaryScreen = () => <View style={{flex: 1}}><Text>Summary</Text></View>;
 export default function BottomTabsStack() {
   return (
     <Tab.Navigator
@@ -121,7 +121,7 @@ export default function BottomTabsStack() {
           )
         }}
       />
-      {/* <Tab.Screen 
+      <Tab.Screen 
         name="Settings" 
         component={SettingsScreen}
         options={{
@@ -129,8 +129,8 @@ export default function BottomTabsStack() {
             <Feather name="settings" size={24} color={color} />
           )
         }}
-      /> */}
-      <Tab.Screen 
+      />
+      {/* <Tab.Screen 
         name="Summary" 
         component={SummaryScreen}
         options={{
@@ -138,7 +138,7 @@ export default function BottomTabsStack() {
             <Feather name="bar-chart-2" size={24} color={color} />
           )
         }}
-      />
+      /> */}
     </Tab.Navigator>
   );
 }

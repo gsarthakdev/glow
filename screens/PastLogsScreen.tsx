@@ -47,6 +47,14 @@ function sanitizePdfText(text: string): string {
   return text.replace(/[^\x00-\x7F]/g, ' ');
 }
 
+// Helper: Truncate label to 32 chars + ellipsis
+function truncateLabel(label: string): string {
+  if (label.length > 32) {
+    return label.slice(0, 32) + '...';
+  }
+  return label;
+}
+
 // --- Chart Data Aggregation Helpers ---
 
 // 1. Who Was Involved
@@ -55,7 +63,7 @@ function aggregateWhoWasInvolved(logs: Log[]) {
   const comboCounts: Record<string, number> = {};
   logs.forEach(log => {
     const answers = log.responses?.whoWasInvolved?.answers || [];
-    const labels = answers.map((a: any) => a.answer).sort();
+    const labels = answers.map((a: any) => truncateLabel(a.answer)).sort();
     // Count each participant
     labels.forEach((label: string) => {
       participantCounts[label] = (participantCounts[label] || 0) + 1;
@@ -125,10 +133,11 @@ function aggregateBehaviors(logs: Log[]) {
     answers.forEach((a: any) => {
       // Always use a.answer as the label, regardless of isCustom
       if (a.answer === 'Other') return; // Exclude literal 'Other' if present
-      if (behaviorCounts[a.answer] !== undefined) {
-        behaviorCounts[a.answer] += 1;
+      const label = truncateLabel(a.answer);
+      if (behaviorCounts[label] !== undefined) {
+        behaviorCounts[label] += 1;
       } else {
-        behaviorCounts[a.answer] = 1;
+        behaviorCounts[label] = 1;
       }
     });
   });
@@ -164,16 +173,17 @@ const ALL_CONSEQUENCE_LABELS = [
 function aggregateAntecedents(logs: Log[], allAntecedentLabels: string[]) {
   const antecedentCounts: Record<string, number> = {};
   allAntecedentLabels.forEach(label => {
-    antecedentCounts[label] = 0;
+    antecedentCounts[truncateLabel(label)] = 0;
   });
   logs.forEach(log => {
     const answers = log.responses?.whatHappenedBefore?.answers || [];
     answers.forEach((a: any) => {
       if (a.answer === 'Other') return; // Exclude literal 'Other'
-      if (antecedentCounts[a.answer] !== undefined) {
-        antecedentCounts[a.answer] += 1;
+      const label = truncateLabel(a.answer);
+      if (antecedentCounts[label] !== undefined) {
+        antecedentCounts[label] += 1;
       } else {
-        antecedentCounts[a.answer] = 1; // add new custom label
+        antecedentCounts[label] = 1; // add new custom label
       }
     });
   });
@@ -187,10 +197,11 @@ function aggregateConsequences(logs: Log[]) {
     const answers = log.responses?.whatHappenedAfter?.answers || [];
     answers.forEach((a: any) => {
       if (a.answer === 'Other') return; // Exclude literal 'Other'
-      if (consequenceCounts[a.answer] !== undefined) {
-        consequenceCounts[a.answer] += 1;
+      const label = truncateLabel(a.answer);
+      if (consequenceCounts[label] !== undefined) {
+        consequenceCounts[label] += 1;
       } else {
-        consequenceCounts[a.answer] = 1;
+        consequenceCounts[label] = 1;
       }
     });
   });
@@ -201,7 +212,7 @@ function aggregateConsequences(logs: Log[]) {
 
 // 1. Pie Chart for Who Was Involved
 function getWhoPieChartUrl(participantCounts: Record<string, number>, colors: string[]) {
-  const labels = Object.keys(participantCounts);
+  const labels = Object.keys(participantCounts).map(truncateLabel);
   const data = Object.values(participantCounts);
   return `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify({
     type: 'pie',
@@ -375,7 +386,7 @@ function getMoodLineChartUrl(moodByDay: Record<string, { before: number[], after
 
 // 4. Histogram (Bar) for Behaviors, Antecedents, Consequences
 function getBarChartUrl(title: string, counts: Record<string, number>, color: string, horizontal = false) {
-  const labels = Object.keys(counts);
+  const labels = Object.keys(counts).map(truncateLabel);
   const data = labels.map(l => Number(counts[l]) || 0);
   const maxValue = Math.max(...data, 1);
   const axisMax = Math.max(2, maxValue);
@@ -795,7 +806,7 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
     });
 
     // 7. Most Common Combinations table (as a special type, not an image)
-    const combos = Object.entries(who.comboCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const combos = Object.entries(who.comboCounts).map(([combo, count]) => [truncateLabel(combo), count] as [string, number]).sort((a, b) => b[1] - a[1]).slice(0, 5);
     chartImages.push({ type: 'combos', tableRows: combos });
 
     // --- Draw charts in two columns, snaking order (first 6 items) ---
@@ -877,7 +888,7 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
       tableY -= 15;
       // Table rows (reduced row height, reduced font size)
       for (const [combo, count] of combosTable.tableRows || []) {
-        page.drawText(sanitizePdfText(combo), {
+        page.drawText(sanitizePdfText(truncateLabel(combo)), {
           x: tableCol1,
           y: tableY,
           size: 9,

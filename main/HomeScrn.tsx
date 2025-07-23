@@ -4,6 +4,7 @@ import { Feather, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import SimpleLineIcons from '@expo/vector-icons/SimpleLineIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useIsFocused } from '@react-navigation/native';
 
 interface SelectedChild {
   id: string;
@@ -14,11 +15,14 @@ interface SelectedChild {
 export default function HomeScrn({navigation}: {navigation: any}) {
   const [selectedChild, setSelectedChild] = useState<SelectedChild | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [children, setChildren] = useState([]);
+  const [children, setChildren] = useState<SelectedChild[]>([]);
+  const isFocused = useIsFocused();
 
   useEffect(() => {
-    loadChildren();
-  }, []);
+    if (isFocused) {
+      loadChildren();
+    }
+  }, [isFocused]);
 
   const loadChildren = async () => {
     try {
@@ -27,22 +31,47 @@ export default function HomeScrn({navigation}: {navigation: any}) {
       const childData = await AsyncStorage.multiGet(childKeys)
       
       const childDetails = childData.map(([key, value]) => {
-        const data = JSON.parse(value)
+        if (!value) return null;
+        const data = JSON.parse(value);
+        if (data.is_deleted === true) return null;
         return {
           id: key,
           child_uuid: data.child_uuid,
           child_name: data.child_name_capitalized
-        }
-      })
+        };
+      }).filter(Boolean) as SelectedChild[];
       
       setChildren(childDetails)
 
       const currentSelectedChild = await AsyncStorage.getItem('current_selected_child')
       if (currentSelectedChild) {
-        setSelectedChild(JSON.parse(currentSelectedChild))
+        const parsedSelected = JSON.parse(currentSelectedChild);
+        // Check if the selected child is still valid (not deleted)
+        const stillExists = childDetails.find(child => child.id === parsedSelected.id);
+        if (stillExists) {
+          // If the data has changed (e.g., name edited), update selectedChild and AsyncStorage
+          if (
+            parsedSelected.child_name !== stillExists.child_name ||
+            parsedSelected.child_uuid !== stillExists.child_uuid
+          ) {
+            setSelectedChild(stillExists);
+            await AsyncStorage.setItem('current_selected_child', JSON.stringify(stillExists));
+          } else {
+            setSelectedChild(parsedSelected);
+          }
+        } else if (childDetails.length > 0) {
+          setSelectedChild(childDetails[0]);
+          await AsyncStorage.setItem('current_selected_child', JSON.stringify(childDetails[0]));
+        } else {
+          setSelectedChild(null);
+          await AsyncStorage.removeItem('current_selected_child');
+        }
       } else if (childDetails.length > 0) {
         setSelectedChild(childDetails[0])
         await AsyncStorage.setItem('current_selected_child', JSON.stringify(childDetails[0]))
+      } else {
+        setSelectedChild(null);
+        await AsyncStorage.removeItem('current_selected_child');
       }
     } catch (error) {
       console.error('Error loading children:', error)

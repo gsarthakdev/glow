@@ -33,7 +33,7 @@ export default function App() {
   // clearAsyncStorage();
   useEffect(() => {
     setIsOnboardingCompleted(onboardingStatus === 'true');
-    // doIt();
+    doIt();
   }, [onboardingStatus]);
 
   if (isOnboardingCompleted === null) {
