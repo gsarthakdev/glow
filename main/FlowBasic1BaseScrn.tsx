@@ -579,6 +579,14 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                 <Text style={styles.buttonText}>Back</Text>
               </TouchableOpacity>
             )}
+            {currentQuestion == 0 && (
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => navigation.goBack()}
+              >
+                <Text style={styles.buttonText}>Back</Text>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity
               style={[styles.nextButton, !canProceed() && styles.disabledButton]}
