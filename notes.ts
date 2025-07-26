@@ -9,6 +9,12 @@ https://docs.expo.dev/more/expo-cli/
 */
 
 /*
+App store steps:
+eas build --platform ios                                                 
+eas submit -p ios --latest       
+*/
+
+/*
 
 handleSaveAndContinue() {
     // standardize algo to take in array of objects
