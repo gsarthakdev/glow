@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, FlatList, Platform, Button } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, FlatList, Platform, Button, Alert } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import SimpleLineIcons from '@expo/vector-icons/SimpleLineIcons';
@@ -124,7 +124,29 @@ export default function HomeScrn({navigation}: {navigation: any}) {
         )}
       </View>
     {/* <Button title="add data" onPress={() => {}}/> */}
-      <TouchableOpacity onPress={() => navigation.push("FlowBasic1BaseScrn")} style={styles.logButton}>
+      <TouchableOpacity
+        onPress={() => {
+          if (children.length === 0) {
+            Alert.alert(
+              "No children added",
+              "It looks like no children are added. Please add a child first.",
+              [
+                {
+                  text: "Add child",
+                  onPress: () => navigation.navigate("Settings"),
+                },
+                {
+                  text: "Dismiss",
+                  style: "cancel",
+                },
+              ]
+            );
+            return;
+          }
+          navigation.push("FlowBasic1BaseScrn");
+        }}
+        style={styles.logButton}
+      >
         {/* <Feather name="edit-3" size={42} color="#EAA987" /> */}
         <SimpleLineIcons name="pencil" size={50} color="#EAA987" />
         <Text style={styles.logText}>Log Today</Text>
