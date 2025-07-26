@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Modal, View, Text, StyleSheet, Animated, Easing, Dimensions } from 'react-native';
+import { Modal, View, Text, StyleSheet, Animated, Easing, Dimensions, TouchableWithoutFeedback } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 const DOT_COUNT = 4;
@@ -136,22 +136,24 @@ const AffirmationModal: React.FC<AffirmationModalProps> = ({
       animationType="fade"
       onRequestClose={onRequestClose}
     >
-      <View style={styles.overlay}>
-        <View style={styles.card}>
-          <Ionicons name="heart" size={44} color="#FF6F61" style={{ marginBottom: 12 }} />
-          <Animated.Text
-            style={[
-              styles.affirmationText,
-              { opacity: fadeAnim },
-            ]}
-            accessibilityRole="text"
-          >
-            {affirmations[currentIdx]}
-          </Animated.Text>
-          <Text style={{fontSize: 12, marginTop: -25}}>Your PDF Export is being generated</Text>
-          <View style={styles.dotsRow}>{dotNodes}</View>
+      <TouchableWithoutFeedback onPress={onRequestClose}>
+        <View style={styles.overlay}>
+          <View style={styles.card}>
+            <Ionicons name="heart" size={44} color="#FF6F61" style={{ marginBottom: 12 }} />
+            <Animated.Text
+              style={[
+                styles.affirmationText,
+                { opacity: fadeAnim },
+              ]}
+              accessibilityRole="text"
+            >
+              {affirmations[currentIdx]}
+            </Animated.Text>
+            <Text style={{fontSize: 12, marginTop: -25}}>Your PDF Export is being generated</Text>
+            <View style={styles.dotsRow}>{dotNodes}</View>
+          </View>
         </View>
-      </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 };

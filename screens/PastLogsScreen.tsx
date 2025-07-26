@@ -1353,7 +1353,10 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
       <AffirmationModal
         visible={affirmationModalVisible}
         affirmations={AFFIRMATIONS}
-        onRequestClose={() => setAffirmationModalVisible(false)}
+        onRequestClose={() => {
+          setAffirmationModalVisible(false);
+          setSending(false);
+        }}
       />
       <TouchableOpacity
         style={styles.durationPicker}
