@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import SimpleLineIcons from '@expo/vector-icons/SimpleLineIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
+import { IS_DEBUGGING } from '../flag';
 
 interface SelectedChild {
   id: string;
@@ -112,6 +113,15 @@ export default function HomeScrn({navigation}: {navigation: any}) {
           </Text>
           <Ionicons name="chevron-down" size={20} color="#5B9AA0" />
         </TouchableOpacity>
+        {/* Development/Staging button */}
+        {IS_DEBUGGING && (
+        <TouchableOpacity
+          style={styles.devButton}
+          onPress={() => navigation.push("DummyLogGenerator")}
+        >
+          <Text style={styles.devButtonText}>🧪 Dev Tools</Text>
+        </TouchableOpacity>
+        )}
       </View>
     {/* <Button title="add data" onPress={() => {}}/> */}
       <TouchableOpacity onPress={() => navigation.push("FlowBasic1BaseScrn")} style={styles.logButton}>
@@ -216,6 +226,22 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: '#5B9AA0',
     marginRight: 8,
+    fontWeight: '600',
+  },
+  devButton: {
+    position: 'absolute',
+    top: 10,
+    right: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: '#5B9AA0',
+  },
+  devButtonText: {
+    fontSize: 12,
+    color: '#5B9AA0',
     fontWeight: '600',
   },
   logButton: {

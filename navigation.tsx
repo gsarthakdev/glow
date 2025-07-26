@@ -13,6 +13,7 @@ import FlowBasic1BaseScrn from "./main/FlowBasic1BaseScrn";
 import CelebrationScreen from './screens/CelebrationScreen';
 import PastLogsScreen from "./screens/PastLogsScreen";
 import SettingsScreen from "./screens/SettingsScreen";
+import DummyLogGenerator from "./DummyLogGenerator";
 
 const Stack = createNativeStackNavigator();
 
@@ -38,6 +39,7 @@ export function MainStack() {
             <Stack.Screen name="BottomTabsStack" component={BottomTabsStack} />
             <Stack.Screen name="FlowBasic1BaseScrn" component={FlowBasic1BaseScrn} />
             <Stack.Screen name="CelebrationScreen" component={CelebrationScreen} />
+            <Stack.Screen name="DummyLogGenerator" component={DummyLogGenerator} />
         </Stack.Navigator>
     );
 }
