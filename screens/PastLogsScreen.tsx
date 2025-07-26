@@ -5,7 +5,8 @@ import * as MailComposer from 'expo-mail-composer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts, PDFPage, PDFName, PDFString } from 'pdf-lib';
+import { Asset } from 'expo-asset';
 import { useFocusEffect } from '@react-navigation/native';
 import AffirmationModal from '../components/AffirmationModal';
 import { useEmailShare } from '../utils/useEmailShare';
@@ -905,6 +906,157 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
         tableY -= 15;
       }
     }
+
+    // --- Add footer with therapist contact and App Store link ---
+    const footerY = 40; // Position from bottom of page
+    const footerText = "Therapists, to have this report customized, email";
+    const therapistEmail = "begin@1700ventures.com";
+    const appStoreUrl = "https://apps.apple.com/us/app/glow-logs-that-light-the-way/id6748978131";
+    
+    // Calculate 50% width constraint for the links
+    const maxLinkWidth = width * 0.5;
+    const footerRightMargin = 20;
+    const footerRightEdge = width - footerRightMargin;
+    
+    // Helper function to word-wrap URL at natural break points
+    function wrapUrl(url: string, maxWidth: number, fontSize: number): string[] {
+      const parts = url.split('/');
+      const lines: string[] = [];
+      let currentLine = '';
+      
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        const testLine = currentLine ? currentLine + '/' + part : part;
+        const testWidth = font.widthOfTextAtSize(testLine, fontSize);
+        
+        if (testWidth > maxWidth && currentLine) {
+          lines.push(currentLine);
+          currentLine = part;
+        } else {
+          currentLine = testLine;
+        }
+      }
+      
+      if (currentLine) {
+        lines.push(currentLine);
+      }
+      
+      return lines;
+    }
+    
+    // Add Glow logo (small size)
+    // try {
+    //   const logoAsset = Asset.fromModule(require('../assets/icon.png'));
+    //   const logoUri = logoAsset.uri;
+    //   const logoBase64 = await FileSystem.readAsStringAsync(logoUri, { encoding: FileSystem.EncodingType.Base64 });
+    //   const logoImg = await pdfDoc.embedPng(logoBase64);
+      
+    //   // Draw logo (small size, positioned to the left of the text)
+    //   const logoSize = 16;
+    //   const logoX = footerRightEdge - 280; // Position logo to the left of text
+    //   const logoY = footerY - 8;
+      
+    //   page.drawImage(logoImg, {
+    //     x: logoX,
+    //     y: logoY,
+    //     width: logoSize,
+    //     height: logoSize,
+    //   });
+    // } catch (error) {
+    //   console.log('Could not load logo for PDF footer:', error);
+    // }
+    
+    // Helper function to wrap text at word boundaries
+    function wrapText(text: string, maxWidth: number, fontSize: number, font: any): string[] {
+      const words = text.split(' ');
+      const lines: string[] = [];
+      let currentLine = '';
+      
+      for (const word of words) {
+        const testLine = currentLine ? currentLine + ' ' + word : word;
+        const testWidth = font.widthOfTextAtSize(testLine, fontSize);
+        
+        if (testWidth > maxWidth && currentLine) {
+          lines.push(currentLine);
+          currentLine = word;
+        } else {
+          currentLine = testLine;
+        }
+      }
+      
+      if (currentLine) {
+        lines.push(currentLine);
+      }
+      
+      return lines;
+    }
+
+    // ---------- Footer Layout Helpers ----------
+    const footerStartX = 50; // Left margin for footer content
+    const logoWidth = 16;
+    const logoMargin = 8;
+    const availableTextWidth = footerRightEdge - footerStartX - 10; // dynamic available width
+    
+    // Wrap the footer text (therapist message)
+    const wrappedFooterLines = wrapText(footerText, availableTextWidth, 12, fontBold);
+    const footerLineHeight = 14;
+
+    wrappedFooterLines.forEach((line, index) => {
+      const lineWidth = fontBold.widthOfTextAtSize(line, 7);
+      page.drawText(sanitizePdfText(line), {
+        x: footerRightEdge - lineWidth, // right-aligned
+        y: footerY - (index * footerLineHeight),
+        size: 7,
+        font: fontBold,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+    });
+
+    // Place therapist email on the next line after wrapped text (also right-aligned)
+    const emailY = footerY - (wrappedFooterLines.length * footerLineHeight);
+    const emailWidthR = fontBold.widthOfTextAtSize(therapistEmail, 7);
+    page.drawText(sanitizePdfText(therapistEmail), {
+      x: footerRightEdge - emailWidthR,
+      y: emailY,
+      size: 7,
+      font: fontBold,
+      color: rgb(0, 0, 1),
+    });
+ 
+    // Draw "See Glow App" hyperlink text and add actual link annotation
+    const appLinkText = "See Glow App";
+    const appLinkWidth = font.widthOfTextAtSize(appLinkText, 10);
+    const appLinkX = footerRightEdge - appLinkWidth; // right aligned
+    const appLinkY = emailY - footerLineHeight;
+
+    page.drawText(sanitizePdfText(appLinkText), {
+      x: appLinkX,
+      y: appLinkY,
+      size: 10,
+      font: font,
+      color: rgb(0, 0, 1),
+    });
+
+    // ---------- Hyperlink annotation for "See Glow App" ----------
+    // @ts-ignore - low-level annotation creation
+    const linkAnnot = pdfDoc.context.obj({
+      Type: 'Annot',
+      Subtype: 'Link',
+      Rect: [appLinkX, appLinkY, appLinkX + appLinkWidth, appLinkY + 12],
+      Border: [0, 0, 0],
+      A: {
+        Type: 'Action',
+        S: 'URI',
+        URI: PDFString.of(appStoreUrl),
+      },
+    });
+
+    // @ts-ignore - attach annotation to page
+    const annots = page.node.lookup(PDFName.of('Annots')) || pdfDoc.context.obj([]);
+    // @ts-ignore
+    annots.push(linkAnnot);
+    // @ts-ignore
+    page.node.set(PDFName.of('Annots'), annots);
   }
 
   // Create both pages
@@ -1004,7 +1156,7 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
     "Your effort is seen and appreciated.",
     "Even on tough days, your heart shines through.",
   ];
-  function shuffleArray(array) {
+  function shuffleArray(array: string[]) {
     const shuffled = [...array]; // Create a copy to avoid mutating the original
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1)); // random index from 0 to i
