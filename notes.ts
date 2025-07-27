@@ -12,6 +12,9 @@ https://docs.expo.dev/more/expo-cli/
 App store steps:
 eas build --platform ios                                                 
 eas submit -p ios --latest       
+
+Use this line to submit automatically:
+eas build --platform ios --auto-submit
 */
 
 /*

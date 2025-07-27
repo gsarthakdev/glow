@@ -13,10 +13,27 @@ import { useAsyncStorage } from './hooks/useAsyncStorage';
 import TestScreen from './TestScreen';
 import { NavigationContainer } from '@react-navigation/native';
 import { writeAsyncStorageToFile } from './utils/asyncStorageUtils';
+import * as Updates from "expo-updates";
+import { IS_DEBUGGING } from './flag';
 
 export default function App() {
   const onboardingStatus = useAsyncStorage('onboarding_completed');
   const [isOnboardingCompleted, setIsOnboardingCompleted] = useState<boolean | null>(null);
+
+  async function onFetchUpdateAsync() {
+    try {
+      const update = await Updates.checkForUpdateAsync();
+
+      if (update.isAvailable) {
+        await Updates.fetchUpdateAsync();
+        await Updates.reloadAsync();
+      }
+    } catch (error) {
+      // We can also add an alert() to see the error message in case of an error when fetching updates.
+      console.error(`Error fetching latest app update: ${error}`);
+    }
+  }
+  
   const clearAsyncStorage = async () => {
     try {
       await AsyncStorage.clear();
@@ -33,7 +50,8 @@ export default function App() {
   // clearAsyncStorage();
   useEffect(() => {
     setIsOnboardingCompleted(onboardingStatus === 'true');
-    doIt();
+    onFetchUpdateAsync();
+    IS_DEBUGGING && doIt();
   }, [onboardingStatus]);
 
   if (isOnboardingCompleted === null) {
