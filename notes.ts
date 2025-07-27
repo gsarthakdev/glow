@@ -15,6 +15,9 @@ eas submit -p ios --latest
 
 Use this line to submit automatically:
 eas build --platform ios --auto-submit
+
+Create development build:
+eas build --platform ios --profile development 
 */
 
 /*

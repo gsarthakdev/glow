@@ -2,15 +2,16 @@ import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-// Configure notification behavior
+// Configure notification behavior - simplified to prevent immediate triggers
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
+  handleNotification: async () => {
+    return {
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+    };
+  },
 });
 
 interface Child {
@@ -143,143 +144,114 @@ class NotificationService {
 
   async schedulePersonalizedReminder(): Promise<void> {
     try {
-      // Get all children
-      const keys = await AsyncStorage.getAllKeys();
-      const childKeys = keys.filter(key => 
-        key !== 'onboarding_completed' && 
-        key !== 'current_selected_child' && 
-        key !== 'daily_reminder_enabled'
-      );
+      console.log('Scheduling daily reminder for 1:57 AM...');
       
-      const childData = await AsyncStorage.multiGet(childKeys);
-      const children: Child[] = childData
-        .map(([key, value]) => {
-          if (!value) return null;
-          const data = JSON.parse(value);
-          if (data.is_deleted) return null;
-          return {
-            id: key,
-            child_uuid: data.child_uuid,
-            child_name: data.child_name_capitalized,
-            pronouns: data.pronouns || '',
-          };
-        })
-        .filter(Boolean) as Child[];
-
-      if (children.length === 0) return;
-
-      // Check today's date
-      const today = new Date().toISOString().split('T')[0];
-      const childrenWithoutLogs: Child[] = [];
-      const childrenWithLogs: { child: Child; hasPositive: boolean; hasNegative: boolean }[] = [];
-
-      // Check each child's logs for today
-      for (const child of children) {
-        const childDataStr = await AsyncStorage.getItem(child.id);
-        if (!childDataStr) continue;
+      // Get current time
+      const now = new Date();
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+      
+      console.log(`Current time: ${currentHour}:${currentMinute}`);
+      console.log(`Target time: 2:18`);
+      
+      // Check if target time has already passed today
+      const targetHour = 20;
+      const targetMinute = 30;
+      
+      const currentTimeInMinutes = currentHour * 60 + currentMinute;
+      const targetTimeInMinutes = targetHour * 60 + targetMinute;
+      
+      console.log(`Current time in minutes: ${currentTimeInMinutes}`);
+      console.log(`Target time in minutes: ${targetTimeInMinutes}`);
+      
+      if (currentTimeInMinutes >= targetTimeInMinutes) {
+        console.log('Target time has already passed today. Scheduling for tomorrow.');
+        // Schedule for tomorrow by adding 24 hours
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(targetHour, targetMinute, 0, 0);
         
-        const childData = JSON.parse(childDataStr);
-        const positiveLogs: Log[] = childData.completed_logs?.flow_basic_1_positive || [];
-        const negativeLogs: Log[] = childData.completed_logs?.flow_basic_1_negative || [];
+        console.log(`Scheduling for tomorrow at: ${tomorrow.toLocaleString()}`);
         
-        const todayPositiveLogs = positiveLogs.filter((log: Log) => 
-          log.timestamp.startsWith(today)
-        );
-        const todayNegativeLogs = negativeLogs.filter((log: Log) => 
-          log.timestamp.startsWith(today)
-        );
-        
-        if (todayPositiveLogs.length === 0 && todayNegativeLogs.length === 0) {
-          childrenWithoutLogs.push(child);
-        } else {
-          childrenWithLogs.push({
-            child,
-            hasPositive: todayPositiveLogs.length > 0,
-            hasNegative: todayNegativeLogs.length > 0
-          });
-        }
-      }
-
-      // Cancel any existing reminders first
-      await this.cancelDailyReminder();
-
-      // Send appropriate notification
-      if (childrenWithoutLogs.length > 0) {
-        // Send reminder for children without logs
-        const childNames = childrenWithoutLogs.map(c => c.child_name).join(', ');
-        const message = childrenWithoutLogs.length === 1 
-          ? `Reminder to make a log for ${childNames}!`
-          : `Reminder to make a log for ${childNames}!`;
-        
-        await Notifications.scheduleNotificationAsync({
+        const notificationId = await Notifications.scheduleNotificationAsync({
           content: {
             title: "Daily Log Reminder",
-            body: message,
+            body: "Time to log your child's behavior for today",
             data: { type: 'daily_reminder' },
           },
-          trigger: {
-            hour: 20,
-            minute: 30,
-            repeats: true,
-          } as any,
+          trigger: tomorrow as unknown as Notifications.NotificationTriggerInput,
         });
-      } else if (childrenWithLogs.length > 0) {
-        // Send congratulatory message for children with logs
-        const childNames = childrenWithLogs.map(c => c.child.child_name).join(', ');
-        const hasPositive = childrenWithLogs.some(c => c.hasPositive);
-        const hasNegative = childrenWithLogs.some(c => c.hasNegative);
         
-        let message = `Great job on logging today for ${childNames}!`;
-        if (hasPositive && hasNegative) {
-          message += " You tracked both positive and challenging moments.";
-        } else if (hasPositive) {
-          message += " You captured some wonderful positive moments.";
-        } else if (hasNegative) {
-          message += " You documented important challenging moments.";
-        }
-        
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: "Great Job! 🌟",
-            body: message,
-            data: { type: 'daily_reminder' },
-          },
-          trigger: {
-            hour: 20,
-            minute: 30,
-            repeats: true,
-          } as any,
-        });
+        console.log('Daily reminder scheduled for tomorrow with ID:', notificationId);
       } else {
-        // Fallback for edge cases
-        await Notifications.scheduleNotificationAsync({
+        console.log('Target time is in the future today. Scheduling normally.');
+        
+        // Cancel any existing daily reminders first
+        await this.cancelDailyReminder();
+        
+        // Schedule a simple daily reminder at 2:18 AM
+        const notificationId = await Notifications.scheduleNotificationAsync({
           content: {
-            title: "Time to log your child's behavior",
-            body: "Don't forget to track today's important moments",
+            title: "Daily Log Reminder",
+            body: "Time to log your child's behavior for today",
             data: { type: 'daily_reminder' },
           },
           trigger: {
-            hour: 20,
-            minute: 30,
-            repeats: true,
-          } as any,
+             type: 'calendar',
+             hour: targetHour,
+             minute: targetMinute,
+             second: 0,
+             repeats: true,
+             ...(Platform.OS === 'android' ? { channelId: 'daily-reminders' } : {}),
+          } as Notifications.CalendarTriggerInput,
         });
+        
+        console.log('Daily reminder scheduled for today with ID:', notificationId);
       }
+      
+      // Wait a moment and check if notification was stored
+      setTimeout(async () => {
+        const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
+        console.log('Scheduled notifications after delay:', scheduledNotifications.length);
+        scheduledNotifications.forEach((notification, index) => {
+          console.log(`Notification ${index + 1}:`, {
+            id: notification.identifier,
+            title: notification.content.title,
+            trigger: notification.trigger,
+          });
+        });
+      }, 1000);
+      
     } catch (error) {
-      console.error('Failed to schedule personalized reminder:', error);
-      // Fallback to simple reminder
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: "Time to log your child's behavior",
-          body: "Don't forget to track today's important moments",
-          data: { type: 'daily_reminder' },
-        },
-        trigger: {
-          hour: 20,
-          minute: 30,
-          repeats: true,
-        } as any,
+      console.error('Failed to schedule daily reminder:', error);
+    }
+  }
+
+  async checkNotificationStatus(): Promise<void> {
+    try {
+      console.log('=== Notification Status Check ===');
+      
+      // Check permissions
+      const { status } = await Notifications.getPermissionsAsync();
+      console.log('Notification permission status:', status);
+      
+      // Check scheduled notifications
+      const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
+      console.log('Number of scheduled notifications:', scheduledNotifications.length);
+      
+      scheduledNotifications.forEach((notification, index) => {
+        console.log(`Notification ${index + 1}:`, {
+          id: notification.identifier,
+          title: notification.content.title,
+          body: notification.content.body,
+          data: notification.content.data,
+          trigger: notification.trigger,
+        });
       });
+      
+      console.log('=== End Status Check ===');
+    } catch (error) {
+      console.error('Error checking notification status:', error);
     }
   }
 }

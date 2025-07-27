@@ -72,9 +72,14 @@ export default function SettingsScreen() {
 
   const handleNotificationToggle = async (value: boolean) => {
     try {
+      console.log('Notification toggle called with value:', value);
+      
       if (value) {
         // Enable notifications
+        console.log('Requesting notification permissions...');
         const permissionGranted = await notificationService.requestPermissionsWithExplanation();
+        console.log('Permission granted:', permissionGranted);
+        
         if (!permissionGranted) {
           Alert.alert(
             'Permission Required',
@@ -84,7 +89,25 @@ export default function SettingsScreen() {
           return;
         }
         
+        console.log('Scheduling daily reminder...');
         await notificationService.scheduleDailyReminder();
+        console.log('Daily reminder scheduled successfully');
+        
+        // Check notification status after scheduling
+        await notificationService.checkNotificationStatus();
+        
+        // Check again after 3 seconds to see if notifications persist
+        setTimeout(async () => {
+          console.log('=== 3-second follow-up check ===');
+          await notificationService.checkNotificationStatus();
+        }, 3000);
+        
+        // Check again after 10 seconds
+        setTimeout(async () => {
+          console.log('=== 10-second follow-up check ===');
+          await notificationService.checkNotificationStatus();
+        }, 10000);
+        
         setDailyReminderEnabled(true);
         Alert.alert(
           'Reminders Enabled',
@@ -93,7 +116,9 @@ export default function SettingsScreen() {
         );
       } else {
         // Disable notifications
+        console.log('Cancelling daily reminders...');
         await notificationService.cancelDailyReminder();
+        console.log('Daily reminders cancelled');
         setDailyReminderEnabled(false);
       }
     } catch (error) {
