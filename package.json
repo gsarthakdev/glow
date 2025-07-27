@@ -19,12 +19,17 @@
     "@react-navigation/native-stack": "^7.3.13",
     "@shopify/react-native-skia": "^2.0.1",
     "expo": "~53.0.9",
+    "expo-background-task": "^0.2.8",
     "expo-blur": "~14.1.4",
+    "expo-dev-client": "~5.2.4",
     "expo-file-system": "~18.1.10",
     "expo-haptics": "~14.1.4",
     "expo-linear-gradient": "~14.1.4",
     "expo-mail-composer": "^14.1.4",
+    "expo-notifications": "^0.31.4",
+    "expo-sharing": "~13.1.5",
     "expo-status-bar": "~2.2.3",
+    "expo-updates": "~0.28.17",
     "pdf-lib": "^1.17.1",
     "react": "19.0.0",
     "react-native": "0.79.2",
@@ -40,9 +45,7 @@
     "react-native-screens": "~4.10.0",
     "react-native-svg": "15.11.2",
     "react-native-vector-icons": "^10.2.0",
-    "uuid": "^11.1.0",
-    "expo-sharing": "~13.1.5",
-    "expo-updates": "~0.28.17"
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
