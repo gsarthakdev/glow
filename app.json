@@ -2,7 +2,7 @@
   "expo": {
     "name": "Glow",
     "slug": "glow",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -30,6 +30,12 @@
       "eas": {
         "projectId": "6f3061a7-4940-4d3a-aeec-e9d3618780ee"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/6f3061a7-4940-4d3a-aeec-e9d3618780ee"
     }
   }
 }
