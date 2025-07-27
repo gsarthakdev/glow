@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, FlatList, TextInput, Alert, Platform, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Platform as RNPlatform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, FlatList, TextInput, Alert, Platform, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Platform as RNPlatform, Switch } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { v4 as uuidv4 } from 'uuid';
 import { flow_basic_1 } from '../flows/flow_basic_1';
+import notificationService from '../utils/notificationService';
 
 interface Child {
   id: string;
@@ -27,15 +28,21 @@ export default function SettingsScreen() {
   const [editPronoun, setEditPronoun] = useState('');
   const [editShowCustomPronoun, setEditShowCustomPronoun] = useState(false);
   const [editCustomPronoun, setEditCustomPronoun] = useState('');
+  const [dailyReminderEnabled, setDailyReminderEnabled] = useState(false);
 
   useEffect(() => {
     loadChildren();
+    loadNotificationSettings();
   }, []);
 
   const loadChildren = async () => {
     try {
       const keys = await AsyncStorage.getAllKeys();
-      const childKeys = keys.filter(key => key !== 'onboarding_completed' && key !== 'current_selected_child');
+      const childKeys = keys.filter(key => 
+        key !== 'onboarding_completed' && 
+        key !== 'current_selected_child' && 
+        key !== 'daily_reminder_enabled'
+      );
       const childData = await AsyncStorage.multiGet(childKeys);
       const childDetails = childData.map(([key, value]) => {
         if (!value) return null;
@@ -54,6 +61,47 @@ export default function SettingsScreen() {
     }
   };
 
+  const loadNotificationSettings = async () => {
+    try {
+      const enabled = await notificationService.isReminderEnabled();
+      setDailyReminderEnabled(enabled);
+    } catch (error) {
+      console.error('Error loading notification settings:', error);
+    }
+  };
+
+  const handleNotificationToggle = async (value: boolean) => {
+    try {
+      if (value) {
+        // Enable notifications
+        const permissionGranted = await notificationService.requestPermissionsWithExplanation();
+        if (!permissionGranted) {
+          Alert.alert(
+            'Permission Required',
+            'To receive daily reminders, please enable notifications in your device settings.',
+            [{ text: 'OK' }]
+          );
+          return;
+        }
+        
+        await notificationService.scheduleDailyReminder();
+        setDailyReminderEnabled(true);
+        Alert.alert(
+          'Reminders Enabled',
+          'You will receive daily reminders at 8:30 PM to log your child\'s behavior.',
+          [{ text: 'Great!' }]
+        );
+      } else {
+        // Disable notifications
+        await notificationService.cancelDailyReminder();
+        setDailyReminderEnabled(false);
+      }
+    } catch (error) {
+      console.error('Error toggling notifications:', error);
+      Alert.alert('Error', 'Failed to update notification settings.');
+    }
+  };
+
   const handleAddChild = async () => {
     const pronounToSave = newChildPronouns === 'Other' ? customPronoun.trim() : newChildPronouns.trim();
     if (!newChildName.trim() || !pronounToSave) {
@@ -69,7 +117,8 @@ export default function SettingsScreen() {
         logs: [],
         flow_basic_1: flow_basic_1,
         completed_logs: {
-          flow_basic_1: []
+          flow_basic_1_positive: [],
+          flow_basic_1_negative: []
         },
         is_deleted: false,
         child_name: newChildName.trim().toLowerCase(),
@@ -80,6 +129,28 @@ export default function SettingsScreen() {
         child_uuid: uuid,
       };
       await AsyncStorage.setItem(key, JSON.stringify(value));
+      
+      // Request notification permissions if this is the first child (non-blocking)
+      if (children.length === 0) {
+        setTimeout(async () => {
+          try {
+            const permissionGranted = await notificationService.requestPermissionsWithExplanation();
+            if (permissionGranted) {
+              // Enable daily reminders by default
+              await notificationService.scheduleDailyReminder();
+              setDailyReminderEnabled(true);
+              Alert.alert(
+                'Notifications Enabled',
+                'Great! You\'ll receive daily reminders at 8:30 PM to log your child\'s behavior.',
+                [{ text: 'Perfect!' }]
+              );
+            }
+          } catch (notificationError) {
+            console.error('Failed to setup notifications:', notificationError);
+          }
+        }, 500); // Small delay to ensure child is saved first
+      }
+      
       setIsAddModalVisible(false);
       setNewChildName('');
       setNewChildPronouns('');
@@ -126,8 +197,33 @@ export default function SettingsScreen() {
       style={styles.background}
     >
       <View style={styles.header}>
-        <Text style={styles.title}>Manage Children</Text>
-        <Text style={styles.subtitle}>Add or remove children you want to track.</Text>
+        <Text style={styles.title}>Settings</Text>
+        <Text style={styles.subtitle}>Manage your children and app preferences.</Text>
+      </View>
+
+      {/* Notification Settings Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Daily Reminders</Text>
+        <View style={styles.settingRow}>
+        <View style={styles.settingInfo}>
+          <Text style={styles.settingLabel}>Daily Log Reminders</Text>
+          <Text style={styles.settingDescription}>
+            Receive a daily reminder at 8:30 PM to log your child's behavior
+          </Text>
+        </View>
+        <Switch
+          value={dailyReminderEnabled}
+          onValueChange={handleNotificationToggle}
+          trackColor={{ false: '#E0E0E0', true: '#5B9AA0' }}
+          thumbColor={dailyReminderEnabled ? '#fff' : '#f4f3f4'}
+        />
+      </View>
+      </View>
+
+      {/* Children Management Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Manage Children</Text>
+        <Text style={styles.sectionSubtitle}>Add or remove children you want to track.</Text>
       </View>
       <FlatList
         data={children}
@@ -552,5 +648,56 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 20,
     backgroundColor: '#E8F3F4',
+  },
+  section: {
+    width: '100%',
+    paddingHorizontal: 24,
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#3E3E6B',
+    marginBottom: 8,
+  },
+  sectionSubtitle: {
+    fontSize: 15,
+    color: '#5B9AA0',
+    marginBottom: 16,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#E8F3F4',
+    borderRadius: 18,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#5B9AA0',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#5B9AA0',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  settingInfo: {
+    flex: 1,
+    marginRight: 10,
+  },
+  settingLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#3E3E6B',
+  },
+  settingDescription: {
+    fontSize: 14,
+    color: '#5B9AA0',
+    marginTop: 2,
   },
 });

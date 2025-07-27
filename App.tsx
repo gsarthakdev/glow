@@ -15,6 +15,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { writeAsyncStorageToFile } from './utils/asyncStorageUtils';
 import * as Updates from "expo-updates";
 import { IS_DEBUGGING } from './flag';
+import notificationService from './utils/notificationService';
 
 export default function App() {
   const onboardingStatus = useAsyncStorage('onboarding_completed');
@@ -52,6 +53,15 @@ export default function App() {
     setIsOnboardingCompleted(onboardingStatus === 'true');
     onFetchUpdateAsync();
     IS_DEBUGGING && doIt();
+    
+    // Initialize notification system (non-blocking)
+    setTimeout(async () => {
+      try {
+        await notificationService.initialize();
+      } catch (error) {
+        console.error('Failed to initialize notifications:', error);
+      }
+    }, 2000); // Delay to ensure app is fully loaded
   }, [onboardingStatus]);
 
   if (isOnboardingCompleted === null) {
