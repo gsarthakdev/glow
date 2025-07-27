@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, Pressable, Platform } from 'react-native'
 import { SimpleLineIcons } from '@expo/vector-icons'
 import { useNavigation } from '@react-navigation/native'
 
-const Header = ({ onBackPress, hideBackButton  }: { onBackPress?: () => void, hideBackButton?: boolean }) => {
+const Header = ({ onBackPress, hideBackButton, subtext  }: { onBackPress?: () => void, hideBackButton?: boolean, subtext?: string }) => {
   const navigation = useNavigation();
   return (
     <View style={styles.container}>
@@ -11,7 +11,8 @@ const Header = ({ onBackPress, hideBackButton  }: { onBackPress?: () => void, hi
       </Pressable>
       <View style={styles.textContainer}>
         <Text style={styles.title}>glow</Text>
-        <Text style={styles.tagline}>Illuminate patterns, empower progress</Text>
+        {/* <Text style={styles.tagline}>Illuminate patterns, empower progress</Text> */}
+        <Text style={styles.tagline}>{subtext}</Text>
       </View>
       {/* Spacer to balance the arrow icon on the right */}
       <View style={styles.iconContainer} />

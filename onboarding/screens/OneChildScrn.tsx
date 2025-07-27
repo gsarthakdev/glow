@@ -49,7 +49,7 @@ const OneChildScrn = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <Provider>
-        <Header onBackPress={() => {/* your navigation logic here */}} />
+        <Header onBackPress={() => {/* your navigation logic here */}} subtext="Last step, then you can start logging" />
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.content}>
             <View style={styles.textContainer}>

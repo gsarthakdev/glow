@@ -7,7 +7,7 @@ export default function ChildrenCountScrn({ navigation }: { navigation: any }) {
   const PRIVACY_POLICY_URL = "https://docs.google.com/document/d/1xth4Opaqo07Z-7QT4OeBpIXzefdVxJR6dikuO-BzMFk/edit?usp=sharing"
   return (
     <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: "#EAE4CF" }}>
-      <Header hideBackButton={true} />
+      <Header hideBackButton={true} subtext="Let's set up your little star ⭐️" />
       {/* <Text>How many children are receiving therapy?</Text> */}
       <View style={{ flex: 1, marginTop: 30 }}>
 
