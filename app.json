@@ -14,7 +14,10 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.1700ventures.glow"
+      "bundleIdentifier": "com.1700ventures.glow",
+      "infoPlist": {
+        "NSUserNotificationsUsageDescription": "One reminder to make a log. This can be turned off any time."
+      }
     },
     "android": {
       "adaptiveIcon": {
