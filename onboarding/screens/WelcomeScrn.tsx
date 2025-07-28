@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -129,7 +129,11 @@ export default function WelcomeScrn({ navigation }: { navigation: any }) {
         {/* Logo */}
         <Animated.View style={[styles.logoContainer, logoAnimatedStyle]}>
           <View style={styles.logoGlow} />
-          <Ionicons name="sparkles" size={72} color="#007AFF" />
+          <Image 
+            source={require('../../screens/app_logo.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
         </Animated.View>
 
         {/* Text */}
@@ -187,11 +191,16 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
-    shadowColor: '#007AFF',
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    shadowColor: '#FFD700',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3,
     shadowRadius: 20,
+  },
+  logoImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 25,
   },
   textContainer: {
     alignItems: 'center',
