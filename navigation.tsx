@@ -21,7 +21,10 @@ const Stack = createNativeStackNavigator();
 export function OnboardingStack() {
     return (
         <Stack.Navigator
-          screenOptions={{ headerShown: false }}
+          screenOptions={{ 
+            headerShown: false,
+            animation: 'none'
+          }}
           initialRouteName="WelcomeScrn"
         >
             <Stack.Screen name="WelcomeScrn" component={WelcomeScrn} />

@@ -27,6 +27,13 @@ export default function WelcomeScrn({ navigation }: { navigation: any }) {
   const buttonScale = useSharedValue(0.8);
   const backgroundOpacity = useSharedValue(0);
   const gradientProgress = useSharedValue(0);
+  const transitionScale = useSharedValue(1);
+  const transitionOpacity = useSharedValue(1);
+  const rippleScale = useSharedValue(0);
+  const rippleOpacity = useSharedValue(0);
+  const contentScale = useSharedValue(1);
+  const contentOpacity = useSharedValue(1);
+  const contentTranslateY = useSharedValue(0);
 
   useEffect(() => {
     // Apple-style entrance sequence
@@ -68,7 +75,7 @@ export default function WelcomeScrn({ navigation }: { navigation: any }) {
           true
         );
       }, 600); // Start pulsing after the spring animation completes
-    }, 2800);
+    }, 3200); // Delayed to appear after text animation
   }, []);
 
   const logoAnimatedStyle = useAnimatedStyle(() => ({
@@ -105,15 +112,53 @@ export default function WelcomeScrn({ navigation }: { navigation: any }) {
     };
   });
 
+  const transitionAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: transitionScale.value }],
+    opacity: transitionOpacity.value,
+  }));
+
+  const rippleAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: rippleScale.value }],
+    opacity: rippleOpacity.value,
+  }));
+
+  const contentAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: contentScale.value },
+      { translateY: contentTranslateY.value }
+    ],
+    opacity: contentOpacity.value,
+  }));
+
   const handleTap = () => {
     Haptics.selectionAsync();
-    navigation.replace('ChildrenCountScrn');
+    
+    // Start immersive transition animation
+    rippleOpacity.value = withTiming(1, { duration: 150 });
+    rippleScale.value = withTiming(1, { duration: 600 });
+    
+    // Animate all screen elements together with smoother timing
+    setTimeout(() => {
+      // Background zoom and fade
+      transitionScale.value = withTiming(1.3, { duration: 800 });
+      transitionOpacity.value = withTiming(0, { duration: 800 });
+      
+      // Content elements fade out and scale down smoothly
+      contentScale.value = withTiming(0.7, { duration: 800 });
+      contentOpacity.value = withTiming(0, { duration: 800 });
+      contentTranslateY.value = withTiming(-30, { duration: 800 });
+    }, 300);
+    
+    // Navigate after animation completes (slightly extended for smoothness)
+    setTimeout(() => {
+      navigation.replace('ChildrenCountScrn');
+    }, 1300);
   };
 
   return (
     <View style={styles.container}>
-      {/* Animated gradient background */}
-      <Animated.View style={[styles.background, backgroundAnimatedStyle]}>
+      {/* Animated gradient background with transition */}
+      <Animated.View style={[styles.background, backgroundAnimatedStyle, transitionAnimatedStyle]}>
         <Animated.View style={[styles.gradientContainer, gradientAnimatedStyle]}>
           <LinearGradient
             colors={["#FFE5D9", "#E8D5F2", "#FFF8E1", "#E3F2FD"]}
@@ -124,8 +169,11 @@ export default function WelcomeScrn({ navigation }: { navigation: any }) {
         </Animated.View>
       </Animated.View>
 
+      {/* Ripple overlay */}
+      <Animated.View style={[styles.rippleOverlay, rippleAnimatedStyle]} />
+
       {/* Center content */}
-      <View style={styles.content}>
+      <Animated.View style={[styles.content, contentAnimatedStyle]}>
         {/* Logo */}
         <Animated.View style={[styles.logoContainer, logoAnimatedStyle]}>
           <View style={styles.logoGlow} />
@@ -141,7 +189,7 @@ export default function WelcomeScrn({ navigation }: { navigation: any }) {
           <Text style={styles.title}>Welcome to Glow</Text>
           <Text style={styles.subtitle}>Your space to support, reflect, and grow — together.</Text>
         </Animated.View>
-      </View>
+      </Animated.View>
 
       {/* Button */}
       <Animated.View style={[styles.buttonContainer, buttonAnimatedStyle]}>
@@ -172,6 +220,16 @@ const styles = StyleSheet.create({
     right: -20,
     top: -20,
     bottom: -20,
+  },
+  rippleOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: width,
+    transform: [{ scale: 0 }],
   },
   content: {
     flex: 1,
