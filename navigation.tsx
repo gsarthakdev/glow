@@ -1,6 +1,7 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import ChildrenCountScrn from "./onboarding/screens/ChildrenCountScrn";
+import WelcomeScrn from "./onboarding/screens/WelcomeScrn";
 import OneChildScrn from "./onboarding/screens/OneChildScrn";
 import MultiChildScrn from "./onboarding/screens/MultiChildScrn";
 import HomeScrn from "./main/HomeScrn";
@@ -21,8 +22,9 @@ export function OnboardingStack() {
     return (
         <Stack.Navigator
           screenOptions={{ headerShown: false }}
-          initialRouteName="ChildrenCountScrn"
+          initialRouteName="WelcomeScrn"
         >
+            <Stack.Screen name="WelcomeScrn" component={WelcomeScrn} />
             <Stack.Screen name="ChildrenCountScrn" component={ChildrenCountScrn} />
             <Stack.Screen name="OneChildScrn" component={OneChildScrn} />
             <Stack.Screen name="MultiChildScrn" component={MultiChildScrn} />
