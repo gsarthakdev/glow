@@ -75,7 +75,7 @@ export default function WelcomeScrn({ navigation }: { navigation: any }) {
           true
         );
       }, 600); // Start pulsing after the spring animation completes
-    }, 3200); // Delayed to appear after text animation
+    }, 2800); // Slightly sooner to appear just after text animation
   }, []);
 
   const logoAnimatedStyle = useAnimatedStyle(() => ({
@@ -88,9 +88,18 @@ export default function WelcomeScrn({ navigation }: { navigation: any }) {
     transform: [{ translateY: textTranslateY.value }],
   }));
 
+  // Button entrance/pulse controls only scale; opacity is managed in combined style below
   const buttonAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: buttonOpacity.value,
     transform: [{ scale: buttonScale.value }],
+  }));
+
+  // Combined style so button obeys both entrance timing and exit travel animation
+  const buttonContainerAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: buttonOpacity.value * contentOpacity.value,
+    transform: [
+      { scale: buttonScale.value * contentScale.value },
+      { translateY: contentTranslateY.value },
+    ],
   }));
 
   const backgroundAnimatedStyle = useAnimatedStyle(() => ({
@@ -192,7 +201,7 @@ export default function WelcomeScrn({ navigation }: { navigation: any }) {
       </Animated.View>
 
       {/* Button */}
-      <Animated.View style={[styles.buttonContainer, buttonAnimatedStyle]}>
+      <Animated.View style={[styles.buttonContainer, buttonContainerAnimatedStyle]}>
         <TouchableOpacity
           style={styles.button}
           onPress={handleTap}
