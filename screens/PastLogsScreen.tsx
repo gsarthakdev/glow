@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Platform, SafeAreaView, Linking, Pressable, Switch } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Platform, SafeAreaView, Linking, Pressable, Switch, Dimensions } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import * as MailComposer from 'expo-mail-composer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -1125,6 +1125,12 @@ function getProviderByKey(key: string) {
   return EMAIL_APPS.find(app => app.key === key) || EMAIL_APPS[EMAIL_APPS.length - 1];
 }
 
+// Responsive constants (top-level so StyleSheet can use them)
+const isTablet = Dimensions.get('window').width >= 768;
+const DAY_SIZE = isTablet ? 70 : 52;
+const DAY_FONT_SIZE = isTablet ? 22 : 18;
+const CALENDAR_WIDTH: number | string = isTablet ? 650 : '100%';
+
 export default function PastLogsScreen({ navigation }: { navigation: any }) {
   const [selectedDuration, setSelectedDuration] = useState('This Week');
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -1400,7 +1406,7 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
           textDayHeaderFontSize: 14,
           textDayHeaderFontWeight: '600',
         }}
-        style={styles.calendar}
+        style={[styles.calendar, isTablet && { width: CALENDAR_WIDTH as any }]}
         dayComponent={({ date, state, marking }) => {
           // Extend marking type to include count
           const typedMarking = marking as (typeof marking & { count?: number });
@@ -1559,13 +1565,14 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: '#fff',
+    alignSelf: 'center',
   },
   dayContainer: {
-    width: 52,
-    height: 52,
+    width: DAY_SIZE,
+    height: DAY_SIZE,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 12,
+    borderRadius: DAY_SIZE / 4,
     margin: 2,
     backgroundColor: '#fff',
   },
@@ -1575,7 +1582,7 @@ const styles = StyleSheet.create({
     borderColor: '#4CAF50',
   },
   dayText: {
-    fontSize: 18,
+    fontSize: DAY_FONT_SIZE,
     fontWeight: '600',
     color: '#3E3E6B',
   },

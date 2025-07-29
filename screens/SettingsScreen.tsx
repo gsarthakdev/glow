@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, FlatList, TextInput, Alert, Platform, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Platform as RNPlatform, Switch } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, FlatList, TextInput, Alert, Platform, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Platform as RNPlatform, Switch, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { v4 as uuidv4 } from 'uuid';
 import { flow_basic_1 } from '../flows/flow_basic_1';
 import notificationService from '../utils/notificationService';
+
+// Detect if the device is an iPad/tablet based on screen width
+const isTablet = Dimensions.get('window').width >= 768;
 
 interface Child {
   id: string;
@@ -253,7 +256,7 @@ export default function SettingsScreen() {
       <FlatList
         data={children}
         keyExtractor={item => item.id}
-        style={{ width: '100%' }}
+        style={{ width: isTablet ? 600 : '100%', alignSelf: 'center' }}
         contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 24 }}
         ListEmptyComponent={<Text style={styles.emptyText}>No children yet. Add your first child below!</Text>}
         renderItem={({ item }) => (
@@ -675,7 +678,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#E8F3F4',
   },
   section: {
-    width: '100%',
+    width: isTablet ? 600 : '100%',
+    alignSelf: 'center',
     paddingHorizontal: 24,
     marginBottom: 20,
   },
