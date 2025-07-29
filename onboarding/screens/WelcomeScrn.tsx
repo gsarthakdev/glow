@@ -144,7 +144,7 @@ export default function WelcomeScrn({ navigation }: { navigation: any }) {
     
     // Start immersive transition animation
     rippleOpacity.value = withTiming(1, { duration: 150 });
-    rippleScale.value = withTiming(1, { duration: 600 });
+    rippleScale.value = withTiming(2, { duration: 600 }); // larger to cover corners
     
     // Animate all screen elements together with smoother timing
     setTimeout(() => {
@@ -236,8 +236,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    borderRadius: width,
+    backgroundColor: '#EAE4CF',
+    borderRadius: width * 1.5,
     transform: [{ scale: 0 }],
   },
   content: {
