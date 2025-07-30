@@ -530,7 +530,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     borderRadius: 25,
     marginTop: 10,
-    marginBottom: 130,
+    marginBottom: screenHeight < 700 ? 100 : 130,
     alignSelf: 'center',
   },
   addBtnText: {
@@ -616,10 +616,11 @@ const styles = StyleSheet.create({
   modalOverlayCentered: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center',
+    justifyContent: screenHeight <= 667 ? 'flex-start' : 'center',
     alignItems: 'center',
     // maxHeight: '100%',
     height: '63%',
+    paddingTop: screenHeight <= 667 ? 50 : 0,
   },
   modalContentCentered: {
     backgroundColor: 'white',
@@ -629,7 +630,7 @@ const styles = StyleSheet.create({
     maxWidth: '90%',
     minWidth: 280,
     // maxHeight: '100%',
-    height: '67%',
+    height: screenHeight <= 667 ? '75%' : '67%',
     flexShrink: 1,
     alignItems: 'stretch',
     justifyContent: 'center',
