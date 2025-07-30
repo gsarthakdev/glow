@@ -42,20 +42,7 @@ class NotificationService {
     if (this.isInitialized) return;
 
     try {
-      // Request permissions
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-      
-      if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-      
-      if (finalStatus !== 'granted') {
-        throw new Error('Permission not granted for notifications');
-      }
-
-      // Configure notification channel for Android
+      // Configure notification channel for Android (no permission request here)
       if (Platform.OS === 'android') {
         await Notifications.setNotificationChannelAsync('daily-reminders', {
           name: 'Daily Reminders',
@@ -74,7 +61,10 @@ class NotificationService {
 
   async scheduleDailyReminder(): Promise<void> {
     try {
-      await this.initialize();
+      // Ensure the service is initialized
+      if (!this.isInitialized) {
+        await this.initialize();
+      }
       
       // Cancel any existing daily reminders
       await this.cancelDailyReminder();
@@ -120,22 +110,22 @@ class NotificationService {
 
   async requestPermissionsWithExplanation(): Promise<boolean> {
     try {
+      // Request permissions
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
       
-      if (existingStatus === 'granted') {
-        return true;
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
       }
       
-      // Show explanation before requesting permissions
-      const { status } = await Notifications.requestPermissionsAsync({
-        ios: {
-          allowAlert: true,
-          allowBadge: false,
-          allowSound: true,
-        },
-      });
-      
-      return status === 'granted';
+      if (finalStatus !== 'granted') {
+        return false;
+      }
+
+      // Initialize the service after permissions are granted
+      await this.initialize();
+      return true;
     } catch (error) {
       console.error('Failed to request notification permissions:', error);
       return false;

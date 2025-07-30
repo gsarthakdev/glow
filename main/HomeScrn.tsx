@@ -6,6 +6,7 @@ import SimpleLineIcons from '@expo/vector-icons/SimpleLineIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
 import { IS_DEBUGGING } from '../flag';
+import notificationService from '../utils/notificationService';
 
 interface SelectedChild {
   id: string;
@@ -22,6 +23,7 @@ export default function HomeScrn({navigation}: {navigation: any}) {
   useEffect(() => {
     if (isFocused) {
       loadChildren();
+      checkAndRequestNotificationPermissions();
     }
   }, [isFocused]);
 
@@ -99,6 +101,40 @@ export default function HomeScrn({navigation}: {navigation: any}) {
     if (hour < 18) return 'Good Afternoon'
     return 'Good Evening'
   }
+
+  const checkAndRequestNotificationPermissions = async () => {
+    try {
+      // Check if we've already requested permissions after onboarding
+      const permissionsRequested = await AsyncStorage.getItem('notification_permissions_requested_after_onboarding');
+      
+      if (!permissionsRequested) {
+        // Request notification permissions (non-blocking)
+        setTimeout(async () => {
+          try {
+            const permissionGranted = await notificationService.requestPermissionsWithExplanation();
+            if (permissionGranted) {
+              // Enable daily reminders by default
+              await notificationService.scheduleDailyReminder();
+              console.log('Daily reminders enabled after reaching home screen');
+              // Alert.alert(
+              //   'Notifications Enabled',
+              //   'Great! You\'ll receive daily reminders at 8:30 PM to log your child\'s behavior.',
+              //   [{ text: 'Perfect!' }]
+              // );
+            }
+            // Mark that we've requested permissions after onboarding
+            await AsyncStorage.setItem('notification_permissions_requested_after_onboarding', 'true');
+          } catch (notificationError) {
+            console.error('Failed to setup notifications:', notificationError);
+            // Still mark as requested to avoid repeated attempts
+            await AsyncStorage.setItem('notification_permissions_requested_after_onboarding', 'true');
+          }
+        }, 1000); // Small delay to ensure home screen is fully loaded
+      }
+    } catch (error) {
+      console.error('Error checking notification permissions:', error);
+    }
+  };
 
   return (
     <LinearGradient

@@ -160,26 +160,8 @@ export default function SettingsScreen() {
       };
       await AsyncStorage.setItem(key, JSON.stringify(value));
       
-      // Request notification permissions if this is the first child (non-blocking)
-      if (children.length === 0) {
-        setTimeout(async () => {
-          try {
-            const permissionGranted = await notificationService.requestPermissionsWithExplanation();
-            if (permissionGranted) {
-              // Enable daily reminders by default
-              await notificationService.scheduleDailyReminder();
-              setDailyReminderEnabled(true);
-              Alert.alert(
-                'Notifications Enabled',
-                'Great! You\'ll receive daily reminders at 8:30 PM to log your child\'s behavior.',
-                [{ text: 'Perfect!' }]
-              );
-            }
-          } catch (notificationError) {
-            console.error('Failed to setup notifications:', notificationError);
-          }
-        }, 500); // Small delay to ensure child is saved first
-      }
+      // Note: Notification permissions are now requested when user first reaches home screen
+      // after completing onboarding, not when adding children in settings
       
       setIsAddModalVisible(false);
       setNewChildName('');
