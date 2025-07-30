@@ -9,7 +9,7 @@ import HomeScrn from "./main/HomeScrn";
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Feather } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import { View, Text } from "react-native";
+import { View, Text, Dimensions } from "react-native";
 import FlowBasic1BaseScrn from "./main/FlowBasic1BaseScrn";
 import CelebrationScreen from './screens/CelebrationScreen';
 import PastLogsScreen from "./screens/PastLogsScreen";
@@ -57,6 +57,8 @@ const Tab = createBottomTabNavigator();
 // const SettingsScreen = () => <View style={{flex: 1}}><Text>Settings</Text></View>;
 // const SummaryScreen = () => <View style={{flex: 1}}><Text>Summary</Text></View>;
 export default function BottomTabsStack() {
+const { height: screenHeight } = Dimensions.get('window');
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -85,7 +87,7 @@ export default function BottomTabsStack() {
           paddingHorizontal: 10,
           height: 75,
           marginHorizontal: 20,
-          marginBottom: 50,
+          marginBottom: screenHeight < 700 ? 10 : 40, // Reduced from 50 to 10 to bring it closer to bottom
           borderTopWidth: 0,
           elevation: 0,
           shadowColor: '#000',

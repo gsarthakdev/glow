@@ -18,6 +18,17 @@ eas build --platform ios --auto-submit
 
 Create development build:
 eas build --platform ios --profile development 
+
+Create build to test on iPad:
+eas build -p ios --profile preview
+eas build:run -p ios
+*/
+
+/*
+Local EAS builds:
+eas build -p ios --profile preview --local   
+tar -xzf build-1753823601855.tar.gz
+xcrun simctl install booted /Users/sarthak/development/glow/Glow.app
 */
 
 /*

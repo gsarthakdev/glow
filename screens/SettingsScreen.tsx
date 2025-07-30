@@ -17,7 +17,9 @@ interface Child {
   pronouns: string;
 }
 
+const { height: screenHeight } = Dimensions.get('window');
 export default function SettingsScreen() {
+
   const [children, setChildren] = useState<Child[]>([]);
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [newChildName, setNewChildName] = useState('');
@@ -463,14 +465,14 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingTop: 80,
-    paddingBottom: 40,
+    paddingTop: screenHeight < 700 ? 30 : 80,
+    paddingBottom: screenHeight < 700 ? -20 : 25,
   },
   header: {
     width: '100%',
     paddingVertical: 16,
     paddingHorizontal: 24,
-    marginBottom: 12,
+    marginBottom: screenHeight < 700 ? 0 : 12,
   },
   title: {
     fontSize: 28,

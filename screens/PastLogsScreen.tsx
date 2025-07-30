@@ -1,3 +1,4 @@
+//iphone se adjustment
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Platform, SafeAreaView, Linking, Pressable, Switch, Dimensions } from 'react-native';
 import { Calendar } from 'react-native-calendars';
@@ -8,6 +9,7 @@ import * as FileSystem from 'expo-file-system';
 import { PDFDocument, rgb, StandardFonts, PDFPage, PDFName, PDFString } from 'pdf-lib';
 import { Asset } from 'expo-asset';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AffirmationModal from '../components/AffirmationModal';
 import { useEmailShare } from '../utils/useEmailShare';
 
@@ -1125,13 +1127,8 @@ function getProviderByKey(key: string) {
   return EMAIL_APPS.find(app => app.key === key) || EMAIL_APPS[EMAIL_APPS.length - 1];
 }
 
-// Responsive constants (top-level so StyleSheet can use them)
-const isTablet = Dimensions.get('window').width >= 768;
-const DAY_SIZE = isTablet ? 70 : 52;
-const DAY_FONT_SIZE = isTablet ? 22 : 18;
-const CALENDAR_WIDTH: number | string = isTablet ? 650 : '100%';
-
 export default function PastLogsScreen({ navigation }: { navigation: any }) {
+  const insets = useSafeAreaInsets();
   const [selectedDuration, setSelectedDuration] = useState('This Week');
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [markedDates, setMarkedDates] = useState<MarkedDates>({});
@@ -1355,7 +1352,7 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { paddingBottom: 125 + insets.bottom }]}>
       <AffirmationModal
         visible={affirmationModalVisible}
         affirmations={AFFIRMATIONS}
@@ -1406,7 +1403,7 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
           textDayHeaderFontSize: 14,
           textDayHeaderFontWeight: '600',
         }}
-        style={[styles.calendar, isTablet && { width: CALENDAR_WIDTH as any }]}
+        style={styles.calendar}
         dayComponent={({ date, state, marking }) => {
           // Extend marking type to include count
           const typedMarking = marking as (typeof marking & { count?: number });
@@ -1519,13 +1516,15 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
   );
 }
 
+const { height: screenHeight } = Dimensions.get('window');
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
   },
   durationPicker: {
-    marginTop: 40,
+    marginTop: screenHeight < 700 ? 15 : 25, // Less top margin on smaller screens
     margin: 20,
     padding: 16,
     borderRadius: 12,
@@ -1549,7 +1548,7 @@ const styles = StyleSheet.create({
   },
   sendButton: {
     marginHorizontal: 20,
-    marginBottom: 10,
+    marginBottom: screenHeight < 700 ? 0 : 10,
     padding: 16,
     borderRadius: 12,
     backgroundColor: '#4CAF50',
@@ -1565,14 +1564,15 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: '#fff',
-    alignSelf: 'center',
+    // Make calendar height responsive to screen size
+    height: screenHeight < 700 ? 490 : 490, // Even smaller height for iPhone SE and similar devices
   },
   dayContainer: {
-    width: DAY_SIZE,
-    height: DAY_SIZE,
+    width: screenHeight < 700 ? 44 : 52, // Smaller day containers on smaller screens
+    height: screenHeight < 700 ? 44 : 52,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: DAY_SIZE / 4,
+    borderRadius: 12,
     margin: 2,
     backgroundColor: '#fff',
   },
@@ -1582,7 +1582,7 @@ const styles = StyleSheet.create({
     borderColor: '#4CAF50',
   },
   dayText: {
-    fontSize: DAY_FONT_SIZE,
+    fontSize: screenHeight < 700 ? 16 : 18, // Smaller text on smaller screens
     fontWeight: '600',
     color: '#3E3E6B',
   },
@@ -1595,19 +1595,19 @@ const styles = StyleSheet.create({
   },
   countBadge: {
     position: 'absolute',
-    bottom: 4,
-    right: 4,
+    bottom: screenHeight < 700 ? 2 : 4, // Adjust position for smaller screens
+    right: screenHeight < 700 ? 2 : 4,
     backgroundColor: '#4CAF50',
     borderRadius: 8,
     paddingHorizontal: 2,
     paddingVertical: 1,
-    minWidth: 16,
+    minWidth: screenHeight < 700 ? 14 : 16, // Smaller badge on smaller screens
     alignItems: 'center',
     justifyContent: 'center',
   },
   countText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: screenHeight < 700 ? 10 : 12, // Smaller text on smaller screens
     fontWeight: 'bold',
   },
   modalOverlay: {
