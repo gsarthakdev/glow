@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -24,8 +24,14 @@ const OneChildScrn = () => {
   const [childName, setChildName] = useState('');
   const [pronoun, setPronoun] = useState('');
   const [menuVisible, setMenuVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const isProcessingRef = useRef(false);
   seeAllDBData(); // Call to see all data on screen load
   const onContinue = async () => {
+    if (isProcessingRef.current) return; // Prevent multiple calls using ref
+    
+    isProcessingRef.current = true;
+    setIsLoading(true);
     console.log('Name:', childName);
     console.log('Pronouns:', pronoun);
 
@@ -41,10 +47,13 @@ const OneChildScrn = () => {
       await seeAllDBData(); // Ensure this is awaited as well
     } catch (error) {
       console.error('Error saving data to AsyncStorage:', error);
+    } finally {
+      setIsLoading(false);
+      isProcessingRef.current = false;
     }
   };
 
-  const isButtonDisabled = childName.trim().length < 2;
+  const isButtonDisabled = childName.trim().length < 2 || isLoading;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -104,7 +113,9 @@ const OneChildScrn = () => {
                 onPress={onContinue}
                 disabled={isButtonDisabled}
               >
-                <Text style={styles.buttonText}>Save and Continue</Text>
+                <Text style={styles.buttonText}>
+                  {isLoading ? 'Saving...' : 'Save and Continue'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
