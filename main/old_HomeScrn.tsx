@@ -28,18 +28,26 @@ function HomeTab() {
   const loadChildren = async () => {
     try {
       const keys = await AsyncStorage.getAllKeys()
-      const childKeys = keys.filter(key => key !== 'onboarding_completed' && key !== 'current_selected_child')
+      const childKeys = keys.filter(key => 
+        key !== 'onboarding_completed' && 
+        key !== 'current_selected_child' && 
+        key !== 'daily_reminder_enabled' &&
+        key !== 'notification_permissions_requested_after_onboarding' &&
+        key !== 'default_email_provider'
+      )
       const childData = await AsyncStorage.multiGet(childKeys)
       
       // Get child names and store full data
       const childDetails = childData.map(([key, value]) => {
-        const data = JSON.parse(value)
+        if (!value) return null;
+        const data = JSON.parse(value);
+        if (data.is_deleted === true) return null;
         return {
           id: key,
           child_uuid: data.child_uuid,
-          child_name: data.child_name
-        }
-      })
+          child_name: data.child_name_capitalized
+        };
+      }).filter(Boolean) as SelectedChild[];
       
       setChildren(childDetails)
 

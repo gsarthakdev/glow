@@ -15,6 +15,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { writeAsyncStorageToFile } from './utils/asyncStorageUtils';
 import * as Updates from "expo-updates";
 import { IS_DEBUGGING } from './flag';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function App() {
   const onboardingStatus = useAsyncStorage('onboarding_completed');
@@ -33,7 +34,7 @@ export default function App() {
       console.error(`Error fetching latest app update: ${error}`);
     }
   }
-  
+
   const clearAsyncStorage = async () => {
     try {
       await AsyncStorage.clear();
@@ -42,11 +43,11 @@ export default function App() {
       console.error('Failed to clear AsyncStorage:', error);
     }
   };
-  
-    const doIt = async () => {
+
+  const doIt = async () => {
     await writeAsyncStorageToFile();
   }
-  
+
   // clearAsyncStorage();
   useEffect(() => {
     setIsOnboardingCompleted(onboardingStatus === 'true');
@@ -56,20 +57,28 @@ export default function App() {
 
   if (isOnboardingCompleted === null) {
     return (
-      <View style={styles.loaderContainer}>
+      <LinearGradient
+        colors={["#FFE5DC", "#D3C7FF", "#C4E8F6"]}
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingTop: 300,
+        }}
+      >
         <ActivityIndicator size="large" color="#0000ff" />
-      </View>
+      </LinearGradient>
     );
   }
 
   // return isOnboardingCompleted ? <MainStack /> : <OnboardingStack />;
   // return isOnboardingCompleted ? <OnboardingStack /> : <BottomTabsStack />;
-    return (
+  return (
     <NavigationContainer>
       {isOnboardingCompleted ? <MainStack /> : <OnboardingStack />}
     </NavigationContainer>
   );
-  
+
   // return <TestScreen/>;
 }
 

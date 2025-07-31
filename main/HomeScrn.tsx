@@ -33,7 +33,8 @@ export default function HomeScrn({navigation}: {navigation: any}) {
       const childKeys = keys.filter(key => 
         key !== 'onboarding_completed' && 
         key !== 'current_selected_child' && 
-        key !== 'daily_reminder_enabled'
+        key !== 'daily_reminder_enabled' &&
+        key !== 'notification_permissions_requested_after_onboarding'
       )
       const childData = await AsyncStorage.multiGet(childKeys)
       

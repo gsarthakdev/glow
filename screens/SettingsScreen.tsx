@@ -46,7 +46,9 @@ export default function SettingsScreen() {
       const childKeys = keys.filter(key => 
         key !== 'onboarding_completed' && 
         key !== 'current_selected_child' && 
-        key !== 'daily_reminder_enabled'
+        key !== 'daily_reminder_enabled' &&
+        key !== 'notification_permissions_requested_after_onboarding' &&
+        key !== 'default_email_provider'
       );
       const childData = await AsyncStorage.multiGet(childKeys);
       const childDetails = childData.map(([key, value]) => {
