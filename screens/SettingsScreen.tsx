@@ -48,13 +48,16 @@ export default function SettingsScreen() {
         key !== 'current_selected_child' && 
         key !== 'daily_reminder_enabled' &&
         key !== 'notification_permissions_requested_after_onboarding' &&
-        key !== 'default_email_provider'
+        key !== 'default_email_provider' &&
+        key !== 'goals'
       );
       const childData = await AsyncStorage.multiGet(childKeys);
       const childDetails = childData.map(([key, value]) => {
         if (!value) return null;
         const data = JSON.parse(value);
         if (data.is_deleted) return null;
+        // Ensure this is actually a child by checking for required fields
+        if (!data.child_uuid || !data.child_name_capitalized) return null;
         return {
           id: key,
           child_uuid: data.child_uuid,

@@ -34,7 +34,8 @@ export default function HomeScrn({navigation}: {navigation: any}) {
         key !== 'onboarding_completed' && 
         key !== 'current_selected_child' && 
         key !== 'daily_reminder_enabled' &&
-        key !== 'notification_permissions_requested_after_onboarding'
+        key !== 'notification_permissions_requested_after_onboarding' &&
+        key !== 'goals'
       )
       const childData = await AsyncStorage.multiGet(childKeys)
       
@@ -42,6 +43,8 @@ export default function HomeScrn({navigation}: {navigation: any}) {
         if (!value) return null;
         const data = JSON.parse(value);
         if (data.is_deleted === true) return null;
+        // Ensure this is actually a child by checking for required fields
+        if (!data.child_uuid || !data.child_name_capitalized) return null;
         return {
           id: key,
           child_uuid: data.child_uuid,
