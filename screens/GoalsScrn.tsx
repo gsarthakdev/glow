@@ -39,19 +39,70 @@ export default function GoalsScrn({ navigation }: { navigation: any }) {
 
   useEffect(() => {
     loadGoals();
+    checkAndResetDailyCounts();
   }, []);
 
   const loadGoals = async () => {
     try {
       const goalsData = await AsyncStorage.getItem('goals');
       if (goalsData) {
-        const parsedGoals = JSON.parse(goalsData);
-        // Filter out archived goals for display
-        const activeGoals = parsedGoals.filter((goal: Goal) => !goal.isArchived);
-        setGoals(activeGoals);
+        try {
+          const parsedGoals = JSON.parse(goalsData);
+          // Filter out archived goals for display
+          const activeGoals = parsedGoals.filter((goal: Goal) => !goal.isArchived);
+          setGoals(activeGoals);
+        } catch (parseError) {
+          console.error('JSON PARSE ERROR in loadGoals:', parseError);
+          console.error('Raw goals data:', goalsData);
+          // Reset goals data if corrupted
+          await AsyncStorage.removeItem('goals');
+          setGoals([]);
+        }
       }
     } catch (error) {
       console.error('Error loading goals:', error);
+    }
+  };
+
+  const checkAndResetDailyCounts = async () => {
+    try {
+      const lastResetDate = await AsyncStorage.getItem('last_goal_reset_date');
+      const today = getCurrentDate();
+      
+      // If no last reset date or it's a different day, reset counts
+      if (!lastResetDate || lastResetDate !== today) {
+                const goalsData = await AsyncStorage.getItem('goals');
+        if (goalsData) {
+          try {
+            const allGoals = JSON.parse(goalsData);
+            
+            // Remove today's entries from all goals (this effectively resets to 0)
+            const updatedGoals = allGoals.map((goal: Goal) => ({
+              ...goal,
+              dailyCounts: goal.dailyCounts.filter((count: DailyCount) => count.date !== today)
+            }));
+            
+            await AsyncStorage.setItem('goals', JSON.stringify(updatedGoals));
+            
+            // Update the last reset date
+            await AsyncStorage.setItem('last_goal_reset_date', today);
+            
+            // Reload goals to reflect the reset
+            loadGoals();
+          } catch (parseError) {
+            console.error('JSON PARSE ERROR in checkAndResetDailyCounts:', parseError);
+            console.error('Raw goals data:', goalsData);
+            // Reset goals data if corrupted
+            await AsyncStorage.removeItem('goals');
+            await AsyncStorage.setItem('last_goal_reset_date', today);
+          }
+        } else {
+          // If no goals exist yet, just set the reset date
+          await AsyncStorage.setItem('last_goal_reset_date', today);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking/resetting daily counts:', error);
     }
   };
 
@@ -61,7 +112,15 @@ export default function GoalsScrn({ navigation }: { navigation: any }) {
       const allGoalsData = await AsyncStorage.getItem('goals');
       let allGoals: Goal[] = [];
       if (allGoalsData) {
-        allGoals = JSON.parse(allGoalsData);
+        try {
+          allGoals = JSON.parse(allGoalsData);
+        } catch (parseError) {
+          console.error('JSON PARSE ERROR in saveGoals:', parseError);
+          console.error('Raw goals data:', allGoalsData);
+          // Reset goals data if corrupted
+          await AsyncStorage.removeItem('goals');
+          allGoals = [];
+        }
       }
       
       // Update active goals and preserve archived ones

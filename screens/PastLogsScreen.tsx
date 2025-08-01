@@ -1637,13 +1637,32 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
       // Get the current selected child
       const currentSelectedChildStr = await AsyncStorage.getItem('current_selected_child');
       if (!currentSelectedChildStr) return;
-      const currentSelectedChild = JSON.parse(currentSelectedChildStr);
+      
+      let currentSelectedChild;
+      try {
+        currentSelectedChild = JSON.parse(currentSelectedChildStr);
+      } catch (parseError) {
+        console.error('JSON PARSE ERROR in PastLogsScreen - current_selected_child:', parseError);
+        console.error('Raw value:', currentSelectedChildStr);
+        return;
+      }
+      
       const childId = currentSelectedChild.id;
       if (!childId) return;
+      
       // Get the full children data object
       const allDataStr = await AsyncStorage.getItem(childId);
       if (!allDataStr) return;
-      const childData = JSON.parse(allDataStr);
+      
+      let childData;
+      try {
+        childData = JSON.parse(allDataStr);
+      } catch (parseError) {
+        console.error('JSON PARSE ERROR in PastLogsScreen - child data:', parseError);
+        console.error('Child ID:', childId);
+        console.error('Raw value preview:', allDataStr.substring(0, 200));
+        return;
+      }
       // Get completed logs for this child - both positive and negative
       const positiveLogs = childData.completed_logs?.flow_basic_1_positive || [];
       const negativeLogs = childData.completed_logs?.flow_basic_1_negative || [];
@@ -1702,7 +1721,15 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
       const selectedLogs = getLogsForDuration();
       // Get current selected child's name
       const currentSelectedChild = await AsyncStorage.getItem('current_selected_child');
-      const childName = currentSelectedChild ? JSON.parse(currentSelectedChild).child_name : 'Child';
+      let childName = 'Child';
+      if (currentSelectedChild) {
+        try {
+          childName = JSON.parse(currentSelectedChild).child_name || 'Child';
+        } catch (parseError) {
+          console.error('JSON PARSE ERROR in sendLogs - current_selected_child:', parseError);
+          console.error('Raw value:', currentSelectedChild);
+        }
+      }
       
       // Generate both PDFs
       const behaviorLogsUri = await generatePDF(selectedLogs, childName, selectedDuration);
@@ -1734,7 +1761,15 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
     try {
       // Get current selected child's name
       const currentSelectedChild = await AsyncStorage.getItem('current_selected_child');
-      const childName = currentSelectedChild ? JSON.parse(currentSelectedChild).child_name : 'Child';
+      let childName = 'Child';
+      if (currentSelectedChild) {
+        try {
+          childName = JSON.parse(currentSelectedChild).child_name || 'Child';
+        } catch (parseError) {
+          console.error('JSON PARSE ERROR in handleProviderSelect - current_selected_child:', parseError);
+          console.error('Raw value:', currentSelectedChild);
+        }
+      }
       const selectedLogs = getLogsForDuration();
       
       // Generate both PDFs

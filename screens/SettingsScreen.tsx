@@ -43,28 +43,51 @@ export default function SettingsScreen() {
   const loadChildren = async () => {
     try {
       const keys = await AsyncStorage.getAllKeys();
+      console.log('SettingsScreen - All AsyncStorage keys:', keys);
+      
       const childKeys = keys.filter(key => 
         key !== 'onboarding_completed' && 
         key !== 'current_selected_child' && 
         key !== 'daily_reminder_enabled' &&
         key !== 'notification_permissions_requested_after_onboarding' &&
         key !== 'default_email_provider' &&
-        key !== 'goals'
+        key !== 'goals' &&
+        key !== 'last_goal_reset_date'
       );
+      console.log('SettingsScreen - Filtered child keys:', childKeys);
+      
       const childData = await AsyncStorage.multiGet(childKeys);
       const childDetails = childData.map(([key, value]) => {
         if (!value) return null;
-        const data = JSON.parse(value);
-        if (data.is_deleted) return null;
-        // Ensure this is actually a child by checking for required fields
-        if (!data.child_uuid || !data.child_name_capitalized) return null;
-        return {
-          id: key,
-          child_uuid: data.child_uuid,
-          child_name: data.child_name_capitalized,
-          pronouns: data.pronouns || '',
-        };
+        
+        try {
+          const data = JSON.parse(value);
+          if (data.is_deleted) return null;
+          // Ensure this is actually a child by checking for required fields
+          if (!data.child_uuid || !data.child_name_capitalized) {
+            console.log(`SettingsScreen - Skipping key ${key} - not a child profile (missing required fields)`);
+            return null;
+          }
+          console.log(`SettingsScreen - Valid child profile found: ${data.child_name_capitalized}`);
+          return {
+            id: key,
+            child_uuid: data.child_uuid,
+            child_name: data.child_name_capitalized,
+            pronouns: data.pronouns || '',
+          };
+        } catch (parseError) {
+          console.error('JSON PARSE ERROR in SettingsScreen - loadChildren:', parseError);
+          console.error('Key:', key);
+          console.error('Raw value:', value);
+          // Clean up corrupted data
+          AsyncStorage.removeItem(key).catch(cleanupError => 
+            console.error(`Failed to remove corrupted key ${key}:`, cleanupError)
+          );
+          return null;
+        }
       }).filter(Boolean) as Child[];
+      
+      console.log('SettingsScreen - Final child details:', childDetails);
       setChildren(childDetails);
     } catch (error) {
       console.error('Error loading children:', error);
@@ -196,9 +219,16 @@ export default function SettingsScreen() {
     try {
       const value = await AsyncStorage.getItem(child.id);
       if (!value) return;
-      const data = JSON.parse(value);
-      data.is_deleted = true;
-      await AsyncStorage.setItem(child.id, JSON.stringify(data));
+      try {
+        const data = JSON.parse(value);
+        data.is_deleted = true;
+        await AsyncStorage.setItem(child.id, JSON.stringify(data));
+      } catch (parseError) {
+        console.error('JSON PARSE ERROR in softDeleteChild:', parseError);
+        console.error('Child ID:', child.id);
+        console.error('Raw value:', value);
+        return;
+      }
       loadChildren();
     } catch (error) {
       Alert.alert('Error', 'Could not remove child.');
@@ -417,12 +447,19 @@ export default function SettingsScreen() {
                       try {
                         const value = await AsyncStorage.getItem(editChild.id);
                         if (!value) throw new Error('Child not found');
-                        const data = JSON.parse(value);
-                        data.child_name = editName.trim().toLowerCase();
-                        data.child_name_capitalized = editName.trim().charAt(0).toUpperCase() + editName.trim().slice(1).toLowerCase();
-                        data.pronouns = pronounToSave;
-                        data.updated_at = new Date().toISOString();
-                        await AsyncStorage.setItem(editChild.id, JSON.stringify(data));
+                        try {
+                          const data = JSON.parse(value);
+                          data.child_name = editName.trim().toLowerCase();
+                          data.child_name_capitalized = editName.trim().charAt(0).toUpperCase() + editName.trim().slice(1).toLowerCase();
+                          data.pronouns = pronounToSave;
+                          data.updated_at = new Date().toISOString();
+                          await AsyncStorage.setItem(editChild.id, JSON.stringify(data));
+                        } catch (parseError) {
+                          console.error('JSON PARSE ERROR in edit child:', parseError);
+                          console.error('Child ID:', editChild.id);
+                          console.error('Raw value:', value);
+                          throw new Error('Could not parse child data');
+                        }
                         setEditModalVisible(false);
                         setEditChild(null);
                         setEditName('');

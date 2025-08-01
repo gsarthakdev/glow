@@ -30,26 +30,52 @@ export default function HomeScrn({navigation}: {navigation: any}) {
   const loadChildren = async () => {
     try {
       const keys = await AsyncStorage.getAllKeys()
+      
       const childKeys = keys.filter(key => 
         key !== 'onboarding_completed' && 
         key !== 'current_selected_child' && 
         key !== 'daily_reminder_enabled' &&
         key !== 'notification_permissions_requested_after_onboarding' &&
-        key !== 'goals'
+        key !== 'goals' &&
+        key !== 'last_goal_reset_date'
       )
+      
       const childData = await AsyncStorage.multiGet(childKeys)
       
       const childDetails = childData.map(([key, value]) => {
         if (!value) return null;
-        const data = JSON.parse(value);
-        if (data.is_deleted === true) return null;
-        // Ensure this is actually a child by checking for required fields
-        if (!data.child_uuid || !data.child_name_capitalized) return null;
-        return {
-          id: key,
-          child_uuid: data.child_uuid,
-          child_name: data.child_name_capitalized
-        };
+        
+        try {
+          const data = JSON.parse(value);
+          if (data.is_deleted === true) return null;
+          
+          // Check if this is actually child profile data (not flow data or other data)
+          if (!data.child_uuid || !data.child_name_capitalized) {
+            return null;
+          }
+          
+          return {
+            id: key,
+            child_uuid: data.child_uuid,
+            child_name: data.child_name_capitalized
+          };
+        } catch (parseError) {
+          console.error(`JSON PARSE ERROR for key: ${key}`);
+          console.error(`Error details:`, parseError);
+          console.error(`Raw value (first 200 chars): ${value.substring(0, 200)}`);
+          
+          // Look for the specific "-" character that's causing the issue
+          const dashIndex = value.indexOf('-');
+          if (dashIndex !== -1) {
+            console.error(`Found "-" at position ${dashIndex}, context: "${value.substring(Math.max(0, dashIndex-10), dashIndex+10)}"`);
+          }
+          
+          // Clean up corrupted data
+          AsyncStorage.removeItem(key).catch(cleanupError => 
+            console.error(`Failed to remove corrupted key ${key}:`, cleanupError)
+          );
+          return null;
+        }
       }).filter(Boolean) as SelectedChild[];
       
       setChildren(childDetails)
