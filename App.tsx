@@ -31,7 +31,7 @@ export default function App() {
       }
     } catch (error) {
       // We can also add an alert() to see the error message in case of an error when fetching updates.
-      console.error(`Error fetching latest app update: ${error}`);
+      // console.error(`Error fetching latest app update: ${error}`);
     }
   }
 
@@ -52,7 +52,8 @@ export default function App() {
   useEffect(() => {
     setIsOnboardingCompleted(onboardingStatus === 'true');
     onFetchUpdateAsync();
-    IS_DEBUGGING && doIt();
+    // IS_DEBUGGING && doIt();
+    doIt();
   }, [onboardingStatus]);
 
   if (isOnboardingCompleted === null) {

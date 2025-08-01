@@ -7,13 +7,14 @@ import MultiChildScrn from "./onboarding/screens/MultiChildScrn";
 import HomeScrn from "./main/HomeScrn";
 
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Feather } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { View, Text, Dimensions } from "react-native";
 import FlowBasic1BaseScrn from "./main/FlowBasic1BaseScrn";
 import CelebrationScreen from './screens/CelebrationScreen';
 import PastLogsScreen from "./screens/PastLogsScreen";
 import SettingsScreen from "./screens/SettingsScreen";
+import GoalsScrn from "./screens/GoalsScrn";
 import DummyLogGenerator from "./DummyLogGenerator";
 
 const Stack = createNativeStackNavigator();
@@ -121,6 +122,15 @@ const { height: screenHeight } = Dimensions.get('window');
           )
         }}
       />
+        <Tab.Screen 
+          name="Goals" 
+          component={GoalsScrn}
+          options={{
+            tabBarIcon: ({color, size}) => (
+              <Ionicons name="trophy-outline" size={24} color={color} />
+            )
+          }}
+        />
       <Tab.Screen 
         name="Past Logs" 
         component={PastLogsScreen}

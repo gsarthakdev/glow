@@ -464,6 +464,339 @@ function aggregateTimeOfDayMatrix(logs: Log[]) {
   return { matrix, timeLabels, dayLabels };
 }
 
+// Goals PDF generation function
+async function generateGoalsPDF(childName: string, duration: string): Promise<string> {
+  const pdfDoc = await PDFDocument.create();
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+  // Helper to get current week dates (Monday to Sunday)
+  const getWeekDates = () => {
+    const today = new Date();
+    const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const mondayOffset = currentDay === 0 ? -6 : 1 - currentDay; // Adjust for Monday start
+    
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + mondayOffset);
+    
+    const weekDates = [];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(monday);
+      date.setDate(monday.getDate() + i);
+      weekDates.push(date.toISOString().split('T')[0]);
+    }
+    return weekDates;
+  };
+
+  // Helper to get day name
+  const getDayName = (dateString: string) => {
+    const date = new Date(dateString);
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    return days[date.getDay()];
+  };
+
+  // Helper to format date for display
+  const formatDateForDisplay = (dateString: string) => {
+    const date = new Date(dateString);
+    return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+  };
+
+  // Load goals from AsyncStorage
+  const loadGoals = async () => {
+    try {
+      const goalsData = await AsyncStorage.getItem('goals');
+      if (goalsData) {
+        const parsedGoals = JSON.parse(goalsData);
+        // Filter out archived goals
+        return parsedGoals.filter((goal: any) => !goal.isArchived);
+      }
+      return [];
+    } catch (error) {
+      console.error('Error loading goals:', error);
+      return [];
+    }
+  };
+
+  const goals = await loadGoals();
+  const weekDates = getWeekDates();
+  const startDate = formatDateForDisplay(weekDates[0]);
+  const endDate = formatDateForDisplay(weekDates[6]);
+
+  // Create the goals page
+  const page = pdfDoc.addPage([595, 842]); // A4 size
+  const { width, height } = page.getSize();
+  
+  let y = height - 40;
+  const leftMargin = 20;
+  const rightMargin = 20;
+  const tableWidth = width - leftMargin - rightMargin;
+
+  // Page title
+  page.drawText(sanitizePdfText(`Goals Frequency Report for ${childName}`), {
+    x: leftMargin,
+    y,
+    size: 18,
+    font: fontBold,
+    color: rgb(0.24, 0.24, 0.42),
+  });
+  y -= 30;
+
+  // Week range subtitle
+  page.drawText(sanitizePdfText(`Week of ${startDate} to ${endDate}`), {
+    x: leftMargin,
+    y,
+    size: 14,
+    font: font,
+    color: rgb(0.5, 0.5, 0.5),
+  });
+  y -= 40;
+
+  if (goals.length === 0) {
+    // No goals message
+    page.drawText(sanitizePdfText(`No goals added for this week (${startDate} to ${endDate})`), {
+      x: leftMargin,
+      y,
+      size: 14,
+      font: font,
+      color: rgb(0.5, 0.5, 0.5),
+    });
+  } else {
+    // Create goals table
+    const tableStartY = y;
+    const rowHeight = 25;
+    const headerHeight = 30;
+    const goalColWidth = tableWidth * 0.4; // 40% for goal text
+    const dayColWidth = (tableWidth - goalColWidth) / 7; // Equal width for 7 days
+
+    // Table header
+    const headerY = tableStartY;
+    
+    // Goal column header
+    page.drawText('Goal', {
+      x: leftMargin,
+      y: headerY - 20,
+      size: 12,
+      font: fontBold,
+      color: rgb(0.24, 0.24, 0.42),
+    });
+
+    // Day headers
+    weekDates.forEach((date, index) => {
+      const dayName = getDayName(date);
+      const dayX = leftMargin + goalColWidth + (index * dayColWidth);
+      page.drawText(dayName, {
+        x: dayX + (dayColWidth / 2) - (fontBold.widthOfTextAtSize(dayName, 10) / 2),
+        y: headerY - 20,
+        size: 10,
+        font: fontBold,
+        color: rgb(0.24, 0.24, 0.42),
+      });
+    });
+
+    // Draw header border
+    page.drawLine({
+      start: { x: leftMargin, y: headerY - 25 },
+      end: { x: leftMargin + tableWidth, y: headerY - 25 },
+      thickness: 1,
+      color: rgb(0.8, 0.8, 0.8),
+    });
+
+    // Table rows
+    goals.forEach((goal: any, goalIndex: number) => {
+      const rowY = tableStartY - headerHeight - (goalIndex * rowHeight);
+      
+      // Goal text (with word wrapping)
+      const goalText = sanitizePdfText(goal.text);
+      const maxGoalWidth = goalColWidth - 10;
+      const goalLines = [];
+      let currentLine = '';
+      const words = goalText.split(' ');
+      
+      for (const word of words) {
+        const testLine = currentLine ? currentLine + ' ' + word : word;
+        const testWidth = font.widthOfTextAtSize(testLine, 10);
+        if (testWidth > maxGoalWidth && currentLine) {
+          goalLines.push(currentLine);
+          currentLine = word;
+        } else {
+          currentLine = testLine;
+        }
+      }
+      if (currentLine) goalLines.push(currentLine);
+
+      // Draw goal text (first line only, truncate if too long)
+      const displayText = goalLines[0] || '';
+      page.drawText(displayText, {
+        x: leftMargin + 5,
+        y: rowY - 15,
+        size: 10,
+        font: font,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+
+      // Day counts
+      weekDates.forEach((date, dayIndex) => {
+        const dayX = leftMargin + goalColWidth + (dayIndex * dayColWidth);
+        const count = goal.dailyCounts?.find((dc: any) => dc.date === date)?.count || 0;
+        const countText = count.toString();
+        
+        page.drawText(countText, {
+          x: dayX + (dayColWidth / 2) - (font.widthOfTextAtSize(countText, 10) / 2),
+          y: rowY - 15,
+          size: 10,
+          font: font,
+          color: rgb(0.2, 0.2, 0.2),
+        });
+      });
+
+      // Row border
+      page.drawLine({
+        start: { x: leftMargin, y: rowY - 25 },
+        end: { x: leftMargin + tableWidth, y: rowY - 25 },
+        thickness: 0.5,
+        color: rgb(0.9, 0.9, 0.9),
+      });
+    });
+
+    // Final table border
+    page.drawLine({
+      start: { x: leftMargin, y: tableStartY },
+      end: { x: leftMargin + tableWidth, y: tableStartY },
+      thickness: 1,
+      color: rgb(0.8, 0.8, 0.8),
+    });
+    page.drawLine({
+      start: { x: leftMargin, y: tableStartY - headerHeight - (goals.length * rowHeight) },
+      end: { x: leftMargin + tableWidth, y: tableStartY - headerHeight - (goals.length * rowHeight) },
+      thickness: 1,
+      color: rgb(0.8, 0.8, 0.8),
+    });
+    page.drawLine({
+      start: { x: leftMargin, y: tableStartY },
+      end: { x: leftMargin, y: tableStartY - headerHeight - (goals.length * rowHeight) },
+      thickness: 1,
+      color: rgb(0.8, 0.8, 0.8),
+    });
+    page.drawLine({
+      start: { x: leftMargin + tableWidth, y: tableStartY },
+      end: { x: leftMargin + tableWidth, y: tableStartY - headerHeight - (goals.length * rowHeight) },
+      thickness: 1,
+      color: rgb(0.8, 0.8, 0.8),
+    });
+    page.drawLine({
+      start: { x: leftMargin + goalColWidth, y: tableStartY },
+      end: { x: leftMargin + goalColWidth, y: tableStartY - headerHeight - (goals.length * rowHeight) },
+      thickness: 1,
+      color: rgb(0.8, 0.8, 0.8),
+    });
+  }
+
+  // Add footer with therapist contact and App Store link
+  const footerY = 40;
+  const footerText = "Therapists, to have this report customized, email";
+  const therapistEmail = "hello@sarthak.pro";
+  const appStoreUrl = "https://apps.apple.com/us/app/glow-logs-that-light-the-way/id6748978131";
+  
+  const footerRightMargin = 20;
+  const footerRightEdge = width - footerRightMargin;
+  
+  // Helper function to wrap text at word boundaries
+  function wrapText(text: string, maxWidth: number, fontSize: number, font: any): string[] {
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let currentLine = '';
+    
+    for (const word of words) {
+      const testLine = currentLine ? currentLine + ' ' + word : word;
+      const testWidth = font.widthOfTextAtSize(testLine, fontSize);
+      
+      if (testWidth > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    }
+    
+    if (currentLine) {
+      lines.push(currentLine);
+    }
+    
+    return lines;
+  }
+
+  const footerStartX = 50;
+  const availableTextWidth = footerRightEdge - footerStartX - 10;
+  
+  // Wrap the footer text
+  const wrappedFooterLines = wrapText(footerText, availableTextWidth, 12, fontBold);
+  const footerLineHeight = 14;
+
+  wrappedFooterLines.forEach((line, index) => {
+    const lineWidth = fontBold.widthOfTextAtSize(line, 7);
+    page.drawText(sanitizePdfText(line), {
+      x: footerRightEdge - lineWidth,
+      y: footerY - (index * footerLineHeight),
+      size: 7,
+      font: fontBold,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+  });
+
+  // Place therapist email
+  const emailY = footerY - (wrappedFooterLines.length * footerLineHeight);
+  const emailWidthR = fontBold.widthOfTextAtSize(therapistEmail, 7);
+  page.drawText(sanitizePdfText(therapistEmail), {
+    x: footerRightEdge - emailWidthR,
+    y: emailY,
+    size: 7,
+    font: fontBold,
+    color: rgb(0, 0, 1),
+  });
+
+  // Draw "See Glow App" hyperlink
+  const appLinkText = "See Glow App";
+  const appLinkWidth = font.widthOfTextAtSize(appLinkText, 10);
+  const appLinkX = footerRightEdge - appLinkWidth;
+  const appLinkY = emailY - footerLineHeight;
+
+  page.drawText(sanitizePdfText(appLinkText), {
+    x: appLinkX,
+    y: appLinkY,
+    size: 10,
+    font: font,
+    color: rgb(0, 0, 1),
+  });
+
+  // Hyperlink annotation for "See Glow App"
+  // @ts-ignore - low-level annotation creation
+  const linkAnnot = pdfDoc.context.obj({
+    Type: 'Annot',
+    Subtype: 'Link',
+    Rect: [appLinkX, appLinkY, appLinkX + appLinkWidth, appLinkY + 12],
+    Border: [0, 0, 0],
+    A: {
+      Type: 'Action',
+      S: 'URI',
+      URI: PDFString.of(appStoreUrl),
+    },
+  });
+
+  // @ts-ignore - attach annotation to page
+  const annots = page.node.lookup(PDFName.of('Annots')) || pdfDoc.context.obj([]);
+  // @ts-ignore
+  annots.push(linkAnnot);
+  // @ts-ignore
+  page.node.set(PDFName.of('Annots'), annots);
+
+  const pdfBytes = await pdfDoc.save();
+  const base64String = uint8ToBase64(pdfBytes);
+  const fileName = `${childName}_goals_report_${duration.replace(/\s/g, '_').toLowerCase()}.pdf`;
+  const fileUri = FileSystem.cacheDirectory + fileName;
+  await FileSystem.writeAsStringAsync(fileUri, base64String, { encoding: FileSystem.EncodingType.Base64 });
+  return fileUri;
+}
+
 // QuickChart.io Heatmap-style Bar Chart (stacked bar)
 function getTimeOfDayHeatmapUrl(matrix: number[][], timeLabels: string[], dayLabels: string[], colors: string[]) {
   // Each day is a dataset (stacked bars for each time)
@@ -657,6 +990,33 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
   const barColor = '#5B9AA0';
   const scatterColor = '#FF6F61';
 
+  // Helper to get date range for the selected duration
+  const getDateRange = () => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const startOfRollingWeek = new Date(today);
+    startOfRollingWeek.setDate(today.getDate() - 6);
+
+    const formatDate = (date: Date) => {
+      return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+    };
+
+    switch (duration) {
+      case 'Today':
+        return formatDate(today);
+      case 'Yesterday':
+        return formatDate(yesterday);
+      case 'This Week':
+        return `${formatDate(startOfRollingWeek)} to ${formatDate(today)}`;
+      default:
+        return duration;
+    }
+  };
+
+  const dateRange = getDateRange();
+
   // --- Separate logs by sentiment ---
   const negativeLogs = logs.filter(log => log.responses?.whatDidTheyDo?.sentiment === 'negative');
   const positiveLogs = logs.filter(log => log.responses?.whatDidTheyDo?.sentiment === 'positive');
@@ -709,10 +1069,10 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
     const colGap = 30;
 
     // Page title
-    page.drawText(sanitizePdfText(`${childName}'s ${pageTitle} - ${duration}`), {
+    page.drawText(sanitizePdfText(`${childName}'s ${pageTitle} - ${dateRange}`), {
       x: leftMargin,
       y,
-      size: 18,
+      size: 15,
       font: fontBold,
       color: rgb(0.24, 0.24, 0.42),
     });
@@ -912,7 +1272,7 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
     // --- Add footer with therapist contact and App Store link ---
     const footerY = 40; // Position from bottom of page
     const footerText = "Therapists, to have this report customized, email";
-    const therapistEmail = "begin@1700ventures.com";
+    const therapistEmail = "hello@sarthak.pro";
     const appStoreUrl = "https://apps.apple.com/us/app/glow-logs-that-light-the-way/id6748978131";
     
     // Calculate 50% width constraint for the links
@@ -1072,6 +1432,56 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
   const fileUri = FileSystem.cacheDirectory + fileName;
   await FileSystem.writeAsStringAsync(fileUri, base64String, { encoding: FileSystem.EncodingType.Base64 });
   return fileUri;
+}
+
+// Function to merge behavior logs PDF and goals PDF
+async function mergePDFs(behaviorLogsUri: string, goalsUri: string, childName: string, duration: string): Promise<string> {
+  try {
+    // Read both PDFs as binary data
+    const behaviorLogsBytes = await FileSystem.readAsStringAsync(behaviorLogsUri, { encoding: FileSystem.EncodingType.Base64 });
+    const goalsBytes = await FileSystem.readAsStringAsync(goalsUri, { encoding: FileSystem.EncodingType.Base64 });
+    
+    // Convert base64 to Uint8Array using atob and charCodeAt
+    const behaviorLogsArray = atob(behaviorLogsBytes);
+    const behaviorLogsUint8 = new Uint8Array(behaviorLogsArray.length);
+    for (let i = 0; i < behaviorLogsArray.length; i++) {
+      behaviorLogsUint8[i] = behaviorLogsArray.charCodeAt(i);
+    }
+    
+    const goalsArray = atob(goalsBytes);
+    const goalsUint8 = new Uint8Array(goalsArray.length);
+    for (let i = 0; i < goalsArray.length; i++) {
+      goalsUint8[i] = goalsArray.charCodeAt(i);
+    }
+    
+    // Load both PDFs
+    const behaviorLogsPdf = await PDFDocument.load(behaviorLogsUint8);
+    const goalsPdf = await PDFDocument.load(goalsUint8);
+    
+    // Create a new PDF document
+    const mergedPdf = await PDFDocument.create();
+    
+    // Copy all pages from behavior logs PDF
+    const behaviorLogsPages = await mergedPdf.copyPages(behaviorLogsPdf, behaviorLogsPdf.getPageIndices());
+    behaviorLogsPages.forEach((page) => mergedPdf.addPage(page));
+    
+    // Copy all pages from goals PDF
+    const goalsPages = await mergedPdf.copyPages(goalsPdf, goalsPdf.getPageIndices());
+    goalsPages.forEach((page) => mergedPdf.addPage(page));
+    
+    // Save the merged PDF
+    const mergedPdfBytes = await mergedPdf.save();
+    const mergedBase64String = uint8ToBase64(mergedPdfBytes);
+    const mergedFileName = `${childName}_complete_report_${duration.replace(/\s/g, '_').toLowerCase()}.pdf`;
+    const mergedFileUri = FileSystem.cacheDirectory + mergedFileName;
+    await FileSystem.writeAsStringAsync(mergedFileUri, mergedBase64String, { encoding: FileSystem.EncodingType.Base64 });
+    
+    return mergedFileUri;
+  } catch (error) {
+    console.error('Error merging PDFs:', error);
+    // If merging fails, return the behavior logs PDF as fallback
+    return behaviorLogsUri;
+  }
 }
 
 // Email providers and their deep link info
@@ -1291,11 +1701,17 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
       // Get current selected child's name
       const currentSelectedChild = await AsyncStorage.getItem('current_selected_child');
       const childName = currentSelectedChild ? JSON.parse(currentSelectedChild).child_name : 'Child';
-      // Generate PDF file
-      const fileUri = await generatePDF(selectedLogs, childName, selectedDuration);
-      const subject = `${childName}'s Behavior Logs - ${selectedDuration}`;
-      const body = `Attached is the behavior log report for ${childName} from ${selectedDuration.toLowerCase()}.`;
-      await shareEmail({ fileUri, subject, body });
+      
+      // Generate both PDFs
+      const behaviorLogsUri = await generatePDF(selectedLogs, childName, selectedDuration);
+      const goalsUri = await generateGoalsPDF(childName, selectedDuration);
+      
+      // Merge the PDFs
+      const mergedFileUri = await mergePDFs(behaviorLogsUri, goalsUri, childName, selectedDuration);
+      
+      const subject = `${childName}'s Complete Report - ${selectedDuration}`;
+      const body = `Attached is the complete report for ${childName} from ${selectedDuration.toLowerCase()}, including behavior logs and goals tracking.`;
+      await shareEmail({ fileUri: mergedFileUri, subject, body });
       setAffirmationModalVisible(false);
       setSending(false);
       // Optionally show a success message here
@@ -1318,10 +1734,17 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
       const currentSelectedChild = await AsyncStorage.getItem('current_selected_child');
       const childName = currentSelectedChild ? JSON.parse(currentSelectedChild).child_name : 'Child';
       const selectedLogs = getLogsForDuration();
-      const fileUri = await generatePDF(selectedLogs, childName, selectedDuration);
-      const subject = `${childName}'s Behavior Logs - ${selectedDuration}`;
-      const body = `Attached is the behavior log report for ${childName} from ${selectedDuration.toLowerCase()}.`;
-      const ok = await openEmailApp(providerKey, fileUri, subject, body);
+      
+      // Generate both PDFs
+      const behaviorLogsUri = await generatePDF(selectedLogs, childName, selectedDuration);
+      const goalsUri = await generateGoalsPDF(childName, selectedDuration);
+      
+      // Merge the PDFs
+      const mergedFileUri = await mergePDFs(behaviorLogsUri, goalsUri, childName, selectedDuration);
+      
+      const subject = `${childName}'s Complete Report - ${selectedDuration}`;
+      const body = `Attached is the complete report for ${childName} from ${selectedDuration.toLowerCase()}, including behavior logs and goals tracking.`;
+      const ok = await openEmailApp(providerKey, mergedFileUri, subject, body);
       if (ok) {
         setEmailModalVisible(false);
         if (setDefault) {
