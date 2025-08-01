@@ -127,7 +127,7 @@ export default function DummyLogGenerator() {
       
       // Generate logs for July 1-25, 2024
       const logs: any[] = [];
-      const startDate = new Date('2x025-07-26');
+      const startDate = new Date('2025-07-27');
       
       for (let i = 0; i < 25; i++) {
         const currentDate = new Date(startDate);

@@ -973,7 +973,9 @@ function getTimeOfDayHorizontalStackedBarUrl(matrix: number[][], timeLabels: str
 
 // --- Helper to fetch chart image as base64 ---
 async function fetchChartImageBase64(url: string): Promise<string> {
-  const response = await fetch(url);
+  // Add quality parameter to reduce image size for faster loading
+  const optimizedUrl = url.includes('?') ? `${url}&quality=85` : `${url}?quality=85`;
+  const response = await fetch(optimizedUrl);
   const blob = await response.blob();
   // Read as base64
   return new Promise((resolve, reject) => {
@@ -1117,63 +1119,30 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
     }
     const consequences = aggregateConsequences(logs);
 
-    // --- Generate chart images ---
-    const chartImages: { base64?: string, type: string, caption?: string, tableRows?: [string, number][] }[] = [];
+      // --- Generate chart images with optimization ---
+  const chartImages: { base64?: string, type: string, caption?: string, tableRows?: [string, number][] }[] = [];
 
-    // 1. Antecedents Bar
-    const antecedentsBarUrl = getBarChartUrl('Antecedents', antecedents, barColor);
-    const antecedentsBarBase64 = await fetchChartImageBase64(antecedentsBarUrl);
-    chartImages.push({ 
-      base64: antecedentsBarBase64, 
-      type: 'antecedents', 
-      caption: `User-entered or selected reasons that occurred before ${behaviorType} behaviors throughout the week.` 
-    });
+  // Calculate time matrix for log distribution chart
+  const timeMatrix = aggregateTimeOfDayMatrix(logs);
 
-    // 2. What Was Involved (Behaviors Bar)
-    const behaviorsBarUrl = getBarChartUrl('What happened', behaviors, barColor, true);
-    const behaviorsBarBase64 = await fetchChartImageBase64(behaviorsBarUrl);
-    chartImages.push({ 
-      base64: behaviorsBarBase64, 
-      type: 'behaviors', 
-      caption: `Histogram showing how often each type of ${behaviorType} behavior occurred during the week.` 
-    });
+  // Generate all chart URLs first (faster than sequential fetching)
+  const chartUrls = [
+    { url: getBarChartUrl('Antecedents', antecedents, barColor), type: 'antecedents', caption: `User-entered or selected reasons that occurred before ${behaviorType} behaviors throughout the week.` },
+    { url: getBarChartUrl('What happened', behaviors, barColor, true), type: 'behaviors', caption: `Histogram showing how often each type of ${behaviorType} behavior occurred during the week.` },
+    { url: getBarChartUrl('Consequences', consequences, barColor), type: 'consequences', caption: `Responses applied after ${behaviorType} behaviors during the week.` },
+    { url: getWhoPieChartUrl(who.participantCounts, chartColors), type: 'who', caption: `Pie chart showing who was involved in ${behaviorType} incidents this week, with most common person combinations listed.` },
+    { url: getMoodLineChartUrl(mood.moodByDay, mood.dayLabels, moodColors), type: 'mood', caption: `Average mood tracked over the week for all ${behaviorType} behaviors` },
+    { url: getTimeOfDayHorizontalStackedBarUrl(timeMatrix.matrix, ['Morning', 'Afternoon', 'Evening', 'Night'], ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], chartColors), type: 'logdist', caption: `Heatmap of ${behaviorType} behavior logs by time of day across the week.` }
+  ];
 
-    // 3. Consequences Bar
-    const consequencesBarUrl = getBarChartUrl('Consequences', consequences, barColor);
-    const consequencesBarBase64 = await fetchChartImageBase64(consequencesBarUrl);
-    chartImages.push({ 
-      base64: consequencesBarBase64, 
-      type: 'consequences', 
-      caption: `Responses applied after ${behaviorType} behaviors during the week.` 
-    });
+  // Fetch all chart images in parallel
+  const chartPromises = chartUrls.map(async (chart) => {
+    const base64 = await fetchChartImageBase64(chart.url);
+    return { base64, type: chart.type, caption: chart.caption };
+  });
 
-    // 4. Who Was Involved Pie
-    const whoPieUrl = getWhoPieChartUrl(who.participantCounts, chartColors);
-    const whoPieBase64 = await fetchChartImageBase64(whoPieUrl);
-    chartImages.push({ 
-      base64: whoPieBase64, 
-      type: 'who', 
-      caption: `Pie chart showing who was involved in ${behaviorType} incidents this week, with most common person combinations listed.` 
-    });
-
-    // 5. Mood Line
-    const moodLineUrl = getMoodLineChartUrl(mood.moodByDay, mood.dayLabels, moodColors);
-    const moodLineBase64 = await fetchChartImageBase64(moodLineUrl);
-    chartImages.push({ 
-      base64: moodLineBase64, 
-      type: 'mood', 
-      caption: `Average mood tracked over the week for all ${behaviorType} behaviors` 
-    });
-
-    // 6. Log Distribution by Day and Time (Horizontal Stacked Bar)
-    const timeMatrix = aggregateTimeOfDayMatrix(logs);
-    const horizontalStackedUrl = getTimeOfDayHorizontalStackedBarUrl(timeMatrix.matrix, ['Morning', 'Afternoon', 'Evening', 'Night'], ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], chartColors);
-    const horizontalStackedBase64 = await fetchChartImageBase64(horizontalStackedUrl);
-    chartImages.push({ 
-      base64: horizontalStackedBase64, 
-      type: 'logdist', 
-      caption: `Heatmap of ${behaviorType} behavior logs by time of day across the week.` 
-    });
+  const chartResults = await Promise.all(chartPromises);
+  chartImages.push(...chartResults);
 
     // 7. Most Common Combinations table (as a special type, not an image)
     const combos = Object.entries(who.comboCounts).map(([combo, count]) => [truncateLabel(combo), count] as [string, number]).sort((a, b) => b[1] - a[1]).slice(0, 5);
