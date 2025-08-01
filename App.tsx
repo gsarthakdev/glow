@@ -52,8 +52,8 @@ export default function App() {
   useEffect(() => {
     setIsOnboardingCompleted(onboardingStatus === 'true');
     onFetchUpdateAsync();
-    // IS_DEBUGGING && doIt();
-    doIt();
+    IS_DEBUGGING && doIt();
+    // doIt();
   }, [onboardingStatus]);
 
   if (isOnboardingCompleted === null) {
