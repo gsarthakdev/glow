@@ -1469,10 +1469,36 @@ async function mergePDFs(behaviorLogsUri: string, goalsUri: string, childName: s
     const goalsPages = await mergedPdf.copyPages(goalsPdf, goalsPdf.getPageIndices());
     goalsPages.forEach((page) => mergedPdf.addPage(page));
     
+    // Helper to get date range for filename
+    const getDateRangeForFilename = () => {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const startOfRollingWeek = new Date(today);
+      startOfRollingWeek.setDate(today.getDate() - 6);
+
+      const formatDate = (date: Date) => {
+        return `${date.getMonth() + 1}_${date.getDate()}_${date.getFullYear()}`;
+      };
+
+      switch (duration) {
+        case 'Today':
+          return formatDate(today);
+        case 'Yesterday':
+          return formatDate(yesterday);
+        case 'This Week':
+          return `${formatDate(startOfRollingWeek)}_to_${formatDate(today)}`;
+        default:
+          return duration.replace(/\s/g, '_').toLowerCase();
+      }
+    };
+
     // Save the merged PDF
     const mergedPdfBytes = await mergedPdf.save();
     const mergedBase64String = uint8ToBase64(mergedPdfBytes);
-    const mergedFileName = `${childName}_complete_report_${duration.replace(/\s/g, '_').toLowerCase()}.pdf`;
+    const dateRange = getDateRangeForFilename();
+    const mergedFileName = `${childName}_complete_report_${dateRange}.pdf`;
     const mergedFileUri = FileSystem.cacheDirectory + mergedFileName;
     await FileSystem.writeAsStringAsync(mergedFileUri, mergedBase64String, { encoding: FileSystem.EncodingType.Base64 });
     

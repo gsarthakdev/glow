@@ -32,6 +32,10 @@ xcrun simctl install booted /Users/sarthak/development/glow/Glow.app
 */
 
 /*
+ How to push OTA update:
+eas update --channel production --platform ios --message "GH-10: Bug: patch empty/blank child being added from onboarding"
+*/
+/*
 
 handleSaveAndContinue() {
     // standardize algo to take in array of objects
