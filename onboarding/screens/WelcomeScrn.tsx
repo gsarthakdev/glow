@@ -196,7 +196,7 @@ export default function WelcomeScrn({ navigation }: { navigation: any }) {
         {/* Text */}
         <Animated.View style={[styles.textContainer, textAnimatedStyle]}>
           <Text style={styles.title}>Welcome to Glow</Text>
-          <Text style={styles.subtitle}>Your space to support, reflect, and grow — together.</Text>
+          <Text style={styles.subtitle}>Illuminate patterns, empower progress</Text>
         </Animated.View>
       </Animated.View>
 
