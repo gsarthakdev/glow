@@ -77,7 +77,10 @@ export default function GoalsScrn({ navigation }: { navigation: any }) {
 
   const getCurrentDate = () => {
     const today = new Date();
-    return today.toISOString().split('T')[0]; // YYYY-MM-DD format
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`; // YYYY-MM-DD format using local time
   };
 
   const getTodaysCount = (goal: Goal) => {
@@ -98,15 +101,22 @@ export default function GoalsScrn({ navigation }: { navigation: any }) {
     for (let i = 0; i < 7; i++) {
       const date = new Date(monday);
       date.setDate(monday.getDate() + i);
-      weekDates.push(date.toISOString().split('T')[0]);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      weekDates.push(`${year}-${month}-${day}`);
     }
     return weekDates;
   };
 
   const getDayName = (dateString: string) => {
-    const date = new Date(dateString);
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    return days[date.getDay()];
+    // Parse date string in local time to avoid UTC issues
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day); // month is 0-indexed
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    // Convert Sunday (0) to 6, and shift other days accordingly
+    const dayIndex = date.getDay() === 0 ? 6 : date.getDay() - 1;
+    return days[dayIndex];
   };
 
   const getCountForDate = (goal: Goal, dateString: string) => {
