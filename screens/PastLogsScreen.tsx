@@ -465,7 +465,7 @@ function aggregateTimeOfDayMatrix(logs: Log[]) {
 }
 
 // Goals PDF generation function
-async function generateGoalsPDF(childName: string, duration: string): Promise<string> {
+async function generateGoalsPDF(childName: string, childId: string, duration: string): Promise<string> {
   const pdfDoc = await PDFDocument.create();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -508,14 +508,21 @@ async function generateGoalsPDF(childName: string, duration: string): Promise<st
     return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
   };
 
-  // Load goals from AsyncStorage
+  // Load goals from child's data
   const loadGoals = async () => {
     try {
-      const goalsData = await AsyncStorage.getItem('goals');
-      if (goalsData) {
-        const parsedGoals = JSON.parse(goalsData);
-        // Filter out archived goals
-        return parsedGoals.filter((goal: any) => !goal.isArchived);
+      const childData = await AsyncStorage.getItem(childId);
+      if (childData) {
+        try {
+          const child = JSON.parse(childData);
+          const childGoals = child.goals || [];
+          // Filter out archived goals
+          return childGoals.filter((goal: any) => !goal.isArchived);
+        } catch (parseError) {
+          console.error('JSON PARSE ERROR in generateGoalsPDF loadGoals:', parseError);
+          console.error('Raw child data:', childData);
+          return [];
+        }
       }
       return [];
     } catch (error) {
@@ -1722,9 +1729,12 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
       // Get current selected child's name
       const currentSelectedChild = await AsyncStorage.getItem('current_selected_child');
       let childName = 'Child';
+      let childId = '';
       if (currentSelectedChild) {
         try {
-          childName = JSON.parse(currentSelectedChild).child_name || 'Child';
+          const selectedChild = JSON.parse(currentSelectedChild);
+          childName = selectedChild.child_name || 'Child';
+          childId = selectedChild.id || '';
         } catch (parseError) {
           console.error('JSON PARSE ERROR in sendLogs - current_selected_child:', parseError);
           console.error('Raw value:', currentSelectedChild);
@@ -1733,7 +1743,7 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
       
       // Generate both PDFs
       const behaviorLogsUri = await generatePDF(selectedLogs, childName, selectedDuration);
-      const goalsUri = await generateGoalsPDF(childName, selectedDuration);
+      const goalsUri = await generateGoalsPDF(childName, childId, selectedDuration);
       
       // Merge the PDFs
       const mergedFileUri = await mergePDFs(behaviorLogsUri, goalsUri, childName, selectedDuration);
@@ -1762,9 +1772,12 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
       // Get current selected child's name
       const currentSelectedChild = await AsyncStorage.getItem('current_selected_child');
       let childName = 'Child';
+      let childId = '';
       if (currentSelectedChild) {
         try {
-          childName = JSON.parse(currentSelectedChild).child_name || 'Child';
+          const selectedChild = JSON.parse(currentSelectedChild);
+          childName = selectedChild.child_name || 'Child';
+          childId = selectedChild.id || '';
         } catch (parseError) {
           console.error('JSON PARSE ERROR in handleProviderSelect - current_selected_child:', parseError);
           console.error('Raw value:', currentSelectedChild);
@@ -1774,7 +1787,7 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
       
       // Generate both PDFs
       const behaviorLogsUri = await generatePDF(selectedLogs, childName, selectedDuration);
-      const goalsUri = await generateGoalsPDF(childName, selectedDuration);
+      const goalsUri = await generateGoalsPDF(childName, childId, selectedDuration);
       
       // Merge the PDFs
       const mergedFileUri = await mergePDFs(behaviorLogsUri, goalsUri, childName, selectedDuration);

@@ -35,9 +35,7 @@ export default function HomeScrn({navigation}: {navigation: any}) {
         key !== 'onboarding_completed' && 
         key !== 'current_selected_child' && 
         key !== 'daily_reminder_enabled' &&
-        key !== 'notification_permissions_requested_after_onboarding' &&
-        key !== 'goals' &&
-        key !== 'last_goal_reset_date'
+        key !== 'notification_permissions_requested_after_onboarding'
       )
       
       const childData = await AsyncStorage.multiGet(childKeys)

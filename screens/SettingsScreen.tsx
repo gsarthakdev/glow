@@ -50,9 +50,7 @@ export default function SettingsScreen() {
         key !== 'current_selected_child' && 
         key !== 'daily_reminder_enabled' &&
         key !== 'notification_permissions_requested_after_onboarding' &&
-        key !== 'default_email_provider' &&
-        key !== 'goals' &&
-        key !== 'last_goal_reset_date'
+        key !== 'default_email_provider'
       );
       console.log('SettingsScreen - Filtered child keys:', childKeys);
       

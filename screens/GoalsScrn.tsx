@@ -17,6 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { v4 as uuidv4 } from 'uuid';
+import { useIsFocused } from '@react-navigation/native';
 
 interface DailyCount {
   date: string; // YYYY-MM-DD format
@@ -31,33 +32,111 @@ interface Goal {
   isArchived?: boolean;
 }
 
+interface SelectedChild {
+  id: string;
+  child_uuid: string;
+  child_name: string;
+}
+
 export default function GoalsScrn({ navigation }: { navigation: any }) {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [newGoalText, setNewGoalText] = useState('');
   const [showWeeklyView, setShowWeeklyView] = useState(false);
+  const [selectedChild, setSelectedChild] = useState<SelectedChild | null>(null);
+  const isFocused = useIsFocused();
 
   useEffect(() => {
-    loadGoals();
-    checkAndResetDailyCounts();
-  }, []);
+    if (isFocused) {
+      loadSelectedChild();
+    }
+  }, [isFocused]);
+
+  useEffect(() => {
+    if (selectedChild) {
+      loadGoals();
+      checkAndResetDailyCounts();
+    }
+  }, [selectedChild]);
+
+  const loadSelectedChild = async () => {
+    try {
+      const currentSelectedChild = await AsyncStorage.getItem('current_selected_child');
+      if (currentSelectedChild) {
+        const parsed = JSON.parse(currentSelectedChild);
+        setSelectedChild(parsed);
+      }
+    } catch (error) {
+      console.error('Error loading selected child:', error);
+    }
+  };
+
+  const migrateGlobalGoals = async () => {
+    try {
+      // Check if global goals exist
+      const globalGoalsData = await AsyncStorage.getItem('goals');
+      if (globalGoalsData && selectedChild) {
+        try {
+          const globalGoals = JSON.parse(globalGoalsData);
+          if (globalGoals.length > 0) {
+            // Load the child's current data
+            const childData = await AsyncStorage.getItem(selectedChild.id);
+            if (childData) {
+              const child = JSON.parse(childData);
+              
+              // Add goals to child data
+              child.goals = globalGoals;
+              child.last_goal_reset_date = await AsyncStorage.getItem('last_goal_reset_date') || getCurrentDate();
+              
+              // Save updated child data
+              await AsyncStorage.setItem(selectedChild.id, JSON.stringify(child));
+              
+              // Clean up global keys
+              await AsyncStorage.removeItem('goals');
+              await AsyncStorage.removeItem('last_goal_reset_date');
+              
+              console.log('✅ Successfully migrated global goals to child:', selectedChild.child_name);
+            }
+          }
+        } catch (parseError) {
+          console.error('Error parsing global goals during migration:', parseError);
+          // Clean up corrupted global data
+          await AsyncStorage.removeItem('goals');
+          await AsyncStorage.removeItem('last_goal_reset_date');
+        }
+      }
+    } catch (error) {
+      console.error('Error during goals migration:', error);
+    }
+  };
 
   const loadGoals = async () => {
+    if (!selectedChild) return;
+    
     try {
-      const goalsData = await AsyncStorage.getItem('goals');
-      if (goalsData) {
+      // First, try to migrate global goals if they exist
+      await migrateGlobalGoals();
+      
+      // Load child data
+      const childData = await AsyncStorage.getItem(selectedChild.id);
+      if (childData) {
         try {
-          const parsedGoals = JSON.parse(goalsData);
+          const child = JSON.parse(childData);
+          const childGoals = child.goals || [];
           // Filter out archived goals for display
-          const activeGoals = parsedGoals.filter((goal: Goal) => !goal.isArchived);
+          const activeGoals = childGoals.filter((goal: Goal) => !goal.isArchived);
           setGoals(activeGoals);
         } catch (parseError) {
           console.error('JSON PARSE ERROR in loadGoals:', parseError);
-          console.error('Raw goals data:', goalsData);
-          // Reset goals data if corrupted
-          await AsyncStorage.removeItem('goals');
+          console.error('Raw child data:', childData);
+          // Reset child goals if corrupted
+          const child = JSON.parse(childData);
+          child.goals = [];
+          await AsyncStorage.setItem(selectedChild.id, JSON.stringify(child));
           setGoals([]);
         }
+      } else {
+        setGoals([]);
       }
     } catch (error) {
       console.error('Error loading goals:', error);
@@ -65,40 +144,43 @@ export default function GoalsScrn({ navigation }: { navigation: any }) {
   };
 
   const checkAndResetDailyCounts = async () => {
+    if (!selectedChild) return;
+    
     try {
-      const lastResetDate = await AsyncStorage.getItem('last_goal_reset_date');
-      const today = getCurrentDate();
-      
-      // If no last reset date or it's a different day, reset counts
-      if (!lastResetDate || lastResetDate !== today) {
-                const goalsData = await AsyncStorage.getItem('goals');
-        if (goalsData) {
-          try {
-            const allGoals = JSON.parse(goalsData);
+      const childData = await AsyncStorage.getItem(selectedChild.id);
+      if (childData) {
+        try {
+          const child = JSON.parse(childData);
+          const lastResetDate = child.last_goal_reset_date;
+          const today = getCurrentDate();
+          
+          // If no last reset date or it's a different day, reset counts
+          if (!lastResetDate || lastResetDate !== today) {
+            const childGoals = child.goals || [];
             
             // Remove today's entries from all goals (this effectively resets to 0)
-            const updatedGoals = allGoals.map((goal: Goal) => ({
+            const updatedGoals = childGoals.map((goal: Goal) => ({
               ...goal,
               dailyCounts: goal.dailyCounts.filter((count: DailyCount) => count.date !== today)
             }));
             
-            await AsyncStorage.setItem('goals', JSON.stringify(updatedGoals));
+            // Update child data
+            child.goals = updatedGoals;
+            child.last_goal_reset_date = today;
             
-            // Update the last reset date
-            await AsyncStorage.setItem('last_goal_reset_date', today);
+            await AsyncStorage.setItem(selectedChild.id, JSON.stringify(child));
             
             // Reload goals to reflect the reset
             loadGoals();
-          } catch (parseError) {
-            console.error('JSON PARSE ERROR in checkAndResetDailyCounts:', parseError);
-            console.error('Raw goals data:', goalsData);
-            // Reset goals data if corrupted
-            await AsyncStorage.removeItem('goals');
-            await AsyncStorage.setItem('last_goal_reset_date', today);
           }
-        } else {
-          // If no goals exist yet, just set the reset date
-          await AsyncStorage.setItem('last_goal_reset_date', today);
+        } catch (parseError) {
+          console.error('JSON PARSE ERROR in checkAndResetDailyCounts:', parseError);
+          console.error('Raw child data:', childData);
+          // Reset child goals if corrupted
+          const child = JSON.parse(childData);
+          child.goals = [];
+          child.last_goal_reset_date = getCurrentDate();
+          await AsyncStorage.setItem(selectedChild.id, JSON.stringify(child));
         }
       }
     } catch (error) {
@@ -107,28 +189,33 @@ export default function GoalsScrn({ navigation }: { navigation: any }) {
   };
 
   const saveGoals = async (updatedGoals: Goal[]) => {
+    if (!selectedChild) return;
+    
     try {
-      // Load all goals (including archived) and update only the active ones
-      const allGoalsData = await AsyncStorage.getItem('goals');
-      let allGoals: Goal[] = [];
-      if (allGoalsData) {
+      // Load child data
+      const childData = await AsyncStorage.getItem(selectedChild.id);
+      if (childData) {
         try {
-          allGoals = JSON.parse(allGoalsData);
+          const child = JSON.parse(childData);
+          const childGoals = child.goals || [];
+          
+          // Update active goals and preserve archived ones
+          const archivedGoals = childGoals.filter((goal: Goal) => goal.isArchived);
+          const newAllGoals = [...updatedGoals, ...archivedGoals];
+          
+          child.goals = newAllGoals;
+          await AsyncStorage.setItem(selectedChild.id, JSON.stringify(child));
+          setGoals(updatedGoals);
         } catch (parseError) {
           console.error('JSON PARSE ERROR in saveGoals:', parseError);
-          console.error('Raw goals data:', allGoalsData);
-          // Reset goals data if corrupted
-          await AsyncStorage.removeItem('goals');
-          allGoals = [];
+          console.error('Raw child data:', childData);
+          // Reset child goals if corrupted
+          const child = JSON.parse(childData);
+          child.goals = updatedGoals;
+          await AsyncStorage.setItem(selectedChild.id, JSON.stringify(child));
+          setGoals(updatedGoals);
         }
       }
-      
-      // Update active goals and preserve archived ones
-      const archivedGoals = allGoals.filter((goal: Goal) => goal.isArchived);
-      const newAllGoals = [...updatedGoals, ...archivedGoals];
-      
-      await AsyncStorage.setItem('goals', JSON.stringify(newAllGoals));
-      setGoals(updatedGoals);
     } catch (error) {
       console.error('Error saving goals:', error);
     }
@@ -222,6 +309,8 @@ export default function GoalsScrn({ navigation }: { navigation: any }) {
   };
 
   const handleDeleteGoal = async (goalId: string) => {
+    if (!selectedChild) return;
+    
     const goalToDelete = goals.find(goal => goal.id === goalId);
     
     Alert.alert(
@@ -239,23 +328,29 @@ export default function GoalsScrn({ navigation }: { navigation: any }) {
             // Archive the goal instead of deleting it
             const goalToArchive = { ...goalToDelete!, isArchived: true };
             
-            // Load all goals and update the archived one
-            const allGoalsData = await AsyncStorage.getItem('goals');
-            let allGoals: Goal[] = [];
-            if (allGoalsData) {
-              allGoals = JSON.parse(allGoalsData);
+            // Load child data and update the archived goal
+            const childData = await AsyncStorage.getItem(selectedChild.id);
+            if (childData) {
+              try {
+                const child = JSON.parse(childData);
+                const childGoals = child.goals || [];
+                
+                // Update the goal to archived status
+                const updatedChildGoals = childGoals.map((goal: Goal) => 
+                  goal.id === goalId ? goalToArchive : goal
+                );
+                
+                child.goals = updatedChildGoals;
+                await AsyncStorage.setItem(selectedChild.id, JSON.stringify(child));
+                
+                // Update the active goals list
+                const activeGoals = updatedChildGoals.filter((goal: Goal) => !goal.isArchived);
+                setGoals(activeGoals);
+              } catch (parseError) {
+                console.error('JSON PARSE ERROR in handleDeleteGoal:', parseError);
+                console.error('Raw child data:', childData);
+              }
             }
-            
-            // Update the goal to archived status
-            const updatedAllGoals = allGoals.map(goal => 
-              goal.id === goalId ? goalToArchive : goal
-            );
-            
-            await AsyncStorage.setItem('goals', JSON.stringify(updatedAllGoals));
-            
-            // Update the active goals list
-            const activeGoals = updatedAllGoals.filter(goal => !goal.isArchived);
-            setGoals(activeGoals);
           },
         },
       ]
@@ -278,10 +373,13 @@ export default function GoalsScrn({ navigation }: { navigation: any }) {
               {showWeeklyView ? 'See daily count' : 'See weekly count'}
             </Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Goals</Text>
+          <Text style={styles.headerTitle}>
+            {selectedChild ? `Goals for ${selectedChild.child_name}` : 'Goals'}
+          </Text>
           <TouchableOpacity
             style={styles.addButton}
             onPress={() => setIsModalVisible(true)}
+            disabled={!selectedChild}
           >
             <Text style={styles.addButtonText}>Add Goal</Text>
           </TouchableOpacity>
@@ -293,12 +391,20 @@ export default function GoalsScrn({ navigation }: { navigation: any }) {
           contentContainerStyle={styles.goalsContent}
           showsVerticalScrollIndicator={false}
         >
-          {goals.length === 0 ? (
+          {!selectedChild ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="person-outline" size={64} color="#5B9AA0" />
+              <Text style={styles.emptyStateText}>No child selected</Text>
+              <Text style={styles.emptyStateSubtext}>
+                Please select a child to view their goals
+              </Text>
+            </View>
+          ) : goals.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="flag-outline" size={64} color="#5B9AA0" />
               <Text style={styles.emptyStateText}>No goals yet</Text>
               <Text style={styles.emptyStateSubtext}>
-                Tap "Add Goal" to create your first goal
+                Tap "Add Goal" to create your first goal for {selectedChild.child_name}
               </Text>
             </View>
           ) : showWeeklyView ? (
