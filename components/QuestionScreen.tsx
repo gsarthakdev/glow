@@ -156,7 +156,6 @@ export default function QuestionScreen({
                 value={otherText}
                 onChangeText={text => {
                   setOtherText(text);
-                  console.log('[DEBUG] TextInput onChangeText:', text);
                 }}
                 autoFocus
               />

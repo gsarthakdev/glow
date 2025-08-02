@@ -455,7 +455,6 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                           placeholder="Type your answer here..."
                           value={otherText[currentQ.id] !== undefined ? otherText[currentQ.id] : (showOtherModal.previousText || '')}
                           onChangeText={(text) => {
-                            console.log('[DEBUG] TextInput onChangeText:', text, 'for question:', currentQ.id);
                             setOtherText(prev => ({
                               ...prev,
                               [currentQ.id]: text

@@ -1,6 +1,6 @@
 //iphone se adjustment
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Platform, SafeAreaView, Linking, Pressable, Switch, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Platform, SafeAreaView, Linking, Pressable, Switch, Dimensions, ScrollView } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import * as MailComposer from 'expo-mail-composer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -26,6 +26,250 @@ interface MarkedDates {
     count?: number;
   };
 }
+
+interface Goal {
+  id: string;
+  text: string;
+  dailyCounts: { date: string; count: number }[];
+  comments: any[];
+  createdAt: string;
+  isArchived?: boolean;
+}
+
+interface DailyDetailModalProps {
+  visible: boolean;
+  onClose: () => void;
+  selectedDate: string | null;
+  logs: Log[];
+  goals: Goal[];
+  childName: string;
+}
+
+// Helper to convert UTC ISO timestamp (ending with Z) to local Date
+const parseUTCToLocalDate = (isoTimestamp: string): Date => {
+  const utcDate = new Date(isoTimestamp);
+  // getTimezoneOffset returns minutes behind UTC (+ for behind)
+  const localTimeMillis = utcDate.getTime() + utcDate.getTimezoneOffset() * 60000;
+  return new Date(localTimeMillis);
+};
+
+// Daily Detail Modal Component
+const DailyDetailModal: React.FC<DailyDetailModalProps> = ({
+  visible,
+  onClose,
+  selectedDate,
+  logs,
+  goals,
+  childName
+}) => {
+  if (!selectedDate) return null;
+
+  const formatTime = (timestamp: string) => {
+    const date = parseUTCToLocalDate(timestamp);
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+    const displayMinutes = minutes.toString().padStart(2, '0');
+    return `${displayHours}:${displayMinutes} ${ampm}`;
+  };
+
+  const formatDate = (dateString: string) => {
+    // Parse date string in local time to avoid UTC issues
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day); // month is 0-indexed
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'long',
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+  };
+
+  const getLogsForDate = (dateString: string) => {
+    return logs.filter(log => {
+      const local = parseUTCToLocalDate(log.timestamp);
+      const year = local.getFullYear();
+      const month = String(local.getMonth() + 1).padStart(2, '0');
+      const day = String(local.getDate()).padStart(2, '0');
+      const logDateStr = `${year}-${month}-${day}`;
+      return logDateStr === dateString;
+    });
+  };
+
+  const getGoalsForDate = (dateString: string) => {
+    return goals.filter(goal => {
+      return goal.dailyCounts.some(dc => dc.date === dateString && dc.count > 0);
+    });
+  };
+
+  const getGoalCountForDate = (goal: Goal, dateString: string) => {
+    const dailyCount = goal.dailyCounts.find(dc => dc.date === dateString);
+    return dailyCount ? dailyCount.count : 0;
+  };
+
+  const dateLogs = getLogsForDate(selectedDate);
+  const dateGoals = getGoalsForDate(selectedDate);
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <SafeAreaView style={dailyDetailStyles.container}>
+        {/* Header */}
+        <View style={dailyDetailStyles.header}>
+          <TouchableOpacity onPress={onClose} style={dailyDetailStyles.closeButton}>
+            <Ionicons name="close" size={24} color="#007AFF" />
+          </TouchableOpacity>
+          <Text style={dailyDetailStyles.headerTitle}>
+            {formatDate(selectedDate)}
+          </Text>
+          <View style={dailyDetailStyles.placeholder} />
+        </View>
+
+        <ScrollView style={dailyDetailStyles.content} showsVerticalScrollIndicator={false}>
+          {/* Summary Section */}
+          <View style={dailyDetailStyles.summarySection}>
+            <Text style={dailyDetailStyles.sectionTitle}>
+              Summary for {childName}
+            </Text>
+            <View style={dailyDetailStyles.summaryRow}>
+              <View style={dailyDetailStyles.summaryItem}>
+                <Text style={dailyDetailStyles.summaryNumber}>{dateLogs.length}</Text>
+                <Text style={dailyDetailStyles.summaryLabel}>Behavior Logs</Text>
+              </View>
+              <View style={dailyDetailStyles.summaryItem}>
+                <Text style={dailyDetailStyles.summaryNumber}>{dateGoals?.length}</Text>
+                <Text style={dailyDetailStyles.summaryLabel}>{dateGoals?.length > 0 ? "Goal" : "Goals"} Count Updated</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Behavior Logs Section */}
+          <View style={dailyDetailStyles.section}>
+            <Text style={dailyDetailStyles.sectionTitle}>Behavior Logs</Text>
+            {dateLogs.length === 0 ? (
+              <View style={dailyDetailStyles.emptyState}>
+                <Ionicons name="document-outline" size={48} color="#ccc" />
+                <Text style={dailyDetailStyles.emptyText}>No behavior logs for this day</Text>
+              </View>
+            ) : (
+              dateLogs.map((log, index) => (
+                <View key={log.id} style={dailyDetailStyles.logItem}>
+                  <View style={dailyDetailStyles.logHeader}>
+                    <Text style={dailyDetailStyles.logTime}>
+                      {formatTime(log.timestamp)}
+                    </Text>
+                                         <View style={[
+                       dailyDetailStyles.sentimentBadge,
+                       log.responses?.whatDidTheyDo?.sentiment === 'positive' 
+                         ? dailyDetailStyles.positiveBadge 
+                         : dailyDetailStyles.negativeBadge
+                     ]}>
+                       <Text style={[
+                         dailyDetailStyles.sentimentText,
+                         log.responses?.whatDidTheyDo?.sentiment === 'positive' 
+                           ? { color: '#2E7D32' } 
+                           : { color: '#C62828' }
+                       ]}>
+                         {log.responses?.whatDidTheyDo?.sentiment === 'positive' ? 'Positive' : 'Negative'}
+                       </Text>
+                     </View>
+                  </View>
+                  
+                  {/* Behavior */}
+                  {log.responses?.whatDidTheyDo?.answers && (
+                    <View style={dailyDetailStyles.logDetail}>
+                      <Text style={dailyDetailStyles.logLabel}>What happened:</Text>
+                      <Text style={dailyDetailStyles.logValue}>
+                        {log.responses.whatDidTheyDo.answers.map((a: any) => a.answer).join(', ')}
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* Who was involved */}
+                  {log.responses?.whoWasInvolved?.answers && (
+                    <View style={dailyDetailStyles.logDetail}>
+                      <Text style={dailyDetailStyles.logLabel}>Who was involved:</Text>
+                      <Text style={dailyDetailStyles.logValue}>
+                        {log.responses.whoWasInvolved.answers.map((a: any) => a.answer).join(', ')}
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* When it happened */}
+                  {log.responses?.whenDidItHappen?.answers && (
+                    <View style={dailyDetailStyles.logDetail}>
+                      <Text style={dailyDetailStyles.logLabel}>When it happened:</Text>
+                      <Text style={dailyDetailStyles.logValue}>
+                        {log.responses.whenDidItHappen.answers.map((a: any) => a.answer).join(', ')}
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* Mood */}
+                  {log.responses?.mood?.answers && (
+                    <View style={dailyDetailStyles.logDetail}>
+                      <Text style={dailyDetailStyles.logLabel}>Mood:</Text>
+                      <Text style={dailyDetailStyles.logValue}>
+                        {log.responses.mood.answers.map((a: any) => a.answer).join(', ')}
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* What happened before */}
+                  {log.responses?.whatHappenedBefore?.answers && (
+                    <View style={dailyDetailStyles.logDetail}>
+                      <Text style={dailyDetailStyles.logLabel}>What happened before:</Text>
+                      <Text style={dailyDetailStyles.logValue}>
+                        {log.responses.whatHappenedBefore.answers.map((a: any) => a.answer).join(', ')}
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* What happened after */}
+                  {log.responses?.whatHappenedAfter?.answers && (
+                    <View style={dailyDetailStyles.logDetail}>
+                      <Text style={dailyDetailStyles.logLabel}>What happened after:</Text>
+                      <Text style={dailyDetailStyles.logValue}>
+                        {log.responses.whatHappenedAfter.answers.map((a: any) => a.answer).join(', ')}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              ))
+            )}
+          </View>
+
+          {/* Goals Section */}
+          <View style={dailyDetailStyles.section}>
+            <Text style={dailyDetailStyles.sectionTitle}>Goals Progress</Text>
+            {dateGoals.length === 0 ? (
+              <View style={dailyDetailStyles.emptyState}>
+                <Ionicons name="trophy-outline" size={48} color="#ccc" />
+                <Text style={dailyDetailStyles.emptyText}>No goals tracked for this day</Text>
+              </View>
+            ) : (
+              dateGoals.map((goal) => (
+                <View key={goal.id} style={dailyDetailStyles.goalItem}>
+                  <Text style={dailyDetailStyles.goalText}>{goal.text}</Text>
+                  <View style={dailyDetailStyles.goalCount}>
+                    <Text style={dailyDetailStyles.goalCountText}>
+                      {(() => { const c = getGoalCountForDate(goal, selectedDate); return `${c} ${c === 1 ? 'time' : 'times'}`; })()}
+                    </Text>
+                  </View>
+                </View>
+              ))
+            )}
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </Modal>
+  );
+};
 
 const DURATION_OPTIONS = ['This Week', 'Today', 'Yesterday'];
 
@@ -90,7 +334,7 @@ function aggregateTimeOfDay(logs: Log[]) {
   logs.forEach(log => {
     const answers = log.responses?.whenDidItHappen?.answers || [];
     const label = answers[0]?.answer || 'Other';
-    const date = new Date(log.timestamp);
+    const date = parseUTCToLocalDate(log.timestamp);
     const day = dayLabels[date.getDay()];
     points.push({ x: label, y: day });
   });
@@ -103,7 +347,7 @@ function aggregateMood(logs: Log[]) {
   const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const moodByDay: Record<string, { before: number[], after: number[] }> = {};
   logs.forEach(log => {
-    const date = new Date(log.timestamp);
+    const date = parseUTCToLocalDate(log.timestamp);
     const day = dayLabels[date.getDay()];
     const moodStr = log.responses?.mood?.answers?.[0]?.answer || '';
     const match = moodStr.match(/Before: (\d+), After: (\d+)/);
@@ -455,7 +699,7 @@ function aggregateTimeOfDayMatrix(logs: Log[]) {
   logs.forEach(log => {
     const answers = log.responses?.whenDidItHappen?.answers || [];
     const timeIdx = timeLabels.indexOf(answers[0]?.answer || 'Other');
-    const date = new Date(log.timestamp);
+    const date = parseUTCToLocalDate(log.timestamp);
     const dayIdx = date.getDay(); // 0=Sunday
     if (timeIdx !== -1 && dayIdx !== -1) {
       matrix[dayIdx][timeIdx] += 1;
@@ -1688,21 +1932,27 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
   const [defaultProvider, setDefaultProvider] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
   const { shareEmail } = useEmailShare();
+  
+  // Daily detail modal state
+  const [dailyDetailModalVisible, setDailyDetailModalVisible] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [childName, setChildName] = useState('Child');
 
   var AFFIRMATIONS = [
     "Every step you take helps your child grow.",
     "Remember to take care of yourself, too.",
     "Small wins are still wins!",
-    "You’re doing an amazing job.",
+    "You're doing an amazing job.",
     "Thank you for being a caring parent.",
     "Your presence means the world to your child.",
-    "It’s okay to not have all the answers.",
+    "It's okay to not have all the answers.",
     "You are enough, just as you are.",
-    "Parenting is hard, and you’re showing up — that matters.",
-    "You’re building something beautiful, one moment at a time.",
+    "Parenting is hard, and you're showing up — that matters.",
+    "You're building something beautiful, one moment at a time.",
     "Your love is the greatest gift you give every day.",
-    "You’re stronger than you think.",
-    "It’s normal to feel overwhelmed — you’re not alone.",
+    "You're stronger than you think.",
+    "It's normal to feel overwhelmed — you're not alone.",
     "Your effort is seen and appreciated.",
     "Even on tough days, your heart shines through.",
   ];
@@ -1715,10 +1965,39 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
     return shuffled;
   }
   AFFIRMATIONS = shuffleArray(AFFIRMATIONS);
+  // Load goals for the current child
+  const loadGoals = async () => {
+    try {
+      const currentSelectedChild = await AsyncStorage.getItem('current_selected_child');
+      if (currentSelectedChild) {
+        const selectedChild = JSON.parse(currentSelectedChild);
+        const childId = selectedChild.id;
+        const childData = await AsyncStorage.getItem(childId);
+        if (childData) {
+          const child = JSON.parse(childData);
+          const childGoals = child.goals || [];
+          setGoals(childGoals.filter((goal: Goal) => !goal.isArchived));
+          setChildName(selectedChild.child_name || 'Child');
+        }
+      }
+    } catch (error) {
+      console.error('Error loading goals:', error);
+    }
+  };
+
+  // Handle day selection
+  const handleDayPress = (day: any) => {
+    if (day.dateString) {
+      setSelectedDate(day.dateString);
+      setDailyDetailModalVisible(true);
+    }
+  };
+
   // Reload logs every time the screen is focused
   useFocusEffect(
     React.useCallback(() => {
       loadLogs();
+      loadGoals();
     }, [])
   );
   // Load default provider on mount
@@ -1806,11 +2085,16 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
       // Process logs for calendar marking
       const marked: MarkedDates = {};
       allLogs.forEach((log: Log) => {
-        const date = log.timestamp.split('T')[0];
-        if (marked[date]) {
-          marked[date].count = (marked[date].count || 1) + 1;
+        // Convert timestamp to local date to avoid timezone issues
+        const logDate = parseUTCToLocalDate(log.timestamp);
+        const year = logDate.getFullYear();
+        const month = String(logDate.getMonth() + 1).padStart(2, '0');
+        const day = String(logDate.getDate()).padStart(2, '0');
+        const localDate = `${year}-${month}-${day}`;
+        if (marked[localDate]) {
+          marked[localDate].count = (marked[localDate].count || 1) + 1;
         } else {
-          marked[date] = {
+          marked[localDate] = {
             marked: true,
             dotColor: '#4CAF50',
             count: 1
@@ -1833,8 +2117,8 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
     startOfRollingWeek.setDate(today.getDate() - 6);
 
     return logs.filter((log: Log) => {
-      const logDate = new Date(log.timestamp);
-      // Zero out time for comparison
+      const logDate = parseUTCToLocalDate(log.timestamp);
+      // Zero out time for comparison using local date
       const logDay = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate());
       switch (selectedDuration) {
         case 'Today':
@@ -1985,6 +2269,7 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
         markedDates={markedDates}
         hideExtraDays={true}
         firstDay={0}
+        onDayPress={handleDayPress}
         theme={{
           backgroundColor: '#ffffff',
           calendarBackground: '#ffffff',
@@ -2010,10 +2295,13 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
           const typedMarking = marking as (typeof marking & { count?: number });
           const isMarked = typedMarking?.marked;
           return (
-            <View style={[
-              styles.dayContainer,
-              isMarked && styles.markedDayContainer
-            ]}>
+            <TouchableOpacity 
+              style={[
+                styles.dayContainer,
+                isMarked && styles.markedDayContainer
+              ]}
+              onPress={() => handleDayPress({ dateString: date?.dateString })}
+            >
               <Text style={[
                 styles.dayText,
                 state === 'disabled' && styles.disabledDayText,
@@ -2029,7 +2317,7 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
                   <Text style={styles.countText}>{typedMarking.count}</Text>
                 </View>
               )}
-            </View>
+            </TouchableOpacity>
           );
         }}
       />
@@ -2113,6 +2401,16 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
           </View>
         </Pressable>
       </Modal>
+
+      {/* Daily Detail Modal */}
+      <DailyDetailModal
+        visible={dailyDetailModalVisible}
+        onClose={() => setDailyDetailModalVisible(false)}
+        selectedDate={selectedDate}
+        logs={logs}
+        goals={goals}
+        childName={childName}
+      />
     </SafeAreaView>
   );
 }
@@ -2289,5 +2587,171 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 15,
     textAlign: 'center',
+  },
+});
+
+// Daily Detail Modal Styles
+const dailyDetailStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+    backgroundColor: '#fff',
+  },
+  closeButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#3E3E6B',
+    flex: 1,
+    textAlign: 'center',
+  },
+  placeholder: {
+    width: 40,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  summarySection: {
+    marginTop: 20,
+    marginBottom: 30,
+    padding: 20,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#3E3E6B',
+    marginBottom: 16,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  summaryItem: {
+    alignItems: 'center',
+  },
+  summaryNumber: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+    marginBottom: 4,
+  },
+  summaryLabel: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+  },
+  section: {
+    marginBottom: 30,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#999',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  logItem: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  logHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  logTime: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  sentimentBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  positiveBadge: {
+    backgroundColor: '#E8F5E8',
+  },
+  negativeBadge: {
+    backgroundColor: '#FFEBEE',
+  },
+  sentimentText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#3E3E6B',
+  },
+  logDetail: {
+    marginBottom: 8,
+  },
+  logLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#3E3E6B',
+    marginBottom: 4,
+  },
+  logValue: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+  },
+  goalItem: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  goalText: {
+    fontSize: 16,
+    color: '#3E3E6B',
+    flex: 1,
+    marginRight: 12,
+  },
+  goalCount: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  goalCountText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
   },
 });
