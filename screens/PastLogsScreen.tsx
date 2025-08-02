@@ -516,8 +516,13 @@ async function generateGoalsPDF(childName: string, childId: string, duration: st
         try {
           const child = JSON.parse(childData);
           const childGoals = child.goals || [];
-          // Filter out archived goals
-          return childGoals.filter((goal: any) => !goal.isArchived);
+          // Filter out archived goals and ensure they have comments array
+          return childGoals
+            .filter((goal: any) => !goal.isArchived)
+            .map((goal: any) => ({
+              ...goal,
+              comments: goal.comments || []
+            }));
         } catch (parseError) {
           console.error('JSON PARSE ERROR in generateGoalsPDF loadGoals:', parseError);
           console.error('Raw child data:', childData);
@@ -529,6 +534,45 @@ async function generateGoalsPDF(childName: string, childId: string, duration: st
       console.error('Error loading goals:', error);
       return [];
     }
+  };
+
+  // Helper to format date for comment display
+  const formatDateForCommentDisplay = (dateString: string) => {
+    // Parse date string in local time to avoid UTC issues
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day); // month is 0-indexed
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const dayName = days[date.getDay()];
+    return dayName;
+  };
+
+  // Helper to filter comments for current week
+  const filterCommentsForWeek = (comments: any[], weekDates: string[]) => {
+    return comments.filter(comment => weekDates.includes(comment.date));
+  };
+
+  // Helper to group comments by goal and date
+  const groupCommentsByGoalAndDate = (goals: any[], weekDates: string[]) => {
+    const grouped: { [goalId: string]: { goalName: string, dates: { [date: string]: any[] } } } = {};
+    
+    goals.forEach(goal => {
+      const weekComments = filterCommentsForWeek(goal.comments || [], weekDates);
+      if (weekComments.length > 0) {
+        grouped[goal.id] = {
+          goalName: goal.text,
+          dates: {}
+        };
+        
+        weekComments.forEach(comment => {
+          if (!grouped[goal.id].dates[comment.date]) {
+            grouped[goal.id].dates[comment.date] = [];
+          }
+          grouped[goal.id].dates[comment.date].push(comment);
+        });
+      }
+    });
+    
+    return grouped;
   };
 
   const goals = await loadGoals();
@@ -703,6 +747,90 @@ async function generateGoalsPDF(childName: string, childId: string, duration: st
       thickness: 1,
       color: rgb(0.8, 0.8, 0.8),
     });
+
+    // Add comments section if there are comments for the current week
+    const groupedComments = groupCommentsByGoalAndDate(goals, weekDates);
+    const hasComments = Object.keys(groupedComments).length > 0;
+    
+    if (hasComments) {
+      // Calculate where the goals table ended
+      const tableEndY = tableStartY - headerHeight - (goals.length * rowHeight);
+      y = tableEndY - 40;
+      
+      // Comments section title
+      page.drawText(sanitizePdfText('Parent-added Comments for each Goal'), {
+        x: leftMargin,
+        y,
+        size: 16,
+        font: fontBold,
+        color: rgb(0.24, 0.24, 0.42),
+      });
+      y -= 30;
+
+      // Iterate through each goal with comments
+      Object.entries(groupedComments).forEach(([goalId, goalData]) => {
+        // Goal name header
+        page.drawText(sanitizePdfText(`Goal: ${goalData.goalName}`), {
+          x: leftMargin,
+          y,
+          size: 12,
+          font: fontBold,
+          color: rgb(0.24, 0.24, 0.42),
+        });
+        y -= 20;
+
+        // Sort dates (most recent first)
+        const sortedDates = Object.keys(goalData.dates).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+        
+        sortedDates.forEach(date => {
+          const comments = goalData.dates[date];
+          
+          // Date header
+          page.drawText(sanitizePdfText(formatDateForCommentDisplay(date)), {
+            x: leftMargin + 10,
+            y,
+            size: 10,
+            font: fontBold,
+            color: rgb(0.5, 0.5, 0.5),
+          });
+          y -= 15;
+
+                     // Comments for this date
+           comments.forEach(comment => {
+             const commentText = sanitizePdfText(comment.text);
+             const maxCommentWidth = tableWidth - 30; // Reduced width to accommodate bullet point
+             const commentLines = wrapText(commentText, maxCommentWidth, 9, font);
+             
+             commentLines.forEach((line, lineIndex) => {
+               if (y < 100) {
+                 // Add new page if running out of space
+                 const newPage = pdfDoc.addPage([595, 842]);
+                 y = height - 40;
+               }
+               
+               // Add bullet point only for the first line of each comment
+               const displayText = lineIndex === 0 ? `• ${line}` : `  ${line}`;
+               const xOffset = lineIndex === 0 ? leftMargin + 20 : leftMargin + 25;
+               
+               page.drawText(displayText, {
+                 x: xOffset,
+                 y,
+                 size: 9,
+                 font: font,
+                 color: rgb(0.2, 0.2, 0.2),
+               });
+               y -= 12;
+             });
+             
+             y -= 5; // Space between comments
+           });
+          
+          y -= 10; // Space between dates
+        });
+        
+        y -= 15; // Space between goals
+      });
+    }
   }
 
   // Add footer with therapist contact and App Store link
