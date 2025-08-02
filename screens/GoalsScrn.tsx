@@ -45,6 +45,10 @@ export default function GoalsScrn({ navigation }: { navigation: any }) {
   const [showWeeklyView, setShowWeeklyView] = useState(false);
   const [selectedChild, setSelectedChild] = useState<SelectedChild | null>(null);
   const isFocused = useIsFocused();
+  
+  // New state for weekly view editing
+  const [editingCell, setEditingCell] = useState<{goalId: string, date: string} | null>(null);
+  const [editingCount, setEditingCount] = useState(0);
 
   useEffect(() => {
     if (isFocused) {
@@ -357,6 +361,53 @@ export default function GoalsScrn({ navigation }: { navigation: any }) {
     );
   };
 
+  // New functions for weekly view editing
+  const handleDayCellPress = (goalId: string, date: string) => {
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal) return;
+    
+    const currentCount = getCountForDate(goal, date);
+    setEditingCount(currentCount);
+    setEditingCell({ goalId, date });
+  };
+
+  const handleEditCount = async (increment: number) => {
+    const newCount = Math.max(0, Math.min(99, editingCount + increment));
+    setEditingCount(newCount);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingCell || !selectedChild) return;
+    
+    const { goalId, date } = editingCell;
+    const updatedGoals = goals.map(goal => {
+      if (goal.id === goalId) {
+        const existingEntry = goal.dailyCounts.find(count => count.date === date);
+        const updatedDailyCounts = existingEntry 
+          ? goal.dailyCounts.map(count => 
+              count.date === date ? { ...count, count: editingCount } : count
+            )
+          : [...goal.dailyCounts, { date, count: editingCount }];
+        
+        return { ...goal, dailyCounts: updatedDailyCounts };
+      }
+      return goal;
+    });
+    
+    await saveGoals(updatedGoals);
+    setEditingCell(null);
+    setEditingCount(0);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCell(null);
+    setEditingCount(0);
+  };
+
+  const isCurrentDay = (dateString: string) => {
+    return dateString === getCurrentDate();
+  };
+
   return (
     <LinearGradient
       colors={["#FFE5DC", "#D3C7FF", "#C4E8F6"]}
@@ -429,13 +480,28 @@ export default function GoalsScrn({ navigation }: { navigation: any }) {
                       <Ionicons name="trash-outline" size={16} color="#FF6F61" />
                     </TouchableOpacity>
                   </View>
-                  {getWeekDates().map((date, index) => (
-                    <View key={index} style={styles.weeklyCountCell}>
-                      <Text style={styles.weeklyCountText}>
-                        {getCountForDate(goal, date)}
-                      </Text>
-                    </View>
-                  ))}
+                  {getWeekDates().map((date, index) => {
+                    const isEditing = editingCell?.goalId === goal.id && editingCell?.date === date;
+                    const isToday = isCurrentDay(date);
+                    return (
+                      <TouchableOpacity
+                        key={index}
+                        style={[
+                          styles.weeklyCountCell,
+                          isToday && styles.currentDayCell,
+                          isEditing && styles.editingCell
+                        ]}
+                        onPress={() => handleDayCellPress(goal.id, date)}
+                      >
+                        <Text style={[
+                          styles.weeklyCountText,
+                          isToday && styles.currentDayText
+                        ]}>
+                          {getCountForDate(goal, date)}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               ))}
             </View>
@@ -524,6 +590,65 @@ export default function GoalsScrn({ navigation }: { navigation: any }) {
                       disabled={!newGoalText.trim()}
                     >
                       <Text style={styles.addGoalButtonText}>Add</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
+
+        {/* Edit Count Modal */}
+        <Modal
+          visible={editingCell !== null}
+          transparent
+          animationType="fade"
+          onRequestClose={handleCancelEdit}
+        >
+          <TouchableWithoutFeedback onPress={handleCancelEdit}>
+            <View style={styles.modalOverlay}>
+              <TouchableWithoutFeedback onPress={() => {}}>
+                <View style={styles.modalContent}>
+                  <View style={styles.modalHeader}>
+                    <Text style={styles.modalTitle}>Edit Count</Text>
+                    <TouchableOpacity
+                      onPress={handleCancelEdit}
+                      style={styles.closeButton}
+                    >
+                      <Ionicons name="close" size={24} color="#5B9AA0" />
+                    </TouchableOpacity>
+                  </View>
+                  
+                  <View style={styles.editCountContainer}>
+                    <TouchableOpacity
+                      style={styles.counterButton}
+                      onPress={() => handleEditCount(-1)}
+                    >
+                      <Ionicons name="remove" size={24} color="#5B9AA0" />
+                    </TouchableOpacity>
+                    <View style={styles.countDisplay}>
+                      <Text style={styles.countText}>{editingCount}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.counterButton}
+                      onPress={() => handleEditCount(1)}
+                    >
+                      <Ionicons name="add" size={24} color="#5B9AA0" />
+                    </TouchableOpacity>
+                  </View>
+                  
+                  <View style={styles.modalButtons}>
+                    <TouchableOpacity
+                      style={styles.cancelButton}
+                      onPress={handleCancelEdit}
+                    >
+                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.addGoalButton}
+                      onPress={handleSaveEdit}
+                    >
+                      <Text style={styles.addGoalButtonText}>Done</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -850,5 +975,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#3E3E6B',
+  },
+  currentDayCell: {
+    backgroundColor: '#E8F3F4',
+    borderRadius: 8,
+  },
+  currentDayText: {
+    color: '#5B9AA0',
+    fontWeight: '700',
+  },
+  editingCell: {
+    backgroundColor: '#D3C7FF',
+    borderRadius: 8,
+  },
+  editCountContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F0F8F9',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
   },
 }); 
