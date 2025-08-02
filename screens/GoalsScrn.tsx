@@ -583,6 +583,8 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     color: '#3E3E6B',
+    maxWidth: '30%',
+    textAlign: 'center',
   },
   addButton: {
     backgroundColor: '#5B9AA0',

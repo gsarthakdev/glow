@@ -78,38 +78,57 @@ export default function HomeScrn({navigation}: {navigation: any}) {
       
       setChildren(childDetails)
 
-      const currentSelectedChild = await AsyncStorage.getItem('current_selected_child')
-      if (currentSelectedChild) {
-        const parsedSelected = JSON.parse(currentSelectedChild);
-        // Check if the selected child is still valid (not deleted)
-        const stillExists = childDetails.find(child => child.id === parsedSelected.id);
-        if (stillExists) {
-          // If the data has changed (e.g., name edited), update selectedChild and AsyncStorage
-          if (
-            parsedSelected.child_name !== stillExists.child_name ||
-            parsedSelected.child_uuid !== stillExists.child_uuid
-          ) {
-            setSelectedChild(stillExists);
-            await AsyncStorage.setItem('current_selected_child', JSON.stringify(stillExists));
+      // Handle current selected child with better error handling
+      try {
+        const currentSelectedChild = await AsyncStorage.getItem('current_selected_child')
+        if (currentSelectedChild) {
+          const parsedSelected = JSON.parse(currentSelectedChild);
+          // Check if the selected child is still valid (not deleted)
+          const stillExists = childDetails.find(child => child.id === parsedSelected.id);
+          if (stillExists) {
+            // If the data has changed (e.g., name edited), update selectedChild and AsyncStorage
+            if (
+              parsedSelected.child_name !== stillExists.child_name ||
+              parsedSelected.child_uuid !== stillExists.child_uuid
+            ) {
+              setSelectedChild(stillExists);
+              await AsyncStorage.setItem('current_selected_child', JSON.stringify(stillExists));
+            } else {
+              setSelectedChild(parsedSelected);
+            }
+          } else if (childDetails.length > 0) {
+            setSelectedChild(childDetails[0]);
+            await AsyncStorage.setItem('current_selected_child', JSON.stringify(childDetails[0]));
           } else {
-            setSelectedChild(parsedSelected);
+            setSelectedChild(null);
+            await AsyncStorage.removeItem('current_selected_child');
           }
         } else if (childDetails.length > 0) {
-          setSelectedChild(childDetails[0]);
-          await AsyncStorage.setItem('current_selected_child', JSON.stringify(childDetails[0]));
+          setSelectedChild(childDetails[0])
+          await AsyncStorage.setItem('current_selected_child', JSON.stringify(childDetails[0]))
         } else {
           setSelectedChild(null);
           await AsyncStorage.removeItem('current_selected_child');
         }
-      } else if (childDetails.length > 0) {
-        setSelectedChild(childDetails[0])
-        await AsyncStorage.setItem('current_selected_child', JSON.stringify(childDetails[0]))
-      } else {
-        setSelectedChild(null);
-        await AsyncStorage.removeItem('current_selected_child');
+      } catch (selectedChildError) {
+        console.error('Error handling selected child:', selectedChildError);
+        // If there's an error with the selected child, try to set the first available child
+        if (childDetails.length > 0) {
+          setSelectedChild(childDetails[0]);
+          try {
+            await AsyncStorage.setItem('current_selected_child', JSON.stringify(childDetails[0]));
+          } catch (saveError) {
+            console.error('Error saving selected child after error recovery:', saveError);
+          }
+        } else {
+          setSelectedChild(null);
+        }
       }
     } catch (error) {
       console.error('Error loading children:', error)
+      // Set empty state to prevent crashes
+      setChildren([]);
+      setSelectedChild(null);
     }
   }
 
