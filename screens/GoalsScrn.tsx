@@ -12,6 +12,7 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Alert,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,10 +25,18 @@ interface DailyCount {
   count: number;
 }
 
+interface Comment {
+  id: string;
+  text: string;
+  date: string; // YYYY-MM-DD format
+  createdAt: string;
+}
+
 interface Goal {
   id: string;
   text: string;
   dailyCounts: DailyCount[];
+  comments: Comment[];
   createdAt: string;
   isArchived?: boolean;
 }
@@ -49,6 +58,12 @@ export default function GoalsScrn({ navigation }: { navigation: any }) {
   // New state for weekly view editing
   const [editingCell, setEditingCell] = useState<{goalId: string, date: string} | null>(null);
   const [editingCount, setEditingCount] = useState(0);
+  
+  // New state for comment modal
+  const [commentModalVisible, setCommentModalVisible] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
+  const [newCommentText, setNewCommentText] = useState('');
+  const [editingComment, setEditingComment] = useState<Comment | null>(null);
 
   useEffect(() => {
     if (isFocused) {
@@ -88,8 +103,12 @@ export default function GoalsScrn({ navigation }: { navigation: any }) {
             if (childData) {
               const child = JSON.parse(childData);
               
-              // Add goals to child data
-              child.goals = globalGoals;
+              // Add goals to child data and ensure they have comments array
+              const goalsWithComments = globalGoals.map((goal: any) => ({
+                ...goal,
+                comments: goal.comments || []
+              }));
+              child.goals = goalsWithComments;
               child.last_goal_reset_date = await AsyncStorage.getItem('last_goal_reset_date') || getCurrentDate();
               
               // Save updated child data
@@ -127,8 +146,13 @@ export default function GoalsScrn({ navigation }: { navigation: any }) {
         try {
           const child = JSON.parse(childData);
           const childGoals = child.goals || [];
-          // Filter out archived goals for display
-          const activeGoals = childGoals.filter((goal: Goal) => !goal.isArchived);
+          // Ensure all goals have comments array and filter out archived goals
+          const activeGoals = childGoals
+            .map((goal: any) => ({
+              ...goal,
+              comments: goal.comments || []
+            }))
+            .filter((goal: Goal) => !goal.isArchived);
           setGoals(activeGoals);
         } catch (parseError) {
           console.error('JSON PARSE ERROR in loadGoals:', parseError);
@@ -280,6 +304,7 @@ export default function GoalsScrn({ navigation }: { navigation: any }) {
         id: uuidv4(),
         text: newGoalText.trim(),
         dailyCounts: [],
+        comments: [],
         createdAt: new Date().toISOString(),
       };
 
@@ -408,6 +433,135 @@ export default function GoalsScrn({ navigation }: { navigation: any }) {
     return dateString === getCurrentDate();
   };
 
+  // Comment-related functions
+  const handleGoalPress = (goal: Goal) => {
+    setSelectedGoal(goal);
+    setCommentModalVisible(true);
+  };
+
+  const handleAddComment = async () => {
+    if (!selectedGoal || !newCommentText.trim() || newCommentText.trim().length < 2) return;
+    
+    const newComment: Comment = {
+      id: uuidv4(),
+      text: newCommentText.trim(),
+      date: getCurrentDate(),
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedGoal = {
+      ...selectedGoal,
+      comments: [...selectedGoal.comments, newComment]
+    };
+
+    const updatedGoals = goals.map(goal => 
+      goal.id === selectedGoal.id ? updatedGoal : goal
+    );
+
+    await saveGoals(updatedGoals);
+    setSelectedGoal(updatedGoal);
+    setNewCommentText('');
+    setEditingComment(null);
+  };
+
+  const handleEditComment = (comment: Comment) => {
+    setEditingComment(comment);
+    setNewCommentText(comment.text);
+  };
+
+  const handleSaveEditComment = async () => {
+    if (!selectedGoal || !editingComment || !newCommentText.trim() || newCommentText.trim().length < 2) return;
+    
+    const updatedGoal = {
+      ...selectedGoal,
+      comments: selectedGoal.comments.map(comment => 
+        comment.id === editingComment.id 
+          ? { ...comment, text: newCommentText.trim() }
+          : comment
+      )
+    };
+
+    const updatedGoals = goals.map(goal => 
+      goal.id === selectedGoal.id ? updatedGoal : goal
+    );
+
+    await saveGoals(updatedGoals);
+    setSelectedGoal(updatedGoal);
+    setNewCommentText('');
+    setEditingComment(null);
+  };
+
+  const handleDeleteComment = (comment: Comment) => {
+    Alert.alert(
+      "Delete Comment",
+      "Are you sure you want to delete this comment?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            if (!selectedGoal) return;
+            
+            const updatedGoal = {
+              ...selectedGoal,
+              comments: selectedGoal.comments.filter(c => c.id !== comment.id)
+            };
+
+            const updatedGoals = goals.map(goal => 
+              goal.id === selectedGoal.id ? updatedGoal : goal
+            );
+
+            await saveGoals(updatedGoals);
+            setSelectedGoal(updatedGoal);
+          }
+        }
+      ]
+    );
+  };
+
+  const handleCancelEditComment = () => {
+    setEditingComment(null);
+    setNewCommentText('');
+  };
+
+  const formatDateForDisplay = (dateString: string) => {
+    const today = getCurrentDate();
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayString = yesterday.toISOString().split('T')[0];
+    
+    if (dateString === today) return 'Today';
+    if (dateString === yesterdayString) return 'Yesterday';
+    
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const groupCommentsByDate = (comments: Comment[]) => {
+    const grouped: { [key: string]: Comment[] } = {};
+    comments.forEach(comment => {
+      if (!grouped[comment.date]) {
+        grouped[comment.date] = [];
+      }
+      grouped[comment.date].push(comment);
+    });
+    
+    // Sort comments within each date by creation time
+    Object.keys(grouped).forEach(date => {
+      grouped[date].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    });
+    
+    // Sort dates (most recent first)
+    return Object.keys(grouped)
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+      .map(date => ({ date, comments: grouped[date] }));
+  };
+
   return (
     <LinearGradient
       colors={["#FFE5DC", "#D3C7FF", "#C4E8F6"]}
@@ -509,7 +663,10 @@ export default function GoalsScrn({ navigation }: { navigation: any }) {
             // Daily View
             goals.map((goal) => (
               <View key={goal.id} style={styles.goalItem}>
-                <View style={styles.goalTextContainer}>
+                <TouchableOpacity
+                  style={styles.goalTextContainer}
+                  onPress={() => handleGoalPress(goal)}
+                >
                   <Text style={styles.goalText}>{goal.text}</Text>
                   <TouchableOpacity
                     style={styles.deleteButton}
@@ -517,7 +674,7 @@ export default function GoalsScrn({ navigation }: { navigation: any }) {
                   >
                     <Ionicons name="trash-outline" size={16} color="#FF6F61" />
                   </TouchableOpacity>
-                </View>
+                </TouchableOpacity>
                 <View style={styles.counterContainer}>
                   <TouchableOpacity
                     style={styles.counterButton}
@@ -655,6 +812,132 @@ export default function GoalsScrn({ navigation }: { navigation: any }) {
               </TouchableWithoutFeedback>
             </View>
           </TouchableWithoutFeedback>
+        </Modal>
+
+        {/* Comment Modal */}
+        <Modal
+          visible={commentModalVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setCommentModalVisible(false)}
+        >
+          <KeyboardAvoidingView 
+            style={styles.commentModalOverlay}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
+            <View style={styles.commentModalContent}>
+              {/* Header */}
+              <View style={styles.commentModalHeader}>
+                <Text style={styles.commentModalTitle}>
+                  {selectedGoal?.text}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setCommentModalVisible(false)}
+                  style={styles.closeButton}
+                >
+                  <Ionicons name="close" size={24} color="#5B9AA0" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Comments List */}
+              <ScrollView 
+                style={styles.commentsContainer}
+                showsVerticalScrollIndicator={false}
+              >
+                {selectedGoal && selectedGoal.comments.length > 0 ? (
+                  groupCommentsByDate(selectedGoal.comments).map(({ date, comments }) => (
+                    <View key={date} style={styles.commentDateGroup}>
+                      <Text style={styles.commentDateHeader}>
+                        {formatDateForDisplay(date)}
+                      </Text>
+                      {comments.map((comment) => (
+                        <View key={comment.id} style={styles.commentItem}>
+                          <Text style={styles.commentText}>{comment.text}</Text>
+                          <View style={styles.commentActions}>
+                            <TouchableOpacity
+                              style={styles.commentActionButton}
+                              onPress={() => handleEditComment(comment)}
+                            >
+                              <Ionicons name="pencil" size={16} color="#5B9AA0" />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.commentActionButton}
+                              onPress={() => handleDeleteComment(comment)}
+                            >
+                              <Ionicons name="trash-outline" size={16} color="#FF6F61" />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  ))
+                ) : (
+                  <View style={styles.noCommentsContainer}>
+                    <Ionicons name="chatbubble-outline" size={48} color="#5B9AA0" />
+                    <Text style={styles.noCommentsText}>No comments yet</Text>
+                    <Text style={styles.noCommentsSubtext}>
+                      Add your first comment below
+                    </Text>
+                  </View>
+                )}
+              </ScrollView>
+
+              {/* Add Comment Section */}
+              <View style={styles.addCommentContainer}>
+                {editingComment ? (
+                  <View style={styles.editCommentContainer}>
+                    <TextInput
+                      style={styles.commentInput}
+                      placeholder="Edit your comment..."
+                      value={newCommentText}
+                      onChangeText={setNewCommentText}
+                      multiline
+                      maxLength={200}
+                    />
+                    <View style={styles.editCommentButtons}>
+                      <TouchableOpacity
+                        style={styles.cancelCommentButton}
+                        onPress={handleCancelEditComment}
+                      >
+                        <Text style={styles.cancelCommentButtonText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.saveCommentButton,
+                          (!newCommentText.trim() || newCommentText.trim().length < 2) && styles.saveCommentButtonDisabled
+                        ]}
+                        onPress={handleSaveEditComment}
+                        disabled={!newCommentText.trim() || newCommentText.trim().length < 2}
+                      >
+                        <Text style={styles.saveCommentButtonText}>Save</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={styles.addCommentInputContainer}>
+                    <TextInput
+                      style={styles.commentInput}
+                      placeholder="Add a comment..."
+                      value={newCommentText}
+                      onChangeText={setNewCommentText}
+                      multiline
+                      maxLength={200}
+                    />
+                    <TouchableOpacity
+                      style={[
+                        styles.addCommentButton,
+                        (!newCommentText.trim() || newCommentText.trim().length < 2) && styles.addCommentButtonDisabled
+                      ]}
+                      onPress={handleAddComment}
+                      disabled={!newCommentText.trim() || newCommentText.trim().length < 2}
+                    >
+                      <Text style={styles.addCommentButtonText}>Add Comment</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            </View>
+          </KeyboardAvoidingView>
         </Modal>
       </SafeAreaView>
     </LinearGradient>
@@ -996,5 +1279,179 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
+  },
+  // Comment modal styles
+  commentModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'flex-end',
+  },
+  commentModalContent: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    height: '80%',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  commentModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  commentModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#3E3E6B',
+    flex: 1,
+    marginRight: 16,
+  },
+  commentsContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  commentDateGroup: {
+    marginBottom: 20,
+  },
+  commentDateHeader: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#5B9AA0',
+    marginBottom: 8,
+    paddingTop: 16,
+  },
+  commentItem: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  commentText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#3E3E6B',
+    lineHeight: 20,
+    marginRight: 8,
+  },
+  commentActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  commentActionButton: {
+    padding: 4,
+    marginLeft: 4,
+  },
+  noCommentsContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 60,
+  },
+  noCommentsText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#3E3E6B',
+    marginTop: 16,
+  },
+  noCommentsSubtext: {
+    fontSize: 14,
+    color: '#5B9AA0',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  addCommentContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+    backgroundColor: '#FFF',
+  },
+  addCommentInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+  },
+  commentInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 14,
+    color: '#3E3E6B',
+    minHeight: 40,
+    maxHeight: 100,
+    textAlignVertical: 'top',
+    marginRight: 8,
+  },
+  addCommentButton: {
+    backgroundColor: '#5B9AA0',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  addCommentButtonDisabled: {
+    backgroundColor: '#E0E0E0',
+  },
+  addCommentButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFF',
+  },
+  editCommentContainer: {
+    flexDirection: 'column',
+  },
+  editCommentButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  cancelCommentButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  cancelCommentButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#5B9AA0',
+  },
+  saveCommentButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: '#5B9AA0',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  saveCommentButtonDisabled: {
+    backgroundColor: '#E0E0E0',
+  },
+  saveCommentButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFF',
   },
 }); 
