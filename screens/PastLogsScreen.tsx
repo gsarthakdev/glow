@@ -184,7 +184,7 @@ const DailyDetailModal: React.FC<DailyDetailModalProps> = ({
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                       <Text style={dailyDetailStyles.logTime}>{formatTime(log.timestamp)}</Text>
                       {log.edited && (
-                        <Text style={dailyDetailStyles.editedLabel}> • edited</Text>
+                        <Text style={dailyDetailStyles.editedLabel}> · edited</Text>
                       )}
                       <View
                         style={[
@@ -2774,7 +2774,6 @@ const dailyDetailStyles = StyleSheet.create({
   },
   sentimentBadge: {
     paddingHorizontal: 8,
-    marginLeft: 20,
     paddingVertical: 4,
     borderRadius: 12,
   },

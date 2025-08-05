@@ -17,7 +17,9 @@ import * as Updates from "expo-updates";
 import { IS_DEBUGGING } from './flag';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
+import { LogBox } from 'react-native';
 
+// LogBox.ignoreAllLogs();    
 // Error Boundary Component
 interface ErrorBoundaryState {
   hasError: boolean;

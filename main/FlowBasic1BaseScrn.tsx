@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   findNodeHandle,
+  Animated,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { v4 as uuidv4 } from 'uuid';
@@ -19,11 +20,23 @@ import { flow_basic_1 } from '../flows/flow_basic_1';
 import { flow_basic_1 as positive_flow_basic_1 } from '../flows/positive_flow_basic_1';
 import MoodBubbleSlider from '../components/MoodBubbleSlider';
 import { useRoute } from '@react-navigation/native';
+import { getABCForBehaviour, trackGPTSuggestionUsage } from '../utils/gptService';
+import { getShuffledOptions, getTotalSets } from '../flows/behaviorSpecificOptions';
+import { getShuffledGPTOptions, getTotalGPTSets } from '../utils/gptService';
+
+interface Category {
+  key: string;
+  label: string;
+  emoji: string;
+  sentiment?: string | null;
+  choices: Array<{ label: string; emoji: string; sentiment?: string | null; isOther?: boolean }>;
+}
 
 interface Question {
   id: string;
   question: string;
   answer_choices?: Array<{ label: string; emoji: string; sentiment?: string | null }>;
+  categories?: Category[];
   subheading?: string;
 }
 
@@ -52,6 +65,12 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
   const [moodAfter, setMoodAfter] = useState<number>(0);
   const [flowSentiment, setFlowSentiment] = useState<'positive' | 'negative' | null>(null);
   const [currentFlow, setCurrentFlow] = useState<Question[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [gptSuggestions, setGptSuggestions] = useState<{ antecedents: Array<{ text: string; emoji: string }>; consequences: Array<{ text: string; emoji: string }>; isFallback?: boolean } | null>(null);
+  const [isLoadingGpt, setIsLoadingGpt] = useState(false);
+  const [optionSets, setOptionSets] = useState<{ [questionId: string]: number }>({});
+  const [fadeAnim] = useState(new Animated.Value(1));
 
   // Edit mode support
   const route = useRoute<any>();
@@ -74,6 +93,120 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       setCurrentFlow(flow);
     }
   }, [flowSentiment]);
+
+  // Inject behavior-specific options and GPT suggestions into the flow
+  useEffect(() => {
+    console.log('[FLOW] useEffect triggered. selectedAnswers:', selectedAnswers, 'gptSuggestions:', gptSuggestions);
+    if (currentFlow.length > 0) {
+      const selectedBehavior = selectedAnswers['whatDidTheyDo']?.[0]?.answer;
+      console.log('[FLOW] Selected behavior:', selectedBehavior);
+      if (!selectedBehavior) {
+        console.log('[FLOW] No selected behavior found, returning early');
+        return;
+      }
+
+      const updatedFlow = [...currentFlow];
+      
+      // Inject behavior-specific antecedents into whatHappenedBefore question
+      const antecedentQuestionIndex = updatedFlow.findIndex(q => q.id === 'whatHappenedBefore');
+      console.log('[FLOW] Antecedent question index:', antecedentQuestionIndex);
+      if (antecedentQuestionIndex !== -1) {
+        const currentSet = optionSets['whatHappenedBefore'] || 0;
+        
+        // Check if this is a custom "other" response (GPT should be used)
+        const isCustomResponse = selectedAnswers['whatDidTheyDo']?.[0]?.isCustom;
+        console.log('[FLOW] Is custom response:', isCustomResponse);
+        
+        let antecedentChoices = [];
+        
+        if (isCustomResponse && gptSuggestions && !gptSuggestions.isFallback) {
+          // For custom responses, use only GPT options
+          const gptAntecedents = getShuffledGPTOptions(gptSuggestions, 'antecedents', currentSet);
+          console.log('[FLOW] GPT antecedents for custom response:', gptAntecedents);
+          
+          antecedentChoices = gptAntecedents.map(antecedent => ({
+            label: antecedent.text, // Save only the text for AsyncStorage
+            emoji: antecedent.emoji, // Use GPT's emoji
+            sentiment: 'negative',
+            isGptGenerated: true
+          }));
+        } else {
+          // For predefined behaviors, use behavior-specific options
+          const behaviorAntecedents = getShuffledOptions(selectedBehavior, 'antecedents', currentSet);
+          console.log('[FLOW] Behavior antecedents for predefined behavior:', behaviorAntecedents);
+          
+            antecedentChoices = behaviorAntecedents.map((antecedent: string, index: number) => ({
+    label: antecedent,
+    emoji: getAntecedentEmoji(antecedent), // Use relevant emoji for behavior-specific options
+    sentiment: 'negative',
+    isBehaviorSpecific: true
+  }));
+        }
+        
+        const allAntecedentChoices = [
+          ...antecedentChoices,
+          { label: "Other", emoji: "➕", sentiment: null }
+        ];
+        console.log('[FLOW] All antecedent choices:', allAntecedentChoices);
+        
+        updatedFlow[antecedentQuestionIndex] = {
+          ...updatedFlow[antecedentQuestionIndex],
+          answer_choices: allAntecedentChoices
+        };
+      }
+      
+      // Inject behavior-specific consequences into whatHappenedAfter question
+      const consequenceQuestionIndex = updatedFlow.findIndex(q => q.id === 'whatHappenedAfter');
+      console.log('[FLOW] Consequence question index:', consequenceQuestionIndex);
+      if (consequenceQuestionIndex !== -1) {
+        const currentSet = optionSets['whatHappenedAfter'] || 0;
+        
+        // Check if this is a custom "other" response (GPT should be used)
+        const isCustomResponse = selectedAnswers['whatDidTheyDo']?.[0]?.isCustom;
+        console.log('[FLOW] Is custom response for consequences:', isCustomResponse);
+        
+        let consequenceChoices = [];
+        
+        if (isCustomResponse && gptSuggestions && !gptSuggestions.isFallback) {
+          // For custom responses, use only GPT options
+          const gptConsequences = getShuffledGPTOptions(gptSuggestions, 'consequences', currentSet);
+          console.log('[FLOW] GPT consequences for custom response:', gptConsequences);
+          
+          consequenceChoices = gptConsequences.map(consequence => ({
+            label: consequence.text, // Save only the text for AsyncStorage
+            emoji: consequence.emoji, // Use GPT's emoji
+            sentiment: 'negative',
+            isGptGenerated: true
+          }));
+        } else {
+          // For predefined behaviors, use behavior-specific options
+          const behaviorConsequences = getShuffledOptions(selectedBehavior, 'consequences', currentSet);
+          console.log('[FLOW] Behavior consequences for predefined behavior:', behaviorConsequences);
+          
+            consequenceChoices = behaviorConsequences.map((consequence: string, index: number) => ({
+    label: consequence,
+    emoji: getConsequenceEmoji(consequence), // Use relevant emoji for behavior-specific options
+    sentiment: 'negative',
+    isBehaviorSpecific: true
+  }));
+        }
+        
+        const allConsequenceChoices = [
+          ...consequenceChoices,
+          { label: "Other", emoji: "➕", sentiment: null }
+        ];
+        console.log('[FLOW] All consequence choices:', allConsequenceChoices);
+        
+        updatedFlow[consequenceQuestionIndex] = {
+          ...updatedFlow[consequenceQuestionIndex],
+          answer_choices: allConsequenceChoices
+        };
+      }
+      
+      console.log('[FLOW] Setting currentFlow with updated flow');
+      setCurrentFlow(updatedFlow);
+    }
+  }, [selectedAnswers, gptSuggestions, optionSets]);
 
   // Set sentiment immediately in edit mode
   useEffect(() => {
@@ -115,7 +248,14 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     }
   }, [isEditMode, editLog, flowSentiment, currentFlow]);
 
-
+  // Flatten all behaviour choices across categories so we can quick-search
+  const allBehaviourChoices = React.useMemo(() => {
+    const firstQuestion = flow_basic_1[0];
+    if (!firstQuestion.categories) return [];
+    return firstQuestion.categories.flatMap(cat =>
+      cat.choices.map(choice => ({ ...choice, categoryKey: cat.key }))
+    );
+  }, []);
 
   const loadCurrentChild = async () => {
     try {
@@ -193,6 +333,24 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       }
     }
 
+    // Track GPT suggestion usage if this is a GPT-generated answer
+    if ((answer as any).isGptGenerated) {
+      const selectedBehavior = selectedAnswers['whatDidTheyDo']?.[0]?.answer;
+      if (selectedBehavior) {
+        const suggestionType = questionId === 'whatHappenedBefore' ? 'antecedent' : 'consequence';
+        trackGPTSuggestionUsage(selectedBehavior, suggestionType, answer.label);
+      }
+    }
+
+    // Track behavior-specific option usage
+    if ((answer as any).isBehaviorSpecific) {
+      const selectedBehavior = selectedAnswers['whatDidTheyDo']?.[0]?.answer;
+      if (selectedBehavior) {
+        const suggestionType = questionId === 'whatHappenedBefore' ? 'antecedent' : 'consequence';
+        trackGPTSuggestionUsage(selectedBehavior, suggestionType, answer.label);
+      }
+    }
+
     // Process answer selection - always replace for first question, toggle for others
     setSelectedAnswers(prev => {
       const answerText = answer.label;
@@ -254,6 +412,30 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
           ...prev,
           [currentQ.id]: [{ answer: otherText[currentQ.id], isCustom: true }]
         }));
+        
+        // Call GPT to get ABC suggestions for the custom behavior
+        const customBehavior = otherText[currentQ.id];
+        console.log('[GPT] About to call getABCForBehaviour with behavior:', customBehavior);
+        if (customBehavior) {
+          setIsLoadingGpt(true);
+          console.log('[GPT] Setting isLoadingGpt to true');
+          getABCForBehaviour(customBehavior)
+            .then(suggestions => {
+              console.log('[GPT] Successfully got suggestions:', suggestions);
+              setGptSuggestions(suggestions);
+              console.log('[GPT] Set gptSuggestions state to:', suggestions);
+            })
+            .catch(error => {
+              console.error('[GPT] Failed to get suggestions:', error);
+              console.error('[GPT] Error details:', error.message, error.stack);
+            })
+            .finally(() => {
+              console.log('[GPT] Setting isLoadingGpt to false');
+              setIsLoadingGpt(false);
+            });
+        } else {
+          console.log('[GPT] No custom behavior text found, skipping GPT call');
+        }
       } else {
         // Clear all existing answers and add only the custom answer
         setSelectedAnswers(prev => ({
@@ -289,6 +471,264 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     setShowOtherModal(prev => prev ? { ...prev, step: 'sentiment' } : null);
   };
 
+  const handleShuffleOptions = (questionId: string) => {
+    const currentSet = optionSets[questionId] || 0;
+    const selectedBehavior = selectedAnswers['whatDidTheyDo']?.[0]?.answer;
+    const isCustomResponse = selectedAnswers['whatDidTheyDo']?.[0]?.isCustom;
+    
+    if (!selectedBehavior) return;
+    
+    const questionType = questionId === 'whatHappenedBefore' ? 'antecedents' : 'consequences';
+    
+    let totalSets = 0;
+    if (isCustomResponse && gptSuggestions && !gptSuggestions.isFallback) {
+      // For custom responses, use GPT sets
+      totalSets = getTotalGPTSets(gptSuggestions, questionType);
+    } else {
+      // For predefined behaviors, use behavior-specific sets
+      totalSets = getTotalSets(selectedBehavior, questionType);
+    }
+    
+    // Cycle to next set, or back to 0 if we've reached the end
+    const nextSet = (currentSet + 1) % totalSets;
+    setOptionSets(prev => ({
+      ...prev,
+      [questionId]: nextSet
+    }));
+  };
+
+  const animateBackToCategories = () => {
+    // Fade out
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 100,
+      useNativeDriver: true,
+    }).start(() => {
+      // Change state - go back to main categories view
+      setSelectedCategory(null);
+      setSearchQuery(''); // Clear any search query
+      // Fade in
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }).start();
+    });
+  };
+
+
+  // Helper function to get appropriate emoji for antecedents (for behavior-specific options only)
+  const getAntecedentEmoji = (antecedent: string): string => {
+    const lowerAntecedent = antecedent.toLowerCase();
+    
+    // Denials and restrictions
+    if (lowerAntecedent.includes('denied') || lowerAntecedent.includes('told no') || lowerAntecedent.includes('said no')) return '🚫';
+    if (lowerAntecedent.includes('not allowed') || lowerAntecedent.includes('forbidden')) return '🚫';
+    
+    // Sharing and cooperation
+    if (lowerAntecedent.includes('share') || lowerAntecedent.includes('asked to share')) return '🤝';
+    if (lowerAntecedent.includes('cooperate') || lowerAntecedent.includes('asked to help')) return '🤝';
+    if (lowerAntecedent.includes('join') || lowerAntecedent.includes('participate')) return '👥';
+    
+    // Stopping activities
+    if (lowerAntecedent.includes('stop') || lowerAntecedent.includes('told to stop')) return '⏹️';
+    if (lowerAntecedent.includes('end') || lowerAntecedent.includes('finish')) return '✅';
+    if (lowerAntecedent.includes('put away') || lowerAntecedent.includes('clean up')) return '🧹';
+    
+    // Waiting and patience
+    if (lowerAntecedent.includes('wait') || lowerAntecedent.includes('asked to wait')) return '⏳';
+    if (lowerAntecedent.includes('patient') || lowerAntecedent.includes('calm down')) return '😌';
+    if (lowerAntecedent.includes('quiet') || lowerAntecedent.includes('be quiet')) return '🤫';
+    
+    // Physical actions
+    if (lowerAntecedent.includes('sit') || lowerAntecedent.includes('sit still')) return '🪑';
+    if (lowerAntecedent.includes('move') || lowerAntecedent.includes('get up')) return '🚶';
+    if (lowerAntecedent.includes('run') || lowerAntecedent.includes('running')) return '🏃';
+    if (lowerAntecedent.includes('jump') || lowerAntecedent.includes('jumping')) return '🦘';
+    
+    // Getting ready and transitions
+    if (lowerAntecedent.includes('get ready') || lowerAntecedent.includes('get dressed')) return '👕';
+    if (lowerAntecedent.includes('bed') || lowerAntecedent.includes('sleep')) return '🛏️';
+    if (lowerAntecedent.includes('eat') || lowerAntecedent.includes('food') || lowerAntecedent.includes('meal')) return '🍽️';
+    if (lowerAntecedent.includes('transition') || lowerAntecedent.includes('change activity')) return '🔄';
+    
+    // Communication
+    if (lowerAntecedent.includes('words') || lowerAntecedent.includes('talk') || lowerAntecedent.includes('speak')) return '💬';
+    if (lowerAntecedent.includes('listen') || lowerAntecedent.includes('pay attention')) return '👂';
+    if (lowerAntecedent.includes('explain') || lowerAntecedent.includes('tell')) return '📖';
+    if (lowerAntecedent.includes('answer') || lowerAntecedent.includes('respond')) return '❓';
+    
+    // Social interactions
+    if (lowerAntecedent.includes('social') || lowerAntecedent.includes('interact')) return '👥';
+    if (lowerAntecedent.includes('gentle') || lowerAntecedent.includes('careful')) return '🤲';
+    if (lowerAntecedent.includes('apologize') || lowerAntecedent.includes('sorry')) return '🙏';
+    
+    // Tasks and instructions
+    if (lowerAntecedent.includes('task') || lowerAntecedent.includes('homework')) return '📋';
+    if (lowerAntecedent.includes('follow') || lowerAntecedent.includes('instructions')) return '📝';
+    if (lowerAntecedent.includes('focus') || lowerAntecedent.includes('concentrate')) return '🎯';
+    
+    // Emotional states
+    if (lowerAntecedent.includes('overwhelmed') || lowerAntecedent.includes('frustrated')) return '😰';
+    if (lowerAntecedent.includes('angry') || lowerAntecedent.includes('mad')) return '😠';
+    if (lowerAntecedent.includes('sad') || lowerAntecedent.includes('crying')) return '😢';
+    if (lowerAntecedent.includes('tired') || lowerAntecedent.includes('exhausted')) return '😴';
+    
+    // Environmental factors
+    if (lowerAntecedent.includes('crowded') || lowerAntecedent.includes('busy')) return '👥';
+    if (lowerAntecedent.includes('noisy') || lowerAntecedent.includes('loud')) return '🔊';
+    if (lowerAntecedent.includes('bright') || lowerAntecedent.includes('light')) return '💡';
+    if (lowerAntecedent.includes('hot') || lowerAntecedent.includes('cold')) return '🌡️';
+    
+    // Sibling interactions
+    if (lowerAntecedent.includes('sibling') || lowerAntecedent.includes('brother') || lowerAntecedent.includes('sister')) return '👫';
+    if (lowerAntecedent.includes('took') || lowerAntecedent.includes('grabbed')) return '🤏';
+    
+    // Routine changes
+    if (lowerAntecedent.includes('routine') || lowerAntecedent.includes('schedule')) return '📅';
+    if (lowerAntecedent.includes('unexpected') || lowerAntecedent.includes('surprise')) return '🎉';
+    
+    // Toys and objects
+    if (lowerAntecedent.includes('toy') || lowerAntecedent.includes('game')) return '🧸';
+    if (lowerAntecedent.includes('phone') || lowerAntecedent.includes('screen')) return '📱';
+    if (lowerAntecedent.includes('book') || lowerAntecedent.includes('read')) return '📚';
+    
+    // Safety and boundaries
+    if (lowerAntecedent.includes('dangerous') || lowerAntecedent.includes('unsafe')) return '⚠️';
+    if (lowerAntecedent.includes('boundary') || lowerAntecedent.includes('limit')) return '🚧';
+    
+    // Default for common phrases
+    if (lowerAntecedent.includes('asked to') || lowerAntecedent.includes('told to')) return '📢';
+    if (lowerAntecedent.includes('wanted') || lowerAntecedent.includes('desired')) return '💭';
+    
+    return '❓'; // Default emoji
+  };
+
+  // Helper function to get appropriate emoji for consequences (for behavior-specific options only)
+  const getConsequenceEmoji = (consequence: string): string => {
+    const lowerConsequence = consequence.toLowerCase();
+    
+    // Time-based consequences
+    if (lowerConsequence.includes('time out') || lowerConsequence.includes('timeout')) return '⏰';
+    if (lowerConsequence.includes('extra time') || lowerConsequence.includes('more time')) return '⏰';
+    if (lowerConsequence.includes('wait') || lowerConsequence.includes('delayed')) return '⏳';
+    
+    // Removal and taking away
+    if (lowerConsequence.includes('taken away') || lowerConsequence.includes('removed') || lowerConsequence.includes('confiscated')) return '📤';
+    if (lowerConsequence.includes('privilege removed') || lowerConsequence.includes('privileges taken')) return '🚫';
+    if (lowerConsequence.includes('toy taken') || lowerConsequence.includes('game removed')) return '🧸';
+    
+    // Apologies and reconciliation
+    if (lowerConsequence.includes('apology') || lowerConsequence.includes('apologize') || lowerConsequence.includes('said sorry')) return '🙏';
+    if (lowerConsequence.includes('forgiven') || lowerConsequence.includes('accepted')) return '🤗';
+    
+    // Physical consequences
+    if (lowerConsequence.includes('sent to room') || lowerConsequence.includes('go to room')) return '🚪';
+    if (lowerConsequence.includes('left situation') || lowerConsequence.includes('removed from')) return '🏃';
+    if (lowerConsequence.includes('separated') || lowerConsequence.includes('isolated')) return '🚪';
+    
+    // Warnings and corrections
+    if (lowerConsequence.includes('warning') || lowerConsequence.includes('warned')) return '⚠️';
+    if (lowerConsequence.includes('correction') || lowerConsequence.includes('corrected')) return '✏️';
+    if (lowerConsequence.includes('scolded') || lowerConsequence.includes('told off')) return '📢';
+    
+    // Parental intervention
+    if (lowerConsequence.includes('intervened') || lowerConsequence.includes('stepped in')) return '👨‍👩‍👧‍👦';
+    if (lowerConsequence.includes('parent') || lowerConsequence.includes('mom') || lowerConsequence.includes('dad')) return '👨‍👩‍👧‍👦';
+    
+    // Emotional responses
+    if (lowerConsequence.includes('cried') || lowerConsequence.includes('tears')) return '😭';
+    if (lowerConsequence.includes('angry') || lowerConsequence.includes('mad')) return '😠';
+    if (lowerConsequence.includes('sad') || lowerConsequence.includes('upset')) return '😢';
+    if (lowerConsequence.includes('frustrated') || lowerConsequence.includes('annoyed')) return '😤';
+    
+    // Stopping and ending
+    if (lowerConsequence.includes('stopped') || lowerConsequence.includes('ended') || lowerConsequence.includes('halted')) return '⏹️';
+    if (lowerConsequence.includes('activity stopped') || lowerConsequence.includes('game ended')) return '⏹️';
+    
+    // Calming and comfort
+    if (lowerConsequence.includes('calm down') || lowerConsequence.includes('calmed')) return '😌';
+    if (lowerConsequence.includes('comforted') || lowerConsequence.includes('hugged')) return '🤗';
+    if (lowerConsequence.includes('soothed') || lowerConsequence.includes('reassured')) return '😌';
+    
+    // Communication and discussion
+    if (lowerConsequence.includes('discussion') || lowerConsequence.includes('talked about')) return '💬';
+    if (lowerConsequence.includes('explained') || lowerConsequence.includes('clarified')) return '📖';
+    if (lowerConsequence.includes('communication') || lowerConsequence.includes('conversation')) return '💬';
+    
+    // Ignoring and non-response
+    if (lowerConsequence.includes('ignored') || lowerConsequence.includes('no attention')) return '🙈';
+    if (lowerConsequence.includes('no response') || lowerConsequence.includes('didn\'t react')) return '🙈';
+    
+    // Redirection and alternatives
+    if (lowerConsequence.includes('redirection') || lowerConsequence.includes('redirected')) return '🔄';
+    if (lowerConsequence.includes('alternative') || lowerConsequence.includes('different activity')) return '🔄';
+    if (lowerConsequence.includes('new activity') || lowerConsequence.includes('changed activity')) return '🆕';
+    
+    // Positive reinforcement
+    if (lowerConsequence.includes('reinforcement') || lowerConsequence.includes('praise')) return '⭐';
+    if (lowerConsequence.includes('reward') || lowerConsequence.includes('positive')) return '⭐';
+    if (lowerConsequence.includes('good job') || lowerConsequence.includes('well done')) return '👏';
+    
+    // Gentle approaches
+    if (lowerConsequence.includes('gentle reminder') || lowerConsequence.includes('kindly asked')) return '💡';
+    if (lowerConsequence.includes('patience shown') || lowerConsequence.includes('patient')) return '😌';
+    if (lowerConsequence.includes('understanding') || lowerConsequence.includes('understood')) return '💭';
+    
+    // Professional help
+    if (lowerConsequence.includes('professional help') || lowerConsequence.includes('therapist')) return '👨‍⚕️';
+    if (lowerConsequence.includes('counseling') || lowerConsequence.includes('therapy')) return '👨‍⚕️';
+    
+    // Calming techniques
+    if (lowerConsequence.includes('calming technique') || lowerConsequence.includes('breathing')) return '🧘';
+    if (lowerConsequence.includes('meditation') || lowerConsequence.includes('relaxation')) return '🧘';
+    
+    // Attention and focus
+    if (lowerConsequence.includes('attention') || lowerConsequence.includes('focused on')) return '👀';
+    if (lowerConsequence.includes('watched') || lowerConsequence.includes('observed')) return '👀';
+    
+    // Feelings and emotions
+    if (lowerConsequence.includes('feelings') || lowerConsequence.includes('emotions')) return '💭';
+    if (lowerConsequence.includes('understood feelings') || lowerConsequence.includes('validated')) return '💭';
+    
+    // Language and communication skills
+    if (lowerConsequence.includes('language') || lowerConsequence.includes('words')) return '📚';
+    if (lowerConsequence.includes('appropriate') || lowerConsequence.includes('proper')) return '✅';
+    
+    // Space and boundaries
+    if (lowerConsequence.includes('space') || lowerConsequence.includes('alone time')) return '🌌';
+    if (lowerConsequence.includes('boundary') || lowerConsequence.includes('limit set')) return '🚧';
+    
+    // Continuation and persistence
+    if (lowerConsequence.includes('continued without') || lowerConsequence.includes('kept going')) return '➡️';
+    if (lowerConsequence.includes('persisted') || lowerConsequence.includes('didn\'t stop')) return '➡️';
+    
+    // Social interactions
+    if (lowerConsequence.includes('social interaction') || lowerConsequence.includes('group activity')) return '👥';
+    if (lowerConsequence.includes('individual activity') || lowerConsequence.includes('alone')) return '👤';
+    if (lowerConsequence.includes('joining') || lowerConsequence.includes('participated')) return '🤝';
+    
+    // Safety and protection
+    if (lowerConsequence.includes('safety check') || lowerConsequence.includes('safety')) return '🛡️';
+    if (lowerConsequence.includes('protected') || lowerConsequence.includes('kept safe')) return '🛡️';
+    if (lowerConsequence.includes('staying close') || lowerConsequence.includes('nearby')) return '📍';
+    
+    // Instructions and following
+    if (lowerConsequence.includes('following instructions') || lowerConsequence.includes('obeyed')) return '📋';
+    if (lowerConsequence.includes('listened') || lowerConsequence.includes('followed')) return '📋';
+    
+    // Food and meals
+    if (lowerConsequence.includes('meal ended') || lowerConsequence.includes('finished eating')) return '🍽️';
+    if (lowerConsequence.includes('eating') || lowerConsequence.includes('food')) return '🍎';
+    if (lowerConsequence.includes('alternative food') || lowerConsequence.includes('different meal')) return '🍕';
+    
+    // Default for common phrases
+    if (lowerConsequence.includes('was given') || lowerConsequence.includes('received')) return '📦';
+    if (lowerConsequence.includes('happened') || lowerConsequence.includes('resulted in')) return '➡️';
+    
+    return '❓'; // Default emoji
+  };
+
   const isAnswerSelected = (questionId: string, answerLabel: string) => {
     const answers = selectedAnswers[questionId] || [];
     return answers.some(a => a.answer === answerLabel);
@@ -297,6 +737,27 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
   const isOtherSelected = (questionId: string) => {
     const answers = selectedAnswers[questionId] || [];
     return answers.some(a => a.isCustom);
+  };
+
+  // Helper to check if a category contains the selected answer
+  const isCategorySelected = (category: Category) => {
+    const answers = selectedAnswers[currentQ.id] || [];
+    return answers.some(answer => 
+      category.choices.some(choice => choice.label === answer.answer)
+    );
+  };
+
+  // Helper to get the selected answer text for display
+  const getSelectedAnswerText = () => {
+    const answers = selectedAnswers[currentQ.id] || [];
+    if (answers.length > 0) {
+      const answer = answers[0];
+      if (answer.isCustom) {
+        return answer.answer;
+      }
+      return answer.answer;
+    }
+    return null;
   };
 
   const canProceed = () => {
@@ -392,6 +853,12 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     return `${choice.emoji} ${choice.label}`;
   };
 
+  const filteredBehaviourChoices = searchQuery
+    ? allBehaviourChoices.filter(c =>
+        c.label.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : [];
+
   const handleCommentPress = (questionId: string) => {
     const showing = !showCommentInput[questionId];
     setShowCommentInput(prev => ({
@@ -424,11 +891,12 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         style={{ flex: 1 }}
         keyboardVerticalOffset={20}
       >
-        <ScrollView
-          ref={scrollViewRef}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
+        <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+          <ScrollView
+            ref={scrollViewRef}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
           <Text style={styles.progress}>
             Step {currentQuestion + 1} of {currentFlow.length > 0 ? currentFlow.length : 1}
           </Text>
@@ -449,34 +917,194 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                 onValueChange={setMoodAfter}
               />
             </View>
+          ) : currentQ.id === 'whatDidTheyDo' ? (
+            <>
+              {/* Quick search bar */}
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Search behaviors..."
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+
+              {/* Results based on search, or category/choice views */}
+              {searchQuery.length > 0 ? (
+                filteredBehaviourChoices.map((choice) => (
+                  <TouchableOpacity
+                    key={choice.label}
+                    style={[
+                      styles.choiceButton,
+                      (choice.label === 'Other'
+                        ? isOtherSelected(currentQ.id)
+                        : isAnswerSelected(currentQ.id, choice.label)) && styles.selectedChoice,
+                    ]}
+                                          onPress={() => {
+                        handleAnswer(currentQ.id, choice);
+                        // Immediately go back to main categories view
+                        setSelectedCategory(null);
+                        setSearchQuery('');
+                      }}
+                  >
+                    <Text style={styles.choiceText}>{getChoiceLabel(choice)}</Text>
+                  </TouchableOpacity>
+                ))
+              ) : selectedCategory ? (
+                <>
+                  {selectedCategory.choices.map((choice) => (
+                    <TouchableOpacity
+                      key={choice.label}
+                      style={[
+                        styles.choiceButton,
+                        (choice.label === 'Other'
+                          ? isOtherSelected(currentQ.id)
+                          : isAnswerSelected(currentQ.id, choice.label)) && styles.selectedChoice,
+                      ]}
+                      onPress={() => {
+                        handleAnswer(currentQ.id, choice);
+                        // Immediately go back to main categories view
+                        setSelectedCategory(null);
+                        setSearchQuery('');
+                      }}
+                    >
+                      <Text style={styles.choiceText}>{getChoiceLabel(choice)}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </>
+              ) : (
+                <>
+                  {getSelectedAnswerText() && (
+                    <View style={styles.selectedAnswerContainer}>
+                      <Text style={styles.selectedAnswerText}>
+                        ✅ Selected: {getSelectedAnswerText()}
+                      </Text>
+                      <Text style={styles.nextHintText}>
+                        You can now press "Next" to continue
+                      </Text>
+                      {/* {isLoadingGpt && (
+                        <Text style={styles.gptLoadingText}>
+                          🤖 Generating suggestions for the next questions...
+                        </Text>
+                      )} */}
+                    </View>
+                  )}
+                  {currentQ.categories?.map((cat) => (
+                    <TouchableOpacity
+                      key={cat.key}
+                      style={[
+                        styles.choiceButton,
+                        isCategorySelected(cat) && styles.selectedChoice
+                      ]}
+                      onPress={() => setSelectedCategory(cat)}
+                    >
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={styles.choiceText}>{`${cat.emoji} ${cat.label}`}</Text>
+                        {isCategorySelected(cat) && (
+                          <Text style={styles.categorySelectedText}>✓</Text>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </>
+              )}
+            </>
           ) : (
             <>
-              {currentQ.answer_choices?.map((choice) => (
-                <TouchableOpacity
-                  key={choice.label}
-                  style={[
-                    styles.choiceButton,
-                    (choice.label === 'Other' ? isOtherSelected(currentQ.id) : isAnswerSelected(currentQ.id, choice.label)) && styles.selectedChoice
-                  ]}
-                  onPress={() => handleAnswer(currentQ.id, choice)}
-                >
-                  <Text style={styles.choiceText}>
-                    {getChoiceLabel(choice)}
+              {currentQ.id === 'whatHappenedBefore' || currentQ.id === 'whatHappenedAfter' ? (
+                // Show loading skeleton if GPT is generating
+                isLoadingGpt ? (
+                  <View style={styles.skeletonContainer}>
+                    {[1, 2, 3, 4, 5].map((index) => (
+                      <View key={index} style={styles.skeletonChoice}>
+                        <View style={styles.skeletonEmoji} />
+                        <View style={styles.skeletonText} />
+                      </View>
+                    ))}
+                    <View style={styles.skeletonChoice}>
+                      <View style={styles.skeletonEmoji} />
+                      <View style={styles.skeletonText} />
+                    </View>
+                  </View>
+                ) : (
+                  // Show behavior-specific options or message
+                  currentQ.answer_choices && currentQ.answer_choices.length > 0 ? (
+                  currentQ.answer_choices.map((choice) => (
+                    <TouchableOpacity
+                      key={choice.label}
+                      style={[
+                        styles.choiceButton,
+                        (choice.label === 'Other' ? isOtherSelected(currentQ.id) : isAnswerSelected(currentQ.id, choice.label)) && styles.selectedChoice
+                      ]}
+                      onPress={() => handleAnswer(currentQ.id, choice)}
+                    >
+                      <Text style={styles.choiceText}>
+                        {getChoiceLabel(choice)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))
+                ) : (
+                  <View style={styles.noOptionsContainer}>
+                    <Text style={styles.noOptionsText}>
+                      Please select a behavior on the first question to see relevant options.
+                    </Text>
+                  </View>
+                )
+              )
+              ) : (
+                                // Regular questions (not ABC questions)
+                currentQ.answer_choices?.map((choice) => (
+                  <TouchableOpacity
+                    key={choice.label}
+                    style={[
+                      styles.choiceButton,
+                      (choice.label === 'Other' ? isOtherSelected(currentQ.id) : isAnswerSelected(currentQ.id, choice.label)) && styles.selectedChoice
+                    ]}
+                    onPress={() => handleAnswer(currentQ.id, choice)}
+                  >
+                    <Text style={styles.choiceText}>
+                      {getChoiceLabel(choice)}
+                    </Text>
+                  </TouchableOpacity>
+                                 ))
+               )}
+              
+              {/* Shuffle button for ABC questions */}
+              {(currentQ.id === 'whatHappenedBefore' || currentQ.id === 'whatHappenedAfter') && (
+                <View style={styles.shuffleContainer}>
+                  <TouchableOpacity
+                    style={styles.shuffleButton}
+                    onPress={() => handleShuffleOptions(currentQ.id)}
+                  >
+                    <Text style={styles.shuffleButtonText}>🔄 Shuffle options</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.shuffleInfoText}>
+                    Set {((optionSets[currentQ.id] || 0) + 1)} of {
+                      (() => {
+                        const selectedBehavior = selectedAnswers['whatDidTheyDo']?.[0]?.answer;
+                        const isCustomResponse = selectedAnswers['whatDidTheyDo']?.[0]?.isCustom;
+                        const questionType = currentQ.id === 'whatHappenedBefore' ? 'antecedents' : 'consequences';
+                        
+                        if (isCustomResponse && gptSuggestions && !gptSuggestions.isFallback) {
+                          return getTotalGPTSets(gptSuggestions, questionType);
+                        } else {
+                          return getTotalSets(selectedBehavior || '', questionType);
+                        }
+                      })()
+                    }
                   </Text>
-                </TouchableOpacity>
-              ))}
+                </View>
+              )}
             </>
           )}
 
           {/* Comment section */}
-          <TouchableOpacity
+          {/* <TouchableOpacity
             style={styles.commentButton}
             onPress={() => handleCommentPress(currentQ.id)}
           >
             <Text style={styles.commentButtonText}>
               {showCommentInput[currentQ.id] ? 'Hide Comment' : 'Add Comment'}
             </Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           {showCommentInput[currentQ.id] && (
             <TextInput
@@ -652,7 +1280,15 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
             {currentQuestion == 0 && (
               <TouchableOpacity
                 style={styles.backButton}
-                onPress={() => navigation.goBack()}
+                onPress={() => {
+                  if (searchQuery) {
+                    setSearchQuery('');
+                  } else if (selectedCategory) {
+                    setSelectedCategory(null);
+                  } else {
+                    navigation.goBack();
+                  }
+                }}
               >
                 <Text style={styles.buttonText}>Back</Text>
               </TouchableOpacity>
@@ -675,6 +1311,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
             </TouchableOpacity>
           </View>
         </ScrollView>
+        </Animated.View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -852,5 +1489,113 @@ const styles = StyleSheet.create({
   sentimentButtonText: {
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  selectedAnswerContainer: {
+    backgroundColor: '#E8F3F4',
+    borderColor: '#5B9AA0',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 20,
+  },
+  selectedAnswerText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#5B9AA0',
+    marginBottom: 5,
+  },
+  nextHintText: {
+    fontSize: 14,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  categorySelectedText: {
+    fontSize: 18,
+    color: '#5B9AA0',
+    fontWeight: 'bold',
+    marginLeft: 10,
+  },
+  gptLoadingText: {
+    fontSize: 14,
+    color: '#666',
+    fontStyle: 'italic',
+    marginTop: 8,
+  },
+  gptBadge: {
+    fontSize: 10,
+    color: '#fff',
+    backgroundColor: '#5B9AA0',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginLeft: 8,
+    fontWeight: 'bold',
+  },
+  behaviorSpecificBadge: {
+    fontSize: 12,
+    marginLeft: 8,
+  },
+  shuffleButton: {
+    backgroundColor: '#f0f0f0',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  shuffleButtonText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  shuffleContainer: {
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  shuffleInfoText: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+  noOptionsContainer: {
+    backgroundColor: '#f8f8f8',
+    padding: 20,
+    borderRadius: 10,
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  noOptionsText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  skeletonContainer: {
+    marginBottom: 10,
+  },
+  skeletonChoice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    marginBottom: 10,
+    backgroundColor: '#f8f8f8',
+  },
+  skeletonEmoji: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#e0e0e0',
+    marginRight: 10,
+  },
+  skeletonText: {
+    height: 16,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 4,
+    flex: 1,
   },
 });

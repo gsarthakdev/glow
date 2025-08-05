@@ -2,15 +2,68 @@ export const flow_basic_1 = [
   {
     "id": "whatDidTheyDo",
     "question": "What happened?",
-    "subheading": "Describe your child's specific behavior or action during the event.",
-    "answer_choices": [
-      { "label": "Hit", "emoji": "🤛", "sentiment": "negative"},
-      { "label": "Followed instructions", emoji: "✅", "sentiment": "positive" },
-      { "label": "Screamed", "emoji": "😫", "sentiment": "negative" },
-      {"label": "Stayed calm during frustration", "emoji": "🏆", "sentiment": "positive"},
-      { "label": "Other", "emoji": "➕", "sentiment": null }
-      // { "label": "Threw object", "emoji": "🪣" },
-      // { "label": "Refused instruction", "emoji": "🙅" },
+    "subheading": "Pick a category then the behavior to describe what your child did.",
+    "categories": [
+      {
+        "key": "physicalAggression",
+        "label": "Physical Aggression",
+        "emoji": "🥊",
+        "sentiment": "negative",
+        "choices": [
+          { "label": "Hitting others", "emoji": "🤛", "sentiment": "negative" },
+          { "label": "Kicking others", "emoji": "🦶", "sentiment": "negative" },
+          { "label": "Biting", "emoji": "🦷", "sentiment": "negative" },
+          { "label": "Throwing objects", "emoji": "🎯", "sentiment": "negative" },
+          { "label": "Pushing", "emoji": "🤜", "sentiment": "negative" },
+          { "label": "Pinching", "emoji": "🤏", "sentiment": "negative" },
+          { "label": "Other", "emoji": "➕", "sentiment": null, "isOther": true }
+        ]
+      },
+      {
+        "key": "verbalBehaviours",
+        "label": "Verbal Behaviours",
+        "emoji": "📣",
+        "sentiment": "negative",
+        "choices": [
+          { "label": "Yelling or screaming", "emoji": "😫", "sentiment": "negative" },
+          { "label": "Crying loudly", "emoji": "😭", "sentiment": "negative" },
+          { "label": "Repetitive speech", "emoji": "🔁", "sentiment": "negative" },
+          { "label": "Using inappropriate words or profanity", "emoji": "🗯️", "sentiment": "negative" },
+          { "label": "Refusal to speak", "emoji": "🤐", "sentiment": "negative" },
+          { "label": "Unusual vocal sounds", "emoji": "🎤", "sentiment": "negative" },
+          { "label": "Other", "emoji": "➕", "sentiment": null, "isOther": true }
+        ]
+      },
+      {
+        "key": "repetitiveBehaviours",
+        "label": "Self-actions / Repetitive Behaviours",
+        "emoji": "🔄",
+        "sentiment": "negative",
+        "choices": [
+          { "label": "Hand flapping", "emoji": "👐", "sentiment": "negative" },
+          { "label": "Rocking back and forth", "emoji": "🪑", "sentiment": "negative" },
+          { "label": "Spinning objects or self", "emoji": "🌀", "sentiment": "negative" },
+          { "label": "Tapping or hitting surfaces repeatedly", "emoji": "📏", "sentiment": "negative" },
+          { "label": "Covering ears or eyes repeatedly", "emoji": "🙉", "sentiment": "negative" },
+          { "label": "Repetitively lining up objects", "emoji": "📚", "sentiment": "negative" },
+          { "label": "Other", "emoji": "➕", "sentiment": null, "isOther": true }
+        ]
+      },
+      {
+        "key": "routineChallenges",
+        "label": "Routine & Social Challenges",
+        "emoji": "⏰",
+        "sentiment": "negative",
+        "choices": [
+          { "label": "Refusing transition", "emoji": "🚪", "sentiment": "negative" },
+          { "label": "Resisting meals", "emoji": "🍽️", "sentiment": "negative" },
+          { "label": "Refusing bedtime / leaving bed", "emoji": "🛏️", "sentiment": "negative" },
+          { "label": "Running away / elopement", "emoji": "🏃", "sentiment": "negative" },
+          { "label": "Avoiding group interaction", "emoji": "👥", "sentiment": "negative" },
+          { "label": "Refusing instructions", "emoji": "🙅", "sentiment": "negative" },
+          { "label": "Other", "emoji": "➕", "sentiment": null, "isOther": true }
+        ]
+      }
     ]
   },
   {
@@ -29,27 +82,13 @@ export const flow_basic_1 = [
     "id": "whatHappenedBefore",
     "question": "What caused the behavior?",
     "subheading": "What led up to the behavior or what triggered it?",
-    "answer_choices": [
-      { "label": "After denied something", "emoji": "🚫", "sentiment": "negative" },
-      { "label": "After being told no", "emoji": "🙅‍♂️", "sentiment": "negative" },
-      { "label": "After nap", "emoji": "😴", "sentiment": "negative" },
-      { "label": "During play", "emoji": "🧩", "sentiment": "negative" },
-      { "label": "Other", "emoji": "➕", "sentiment": null }
-    ]
+    "answer_choices": []
   },
   {
     "id": "whatHappenedAfter",
     "question": "What happened after?",
     "subheading": "Share how your child or others responded following the behavior.",
-    "answer_choices": [
-      { "label": "No reaction", "emoji": "😐", "sentiment": "negative" },
-      { "label": "Happened again", "emoji": "🔁", "sentiment": "negative" },
-      { "label": "Comforted", "emoji": "🤗", "sentiment": "negative" },
-      { "label": "Removed item", "emoji": "📤", "sentiment": "negative" },
-      { "label": "Given warning", "emoji": "⚠️", "sentiment": "negative" },
-      { "label": "Sent to room", "emoji": "🚪", "sentiment": "negative" },
-      { "label": "Other", "emoji": "➕", "sentiment": null }
-    ]
+    "answer_choices": []
   },
   {
     "id": "whoWasInvolved",
