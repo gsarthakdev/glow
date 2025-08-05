@@ -1,6 +1,6 @@
 //iphone se adjustment
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Platform, SafeAreaView, Linking, Pressable, Switch, Dimensions, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Platform, SafeAreaView, Linking, Pressable, Switch, Dimensions, ScrollView, Alert } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import * as MailComposer from 'expo-mail-composer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import { PDFDocument, rgb, StandardFonts, PDFPage, PDFName, PDFString } from 'pdf-lib';
 import { Asset } from 'expo-asset';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AffirmationModal from '../components/AffirmationModal';
 import { useEmailShare } from '../utils/useEmailShare';
@@ -17,6 +17,7 @@ interface Log {
   id: string;
   timestamp: string;
   responses: any;
+  edited?: boolean;
 }
 
 interface MarkedDates {
@@ -43,6 +44,7 @@ interface DailyDetailModalProps {
   logs: Log[];
   goals: Goal[];
   childName: string;
+  onDeleteLog: (logId: string) => void;
 }
 
 // Helper to convert UTC ISO timestamp (ending with Z) to local Date
@@ -59,9 +61,11 @@ const DailyDetailModal: React.FC<DailyDetailModalProps> = ({
   onClose,
   selectedDate,
   logs,
+  onDeleteLog,
   goals,
   childName
 }) => {
+  const navigation = useNavigation<any>();
   if (!selectedDate) return null;
 
   const formatTime = (timestamp: string) => {
@@ -106,6 +110,23 @@ const DailyDetailModal: React.FC<DailyDetailModalProps> = ({
   const getGoalCountForDate = (goal: Goal, dateString: string) => {
     const dailyCount = goal.dailyCounts.find(dc => dc.date === dateString);
     return dailyCount ? dailyCount.count : 0;
+  };
+
+  const handleEditLog = (log: Log) => {
+    onClose();
+    // Navigate to edit screen
+    navigation.navigate('FlowBasic1BaseScrn', { mode: 'edit', editLog: log });
+  };
+
+  const handleDeletePress = (logId: string) => {
+    Alert.alert('Delete Log', 'Are you sure you want to delete this log?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => onDeleteLog(logId),
+      },
+    ]);
   };
 
   const dateLogs = getLogsForDate(selectedDate);
@@ -160,24 +181,42 @@ const DailyDetailModal: React.FC<DailyDetailModalProps> = ({
               dateLogs.map((log, index) => (
                 <View key={log.id} style={dailyDetailStyles.logItem}>
                   <View style={dailyDetailStyles.logHeader}>
-                    <Text style={dailyDetailStyles.logTime}>
-                      {formatTime(log.timestamp)}
-                    </Text>
-                                         <View style={[
-                       dailyDetailStyles.sentimentBadge,
-                       log.responses?.whatDidTheyDo?.sentiment === 'positive' 
-                         ? dailyDetailStyles.positiveBadge 
-                         : dailyDetailStyles.negativeBadge
-                     ]}>
-                       <Text style={[
-                         dailyDetailStyles.sentimentText,
-                         log.responses?.whatDidTheyDo?.sentiment === 'positive' 
-                           ? { color: '#2E7D32' } 
-                           : { color: '#C62828' }
-                       ]}>
-                         {log.responses?.whatDidTheyDo?.sentiment === 'positive' ? 'Positive' : 'Negative'}
-                       </Text>
-                     </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={dailyDetailStyles.logTime}>{formatTime(log.timestamp)}</Text>
+                      {log.edited && (
+                        <Text style={dailyDetailStyles.editedLabel}> • edited</Text>
+                      )}
+                      <View
+                        style={[
+                          dailyDetailStyles.sentimentBadge,
+                          log.responses?.whatDidTheyDo?.sentiment === 'positive'
+                            ? dailyDetailStyles.positiveBadge
+                            : dailyDetailStyles.negativeBadge,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            dailyDetailStyles.sentimentText,
+                            log.responses?.whatDidTheyDo?.sentiment === 'positive'
+                              ? { color: '#2E7D32' }
+                              : { color: '#C62828' },
+                          ]}
+                        >
+                          {log.responses?.whatDidTheyDo?.sentiment === 'positive' ? 'Positive' : 'Negative'}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={dailyDetailStyles.logHeaderActions}>
+                      <TouchableOpacity onPress={() => handleEditLog(log)} style={dailyDetailStyles.iconButton}>
+                        <Ionicons name="create-outline" size={20} color="#007AFF" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleDeletePress(log.id)}
+                        style={dailyDetailStyles.iconButton}
+                      >
+                        <Ionicons name="trash-outline" size={20} color="#C62828" />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                   
                   {/* Behavior */}
@@ -1920,6 +1959,7 @@ function getProviderByKey(key: string) {
 
 export default function PastLogsScreen({ navigation }: { navigation: any }) {
   const insets = useSafeAreaInsets();
+  const route = useRoute<any>();
   const [selectedDuration, setSelectedDuration] = useState('This Week');
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [markedDates, setMarkedDates] = useState<MarkedDates>({});
@@ -2000,6 +2040,16 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
       loadGoals();
     }, [])
   );
+
+  // Reopen DailyDetailModal if coming back from edit
+  React.useEffect(() => {
+    const reopenDate = (route as any)?.params?.reopenDate;
+    if (reopenDate) {
+      setSelectedDate(reopenDate);
+      setDailyDetailModalVisible(true);
+      navigation.setParams({ reopenDate: undefined });
+    }
+  }, [(route as any)?.params?.reopenDate]);
   // Load default provider on mount
   React.useEffect(() => {
     AsyncStorage.getItem('default_email_provider').then(setDefaultProvider);
@@ -2104,6 +2154,36 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
       setMarkedDates(marked);
     } catch (error) {
       console.error('Error loading logs:', error);
+    }
+    };
+
+  const handleDeleteLog = async (logId: string) => {
+    try {
+      const currentSelectedChildStr = await AsyncStorage.getItem('current_selected_child');
+      if (!currentSelectedChildStr) return;
+      const currentSelectedChild = JSON.parse(currentSelectedChildStr);
+      const childId = currentSelectedChild.id;
+      if (!childId) return;
+
+      const childDataStr = await AsyncStorage.getItem(childId);
+      if (!childDataStr) return;
+      const childData = JSON.parse(childDataStr);
+
+      const positiveLogs = childData.completed_logs?.flow_basic_1_positive || [];
+      const negativeLogs = childData.completed_logs?.flow_basic_1_negative || [];
+
+      const filterLogs = (arr: any[]) => arr.filter((l: any) => l.id !== logId);
+
+      childData.completed_logs = {
+        ...childData.completed_logs,
+        flow_basic_1_positive: filterLogs(positiveLogs),
+        flow_basic_1_negative: filterLogs(negativeLogs),
+      };
+
+      await AsyncStorage.setItem(childId, JSON.stringify(childData));
+      loadLogs();
+    } catch (error) {
+      console.error('Error deleting log:', error);
     }
   };
 
@@ -2410,6 +2490,7 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
         logs={logs}
         goals={goals}
         childName={childName}
+        onDeleteLog={handleDeleteLog}
       />
     </SafeAreaView>
   );
@@ -2693,6 +2774,7 @@ const dailyDetailStyles = StyleSheet.create({
   },
   sentimentBadge: {
     paddingHorizontal: 8,
+    marginLeft: 20,
     paddingVertical: 4,
     borderRadius: 12,
   },
@@ -2706,6 +2788,19 @@ const dailyDetailStyles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#3E3E6B',
+  },
+  editedLabel: {
+    fontSize: 12,
+    color: '#888',
+    marginLeft: 4,
+  },
+  logHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconButton: {
+    padding: 4,
+    marginLeft: 8,
   },
   logDetail: {
     marginBottom: 8,

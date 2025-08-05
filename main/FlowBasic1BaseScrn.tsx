@@ -18,6 +18,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { flow_basic_1 } from '../flows/flow_basic_1';
 import { flow_basic_1 as positive_flow_basic_1 } from '../flows/positive_flow_basic_1';
 import MoodBubbleSlider from '../components/MoodBubbleSlider';
+import { useRoute } from '@react-navigation/native';
 
 interface Question {
   id: string;
@@ -52,6 +53,12 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
   const [flowSentiment, setFlowSentiment] = useState<'positive' | 'negative' | null>(null);
   const [currentFlow, setCurrentFlow] = useState<Question[]>([]);
 
+  // Edit mode support
+  const route = useRoute<any>();
+  const isEditMode = route.params?.mode === 'edit';
+  const editLog: any = route.params?.editLog;
+
+
   // Add ref for ScrollView
   const scrollViewRef = useRef<ScrollView>(null);
   const commentInputRef = useRef<TextInput>(null);
@@ -67,6 +74,46 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       setCurrentFlow(flow);
     }
   }, [flowSentiment]);
+
+  // Set sentiment immediately in edit mode
+  useEffect(() => {
+    if (isEditMode && editLog) {
+      const sent = editLog.responses?.whatDidTheyDo?.sentiment || 'negative';
+      setFlowSentiment(sent);
+    }
+  }, []);
+
+  // Prefill state when editing
+  useEffect(() => {
+    if (isEditMode && editLog && flowSentiment && currentFlow.length > 0) {
+      if (Object.keys(selectedAnswers).length === 0) {
+        const answersInit: { [key: string]: Answer[] } = {};
+        const otherInit: { [key: string]: string } = {};
+        const commentInit: { [key: string]: string } = {};
+        Object.keys(editLog.responses).forEach((qId: string) => {
+          const resp = editLog.responses[qId];
+          if (qId === 'mood') {
+            const match = resp.answers[0]?.answer?.match(/Before: (\d+), After: (\d+)/);
+            if (match) {
+              setMoodBefore(parseInt(match[1], 10));
+              setMoodAfter(parseInt(match[2], 10));
+            }
+          } else {
+            answersInit[qId] = resp.answers.map((a: any) => ({ answer: a.answer, isCustom: a.isCustom }));
+            const custom = resp.answers.find((a: any) => a.isCustom);
+            if (custom) otherInit[qId] = custom.answer;
+          }
+          if (resp.comment) commentInit[qId] = resp.comment;
+        });
+        setSelectedAnswers(answersInit);
+        setOtherText(otherInit);
+        setComments(commentInit);
+        if (editLog.responses?.whatDidTheyDo?.sentiment) {
+          setFlowSentiment(editLog.responses.whatDidTheyDo.sentiment);
+        }
+      }
+    }
+  }, [isEditMode, editLog, flowSentiment, currentFlow]);
 
 
 
@@ -276,28 +323,52 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         }
       }), {});
 
-      const localTime = new Date();
-      const newLog = {
-        id: `log_${uuidv4()}`,
-        timestamp: new Date(localTime.getTime() - localTime.getTimezoneOffset() * 60000).toISOString(),
-        responses
-      };
-
       const storageKey = flowSentiment === 'positive' ? 'flow_basic_1_positive' : 'flow_basic_1_negative';
-      
-      const updatedData = {
-        ...currentChild.data,
-        completed_logs: {
-          ...currentChild.data.completed_logs,
-          [storageKey]: [
-            ...(currentChild.data.completed_logs?.[storageKey] || []),
-            newLog
-          ]
-        }
-      };
 
-      await AsyncStorage.setItem(currentChild.id, JSON.stringify(updatedData));
-      navigation.replace('CelebrationScreen');
+      if (isEditMode && editLog) {
+        const updatedLog = { ...editLog, responses, edited: true };
+        const updatedData = { ...currentChild.data };
+        const logsArr = (updatedData.completed_logs?.[storageKey] || []).map((l: any) =>
+          l.id === editLog.id ? updatedLog : l
+        );
+        updatedData.completed_logs = {
+          ...updatedData.completed_logs,
+          [storageKey]: logsArr,
+        };
+        await AsyncStorage.setItem(currentChild.id, JSON.stringify(updatedData));
+        // Calculate date string to reopen modal (YYYY-MM-DD)
+        // Convert UTC ISO timestamp back to local date components
+        const utcDate = new Date(editLog.timestamp);
+        const localMillis = utcDate.getTime() + utcDate.getTimezoneOffset() * 60000;
+        const local = new Date(localMillis);
+        const year = local.getFullYear();
+        const month = String(local.getMonth() + 1).padStart(2, '0');
+        const day = String(local.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
+        navigation.navigate('BottomTabsStack', {
+          screen: 'Past Logs',
+          params: { reopenDate: dateStr, refresh: Date.now() },
+        });
+      } else {
+        const localTime = new Date();
+        const newLog = {
+          id: `log_${uuidv4()}`,
+          timestamp: new Date(localTime.getTime() - localTime.getTimezoneOffset() * 60000).toISOString(),
+          responses,
+        };
+        const updatedData = {
+          ...currentChild.data,
+          completed_logs: {
+            ...currentChild.data.completed_logs,
+            [storageKey]: [
+              ...(currentChild.data.completed_logs?.[storageKey] || []),
+              newLog,
+            ],
+          },
+        };
+        await AsyncStorage.setItem(currentChild.id, JSON.stringify(updatedData));
+        navigation.replace('CelebrationScreen');
+      }
     } catch (error) {
       console.error('Error saving log:', error);
     }
