@@ -524,49 +524,101 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     // Denials and restrictions
     if (lowerAntecedent.includes('denied') || lowerAntecedent.includes('told no') || lowerAntecedent.includes('said no')) return '🚫';
     if (lowerAntecedent.includes('not allowed') || lowerAntecedent.includes('forbidden')) return '🚫';
+    if (lowerAntecedent.includes('candy or snack was denied')) return '🚫';
     
     // Sharing and cooperation
     if (lowerAntecedent.includes('share') || lowerAntecedent.includes('asked to share')) return '🤝';
     if (lowerAntecedent.includes('cooperate') || lowerAntecedent.includes('asked to help')) return '🤝';
     if (lowerAntecedent.includes('join') || lowerAntecedent.includes('participate')) return '👥';
+    if (lowerAntecedent.includes('had to share a toy')) return '🤝';
     
     // Stopping activities
     if (lowerAntecedent.includes('stop') || lowerAntecedent.includes('told to stop')) return '⏹️';
     if (lowerAntecedent.includes('end') || lowerAntecedent.includes('finish')) return '✅';
     if (lowerAntecedent.includes('put away') || lowerAntecedent.includes('clean up')) return '🧹';
+    if (lowerAntecedent.includes('was told to clean up toys')) return '🧹';
+    if (lowerAntecedent.includes('was told to stop an activity')) return '⏹️';
+    if (lowerAntecedent.includes('had to stop playing')) return '⏹️';
+    if (lowerAntecedent.includes('screen time ended')) return '⏹️';
+    if (lowerAntecedent.includes('lost a turn in a game')) return '⏹️';
     
     // Waiting and patience
     if (lowerAntecedent.includes('wait') || lowerAntecedent.includes('asked to wait')) return '⏳';
     if (lowerAntecedent.includes('patient') || lowerAntecedent.includes('calm down')) return '😌';
     if (lowerAntecedent.includes('quiet') || lowerAntecedent.includes('be quiet')) return '🤫';
+    if (lowerAntecedent.includes('was told to wait their turn')) return '⏳';
+    if (lowerAntecedent.includes('was asked to wait')) return '⏳';
     
     // Physical actions
     if (lowerAntecedent.includes('sit') || lowerAntecedent.includes('sit still')) return '🪑';
     if (lowerAntecedent.includes('move') || lowerAntecedent.includes('get up')) return '🚶';
     if (lowerAntecedent.includes('run') || lowerAntecedent.includes('running')) return '🏃';
     if (lowerAntecedent.includes('jump') || lowerAntecedent.includes('jumping')) return '🦘';
+    if (lowerAntecedent.includes('was told to sit down')) return '🪑';
+    if (lowerAntecedent.includes('was moved to a different room')) return '🚶';
     
     // Getting ready and transitions
     if (lowerAntecedent.includes('get ready') || lowerAntecedent.includes('get dressed')) return '👕';
     if (lowerAntecedent.includes('bed') || lowerAntecedent.includes('sleep')) return '🛏️';
     if (lowerAntecedent.includes('eat') || lowerAntecedent.includes('food') || lowerAntecedent.includes('meal')) return '🍽️';
     if (lowerAntecedent.includes('transition') || lowerAntecedent.includes('change activity')) return '🔄';
+    if (lowerAntecedent.includes('was told to get dressed')) return '👕';
+    if (lowerAntecedent.includes('was asked to eat food')) return '🍽️';
+    if (lowerAntecedent.includes('clothes were put on')) return '👕';
+    if (lowerAntecedent.includes('was told to get ready')) return '👕';
+    if (lowerAntecedent.includes('was told to put on shoes')) return '👕';
+    if (lowerAntecedent.includes('was asked to sit at the table')) return '🍽️';
+    if (lowerAntecedent.includes('was asked to come inside')) return '🏠';
+    if (lowerAntecedent.includes('was told to go home')) return '🏠';
+    if (lowerAntecedent.includes('was told to leave the park')) return '🏠';
+    if (lowerAntecedent.includes('parent said it was bedtime')) return '🛏️';
+    if (lowerAntecedent.includes('was asked to join a group')) return '👥';
+    if (lowerAntecedent.includes('class or group activity started')) return '👥';
+    if (lowerAntecedent.includes('was asked to transition activities')) return '🔄';
     
     // Communication
     if (lowerAntecedent.includes('words') || lowerAntecedent.includes('talk') || lowerAntecedent.includes('speak')) return '💬';
     if (lowerAntecedent.includes('listen') || lowerAntecedent.includes('pay attention')) return '👂';
     if (lowerAntecedent.includes('explain') || lowerAntecedent.includes('tell')) return '📖';
     if (lowerAntecedent.includes('answer') || lowerAntecedent.includes('respond')) return '❓';
+    if (lowerAntecedent.includes('was asked to use words')) return '💬';
+    if (lowerAntecedent.includes('asked to answer a question')) return '❓';
+    if (lowerAntecedent.includes('was told to stop repeating words')) return '💬';
+    if (lowerAntecedent.includes('was told to speak up')) return '💬';
+    if (lowerAntecedent.includes('was asked to say sorry')) return '🙏';
+    if (lowerAntecedent.includes('was told to use inside voice')) return '🤫';
+    if (lowerAntecedent.includes('was interrupted mid-sentence')) return '💬';
+    if (lowerAntecedent.includes('parent changed conversation topic')) return '💬';
     
     // Social interactions
     if (lowerAntecedent.includes('social') || lowerAntecedent.includes('interact')) return '👥';
     if (lowerAntecedent.includes('gentle') || lowerAntecedent.includes('careful')) return '🤲';
     if (lowerAntecedent.includes('apologize') || lowerAntecedent.includes('sorry')) return '🙏';
+    if (lowerAntecedent.includes('parent gave a toy to sibling')) return '👫';
+    if (lowerAntecedent.includes('parent told them \'no\'')) return '🚫';
+    if (lowerAntecedent.includes('parent walked away')) return '👨‍👩‍👧‍👦';
+    if (lowerAntecedent.includes('parent started talking to someone else')) return '👨‍👩‍👧‍👦';
+    if (lowerAntecedent.includes('parent opened the door')) return '👨‍👩‍👧‍👦';
+    if (lowerAntecedent.includes('another child shouted')) return '👥';
+    if (lowerAntecedent.includes('sibling made loud noise')) return '👫';
+    if (lowerAntecedent.includes('another child joined the room')) return '👥';
+    if (lowerAntecedent.includes('another child bumped into them')) return '👥';
+    if (lowerAntecedent.includes('someone entered their personal space')) return '👤';
+    if (lowerAntecedent.includes('someone began talking loudly')) return '👤';
+    if (lowerAntecedent.includes('someone sat nearby')) return '👤';
+    if (lowerAntecedent.includes('another child touched their item')) return '👥';
+    if (lowerAntecedent.includes('toy was rearranged by someone')) return '👤';
     
     // Tasks and instructions
     if (lowerAntecedent.includes('task') || lowerAntecedent.includes('homework')) return '📋';
     if (lowerAntecedent.includes('follow') || lowerAntecedent.includes('instructions')) return '📝';
     if (lowerAntecedent.includes('focus') || lowerAntecedent.includes('concentrate')) return '🎯';
+    if (lowerAntecedent.includes('was asked to clean up')) return '🧹';
+    if (lowerAntecedent.includes('was told to clean up toys')) return '🧹';
+    if (lowerAntecedent.includes('toy was put away')) return '🧹';
+    if (lowerAntecedent.includes('toy was moved or cleaned up')) return '🧹';
+    if (lowerAntecedent.includes('toy was removed')) return '🧹';
+    if (lowerAntecedent.includes('object they were using was moved')) return '🧹';
     
     // Emotional states
     if (lowerAntecedent.includes('overwhelmed') || lowerAntecedent.includes('frustrated')) return '😰';
@@ -579,23 +631,46 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     if (lowerAntecedent.includes('noisy') || lowerAntecedent.includes('loud')) return '🔊';
     if (lowerAntecedent.includes('bright') || lowerAntecedent.includes('light')) return '💡';
     if (lowerAntecedent.includes('hot') || lowerAntecedent.includes('cold')) return '🌡️';
+    if (lowerAntecedent.includes('room became crowded')) return '👥';
+    if (lowerAntecedent.includes('loud noise occurred')) return '🔊';
+    if (lowerAntecedent.includes('lights turned on/off')) return '💡';
+    if (lowerAntecedent.includes('lights turned off')) return '💡';
     
     // Sibling interactions
     if (lowerAntecedent.includes('sibling') || lowerAntecedent.includes('brother') || lowerAntecedent.includes('sister')) return '👫';
     if (lowerAntecedent.includes('took') || lowerAntecedent.includes('grabbed')) return '🤏';
+    if (lowerAntecedent.includes('sibling took their toy')) return '👫';
+    if (lowerAntecedent.includes('peer hit or pushed them')) return '👥';
     
     // Routine changes
     if (lowerAntecedent.includes('routine') || lowerAntecedent.includes('schedule')) return '📅';
     if (lowerAntecedent.includes('unexpected') || lowerAntecedent.includes('surprise')) return '🎉';
+    if (lowerAntecedent.includes('backpack was packed')) return '🎒';
+    if (lowerAntecedent.includes('shoes were handed to them')) return '👕';
+    if (lowerAntecedent.includes('meal was served')) return '🍽️';
+    if (lowerAntecedent.includes('clothing was adjusted')) return '👕';
     
     // Toys and objects
     if (lowerAntecedent.includes('toy') || lowerAntecedent.includes('game')) return '🧸';
     if (lowerAntecedent.includes('phone') || lowerAntecedent.includes('screen')) return '📱';
     if (lowerAntecedent.includes('book') || lowerAntecedent.includes('read')) return '📚';
+    if (lowerAntecedent.includes('ipad was taken away')) return '📱';
+    if (lowerAntecedent.includes('screen was turned off')) return '📱';
+    if (lowerAntecedent.includes('screen time began or ended')) return '📱';
+    if (lowerAntecedent.includes('video ended')) return '📱';
+    if (lowerAntecedent.includes('music or video was paused')) return '📱';
+    if (lowerAntecedent.includes('music started or stopped')) return '📱';
+    if (lowerAntecedent.includes('book or screen was closed')) return '📚';
     
     // Safety and boundaries
     if (lowerAntecedent.includes('dangerous') || lowerAntecedent.includes('unsafe')) return '⚠️';
     if (lowerAntecedent.includes('boundary') || lowerAntecedent.includes('limit')) return '🚧';
+    
+    // Timers and events
+    if (lowerAntecedent.includes('timer went off')) return '⏰';
+    if (lowerAntecedent.includes('doorbell or phone rang')) return '📞';
+    if (lowerAntecedent.includes('door opened or slammed')) return '🚪';
+    if (lowerAntecedent.includes('entered a new room')) return '🚪';
     
     // Default for common phrases
     if (lowerAntecedent.includes('asked to') || lowerAntecedent.includes('told to')) return '📢';
@@ -609,6 +684,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     const lowerConsequence = consequence.toLowerCase();
     
     // Time-based consequences
+    if (lowerConsequence.includes('paused')) return '⏸️';
+    if (lowerConsequence.includes('verbal')) return '💬';
+    if (lowerConsequence.includes('physical prompting was used')) return '👨‍👩‍👧‍👦';
     if (lowerConsequence.includes('time out') || lowerConsequence.includes('timeout')) return '⏰';
     if (lowerConsequence.includes('extra time') || lowerConsequence.includes('more time')) return '⏰';
     if (lowerConsequence.includes('wait') || lowerConsequence.includes('delayed')) return '⏳';
@@ -622,10 +700,12 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     if (lowerConsequence.includes('apology') || lowerConsequence.includes('apologize') || lowerConsequence.includes('said sorry')) return '🙏';
     if (lowerConsequence.includes('forgiven') || lowerConsequence.includes('accepted')) return '🤗';
     
-    // Physical consequences
+    // Physical consequences and room/space management
     if (lowerConsequence.includes('sent to room') || lowerConsequence.includes('go to room')) return '🚪';
+    if (lowerConsequence.includes('taken to a different room') || lowerConsequence.includes('moved to room')) return '🚪';
     if (lowerConsequence.includes('left situation') || lowerConsequence.includes('removed from')) return '🏃';
     if (lowerConsequence.includes('separated') || lowerConsequence.includes('isolated')) return '🚪';
+    if (lowerConsequence.includes('separated from others')) return '🚪';
     
     // Warnings and corrections
     if (lowerConsequence.includes('warning') || lowerConsequence.includes('warned')) return '⚠️';
@@ -635,6 +715,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     // Parental intervention
     if (lowerConsequence.includes('intervened') || lowerConsequence.includes('stepped in')) return '👨‍👩‍👧‍👦';
     if (lowerConsequence.includes('parent') || lowerConsequence.includes('mom') || lowerConsequence.includes('dad')) return '👨‍👩‍👧‍👦';
+    if (lowerConsequence.includes('parent physically intervened')) return '👨‍👩‍👧‍👦';
     
     // Emotional responses
     if (lowerConsequence.includes('cried') || lowerConsequence.includes('tears')) return '😭';
@@ -650,18 +731,24 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     if (lowerConsequence.includes('calm down') || lowerConsequence.includes('calmed')) return '😌';
     if (lowerConsequence.includes('comforted') || lowerConsequence.includes('hugged')) return '🤗';
     if (lowerConsequence.includes('soothed') || lowerConsequence.includes('reassured')) return '😌';
+    if (lowerConsequence.includes('calm-down time') || lowerConsequence.includes('calm down time')) return '😌';
     
     // Communication and discussion
     if (lowerConsequence.includes('discussion') || lowerConsequence.includes('talked about')) return '💬';
     if (lowerConsequence.includes('explained') || lowerConsequence.includes('clarified')) return '📖';
     if (lowerConsequence.includes('communication') || lowerConsequence.includes('conversation')) return '💬';
+    if (lowerConsequence.includes('consequence was verbally explained')) return '📖';
+    if (lowerConsequence.includes('consequence was explained')) return '📖';
     
     // Ignoring and non-response
     if (lowerConsequence.includes('ignored') || lowerConsequence.includes('no attention')) return '🙈';
-    if (lowerConsequence.includes('no response') || lowerConsequence.includes('didn\'t react')) return '🙈';
+    if (lowerConsequence.includes('no response') || lowerConsequence.includes('didn\'t react')) return '💭';
+    if (lowerConsequence.includes('no direct response') || lowerConsequence.includes('behavior ignored')) return '⛔️';
     
     // Redirection and alternatives
     if (lowerConsequence.includes('redirection') || lowerConsequence.includes('redirected')) return '🔄';
+    if (lowerConsequence.includes('redirected to another activity') || lowerConsequence.includes('redirected to a quiet task')) return '🔄';
+    if (lowerConsequence.includes('redirected to new task') || lowerConsequence.includes('redirected to a new activity')) return '🔄';
     if (lowerConsequence.includes('alternative') || lowerConsequence.includes('different activity')) return '🔄';
     if (lowerConsequence.includes('new activity') || lowerConsequence.includes('changed activity')) return '🆕';
     
@@ -669,11 +756,13 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     if (lowerConsequence.includes('reinforcement') || lowerConsequence.includes('praise')) return '⭐';
     if (lowerConsequence.includes('reward') || lowerConsequence.includes('positive')) return '⭐';
     if (lowerConsequence.includes('good job') || lowerConsequence.includes('well done')) return '👏';
+    if (lowerConsequence.includes('positive reinforcement for stopping')) return '⭐';
     
     // Gentle approaches
     if (lowerConsequence.includes('gentle reminder') || lowerConsequence.includes('kindly asked')) return '💡';
     if (lowerConsequence.includes('patience shown') || lowerConsequence.includes('patient')) return '😌';
     if (lowerConsequence.includes('understanding') || lowerConsequence.includes('understood')) return '💭';
+    if (lowerConsequence.includes('gentle verbal correction') || lowerConsequence.includes('gentle behavior modeled')) return '💡';
     
     // Professional help
     if (lowerConsequence.includes('professional help') || lowerConsequence.includes('therapist')) return '👨‍⚕️';
@@ -694,10 +783,13 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     // Language and communication skills
     if (lowerConsequence.includes('language') || lowerConsequence.includes('words')) return '📚';
     if (lowerConsequence.includes('appropriate') || lowerConsequence.includes('proper')) return '✅';
+    if (lowerConsequence.includes('asked to express themselves differently')) return '💬';
+    if (lowerConsequence.includes('reminded to use indoor voice')) return '🤫';
     
     // Space and boundaries
     if (lowerConsequence.includes('space') || lowerConsequence.includes('alone time')) return '🌌';
     if (lowerConsequence.includes('boundary') || lowerConsequence.includes('limit set')) return '🚧';
+    if (lowerConsequence.includes('space was provided to regulate')) return '🌌';
     
     // Continuation and persistence
     if (lowerConsequence.includes('continued without') || lowerConsequence.includes('kept going')) return '➡️';
@@ -712,15 +804,33 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     if (lowerConsequence.includes('safety check') || lowerConsequence.includes('safety')) return '🛡️';
     if (lowerConsequence.includes('protected') || lowerConsequence.includes('kept safe')) return '🛡️';
     if (lowerConsequence.includes('staying close') || lowerConsequence.includes('nearby')) return '📍';
+    if (lowerConsequence.includes('safety check was performed')) return '🛡️';
     
     // Instructions and following
     if (lowerConsequence.includes('following instructions') || lowerConsequence.includes('obeyed')) return '📋';
     if (lowerConsequence.includes('listened') || lowerConsequence.includes('followed')) return '📋';
+    if (lowerConsequence.includes('asked to apologize')) return '🙏';
+    if (lowerConsequence.includes('guided through the transition')) return '📋';
     
     // Food and meals
     if (lowerConsequence.includes('meal ended') || lowerConsequence.includes('finished eating')) return '🍽️';
     if (lowerConsequence.includes('eating') || lowerConsequence.includes('food')) return '🍎';
     if (lowerConsequence.includes('alternative food') || lowerConsequence.includes('different meal')) return '🍕';
+    
+    // Sensory and fidget tools
+    if (lowerConsequence.includes('fidget') || lowerConsequence.includes('sensory tool')) return '🎯';
+    if (lowerConsequence.includes('given a fidget') || lowerConsequence.includes('sensory tool')) return '🎯';
+    
+    // Environment changes
+    if (lowerConsequence.includes('environment was changed') || lowerConsequence.includes('moved to quiet room')) return '🏠';
+    
+    // Modeling behavior
+    if (lowerConsequence.includes('modeled') || lowerConsequence.includes('modeling')) return '👥';
+    if (lowerConsequence.includes('alternative behavior was modeled')) return '👥';
+    
+    // Visual aids
+    if (lowerConsequence.includes('visual aid') || lowerConsequence.includes('cue card')) return '📋';
+    if (lowerConsequence.includes('visual schedule was shown')) return '📅';
     
     // Default for common phrases
     if (lowerConsequence.includes('was given') || lowerConsequence.includes('received')) return '📦';
