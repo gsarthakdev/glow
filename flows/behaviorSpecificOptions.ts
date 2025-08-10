@@ -32,19 +32,17 @@ export const behaviorSpecificOptions: { [behavior: string]: BehaviorOptions } = 
       "Timer went off"
     ],
     consequences: [
-      "Time out given",
-      "Toy was removed",
-      "Child was separated from others",
-      "Activity was stopped",
-      "Parent physically intervened",
-      "Child was redirected to another activity",
-      "Consequence was verbally explained",
-      "Child was asked to apologize",
-      "Child was taken to a different room",
-      "Calm-down time was initiated",
-      "Privilege was removed",
-      "Safety check was performed",
-      "Modeling of gentle behavior was provided"
+      "Gave a verbal reminder or warning",
+      "Moved child away from the situation/person",
+      "Helped child take a break in a quiet space",
+      "Removed access to the item or activity",
+      "Ignored behavior and continued with task",
+      "Provided comfort or reassurance after it stopped",
+      "Gave an alternative (e.g., stress ball, pillow)",
+      "Asked them to show an appropriate replacement behavior",
+      "Had child help fix or clean up what happened",
+      "Ended the activity/outing early",
+      "Called another adult for assistance"
     ]
   },
   "Kicking others": {
@@ -74,19 +72,17 @@ export const behaviorSpecificOptions: { [behavior: string]: BehaviorOptions } = 
       "Timer went off"
     ],
     consequences: [
-      "Time out given",
-      "Toy was removed",
-      "Child was separated from others",
-      "Activity was stopped",
-      "Parent physically intervened",
-      "Child was redirected to another activity",
-      "Consequence was verbally explained",
-      "Child was asked to apologize",
-      "Child was taken to a different room",
-      "Calm-down time was initiated",
-      "Privilege was removed",
-      "Safety check was performed",
-      "Modeling of gentle behavior was provided"
+      "Gave a verbal reminder or warning",
+      "Moved child away from the situation/person",
+      "Helped child take a break in a quiet space",
+      "Removed access to the item or activity",
+      "Ignored behavior and continued with task",
+      "Provided comfort or reassurance after it stopped",
+      "Gave an alternative (e.g., stress ball, pillow)",
+      "Asked them to show an appropriate replacement behavior",
+      "Had child help fix or clean up what happened",
+      "Ended the activity/outing early",
+      "Called another adult for assistance"
     ]
   },
   "Biting": {
@@ -116,19 +112,17 @@ export const behaviorSpecificOptions: { [behavior: string]: BehaviorOptions } = 
       "Timer went off"
     ],
     consequences: [
-      "Time out given",
-      "Toy was removed",
-      "Child was separated from others",
-      "Activity was stopped",
-      "Parent physically intervened",
-      "Child was redirected to another activity",
-      "Consequence was verbally explained",
-      "Child was asked to apologize",
-      "Child was taken to a different room",
-      "Calm-down time was initiated",
-      "Privilege was removed",
-      "Safety check was performed",
-      "Modeling of gentle behavior was provided"
+      "Gave a verbal reminder or warning",
+      "Moved child away from the situation/person",
+      "Helped child take a break in a quiet space",
+      "Removed access to the item or activity",
+      "Ignored behavior and continued with task",
+      "Provided comfort or reassurance after it stopped",
+      "Gave an alternative (e.g., stress ball, pillow)",
+      "Asked them to show an appropriate replacement behavior",
+      "Had child help fix or clean up what happened",
+      "Ended the activity/outing early",
+      "Called another adult for assistance"
     ]
   },
   "Throwing objects": {
@@ -158,19 +152,17 @@ export const behaviorSpecificOptions: { [behavior: string]: BehaviorOptions } = 
       "Timer went off"
     ],
     consequences: [
-      "Time out given",
-      "Toy was removed",
-      "Child was separated from others",
-      "Activity was stopped",
-      "Parent physically intervened",
-      "Child was redirected to another activity",
-      "Consequence was verbally explained",
-      "Child was asked to apologize",
-      "Child was taken to a different room",
-      "Calm-down time was initiated",
-      "Privilege was removed",
-      "Safety check was performed",
-      "Modeling of gentle behavior was provided"
+      "Gave a verbal reminder or warning",
+      "Moved child away from the situation/person",
+      "Helped child take a break in a quiet space",
+      "Removed access to the item or activity",
+      "Ignored behavior and continued with task",
+      "Provided comfort or reassurance after it stopped",
+      "Gave an alternative (e.g., stress ball, pillow)",
+      "Asked them to show an appropriate replacement behavior",
+      "Had child help fix or clean up what happened",
+      "Ended the activity/outing early",
+      "Called another adult for assistance"
     ]
   },
   "Pushing": {
@@ -200,19 +192,17 @@ export const behaviorSpecificOptions: { [behavior: string]: BehaviorOptions } = 
       "Timer went off"
     ],
     consequences: [
-      "Time out given",
-      "Toy was removed",
-      "Child was separated from others",
-      "Activity was stopped",
-      "Parent physically intervened",
-      "Child was redirected to another activity",
-      "Consequence was verbally explained",
-      "Child was asked to apologize",
-      "Child was taken to a different room",
-      "Calm-down time was initiated",
-      "Privilege was removed",
-      "Safety check was performed",
-      "Modeling of gentle behavior was provided"
+      "Gave a verbal reminder or warning",
+      "Moved child away from the situation/person",
+      "Helped child take a break in a quiet space",
+      "Removed access to the item or activity",
+      "Ignored behavior and continued with task",
+      "Provided comfort or reassurance after it stopped",
+      "Gave an alternative (e.g., stress ball, pillow)",
+      "Asked them to show an appropriate replacement behavior",
+      "Had child help fix or clean up what happened",
+      "Ended the activity/outing early",
+      "Called another adult for assistance"
     ]
   },
   "Pinching": {
@@ -242,24 +232,22 @@ export const behaviorSpecificOptions: { [behavior: string]: BehaviorOptions } = 
       "Timer went off"
     ],
     consequences: [
-      "Time out given",
-      "Toy was removed",
-      "Child was separated from others",
-      "Activity was stopped",
-      "Parent physically intervened",
-      "Child was redirected to another activity",
-      "Consequence was verbally explained",
-      "Child was asked to apologize",
-      "Child was taken to a different room",
-      "Calm-down time was initiated",
-      "Privilege was removed",
-      "Safety check was performed",
-      "Modeling of gentle behavior was provided"
+      "Gave a verbal reminder or warning",
+      "Moved child away from the situation/person",
+      "Helped child take a break in a quiet space",
+      "Removed access to the item or activity",
+      "Ignored behavior and continued with task",
+      "Provided comfort or reassurance after it stopped",
+      "Gave an alternative (e.g., stress ball, pillow)",
+      "Asked them to show an appropriate replacement behavior",
+      "Had child help fix or clean up what happened",
+      "Ended the activity/outing early",
+      "Called another adult for assistance"
     ]
   },
 
-  // Verbal Behaviors
-  "Yelling or screaming": {
+   // Verbal Behaviors
+   "Yelling or screaming": {
     antecedents: [
       "Was told to be quiet",
       "Music or video was paused",
@@ -284,18 +272,17 @@ export const behaviorSpecificOptions: { [behavior: string]: BehaviorOptions } = 
       "Parent changed conversation topic"
     ],
     consequences: [
-      "Child was reminded to use indoor voice",
-      "Screen or toy was taken away",
-      "Parent responded with calm instruction",
-      "Activity was paused",
-      "Calm-down time was initiated",
-      "Child was redirected to a quiet task",
-      "Parent explained the consequence",
-      "Child was asked to express themselves differently",
-      "Parent provided a gentle verbal correction",
-      "Privilege was removed",
-      "Visual aid or cue card was offered",
-      "Alternative behavior was modeled"
+      "Responded to what they said",
+      "Asked them to use a calmer voice or different words",
+      "Ignored behavior and continued with task",
+      "Redirected to a different topic or activity",
+      "Ended the conversation or interaction",
+      "Praised them when they spoke appropriately afterward",
+      "Gave choices for how to communicate (e.g., write it down, show picture)",
+      "Used humor or play to lighten the mood",
+      "Modeled the words or tone you wanted them to use",
+      "Repeated request or instructions calmly",
+      "Left the area to give space"
     ]
   },
   "Crying loudly": {
@@ -323,18 +310,17 @@ export const behaviorSpecificOptions: { [behavior: string]: BehaviorOptions } = 
       "Parent changed conversation topic"
     ],
     consequences: [
-      "Child was reminded to use indoor voice",
-      "Screen or toy was taken away",
-      "Parent responded with calm instruction",
-      "Activity was paused",
-      "Calm-down time was initiated",
-      "Child was redirected to a quiet task",
-      "Parent explained the consequence",
-      "Child was asked to express themselves differently",
-      "Parent provided a gentle verbal correction",
-      "Privilege was removed",
-      "Visual aid or cue card was offered",
-      "Alternative behavior was modeled"
+      "Responded to what they said",
+      "Asked them to use a calmer voice or different words",
+      "Ignored behavior and continued with task",
+      "Redirected to a different topic or activity",
+      "Ended the conversation or interaction",
+      "Praised them when they spoke appropriately afterward",
+      "Gave choices for how to communicate (e.g., write it down, show picture)",
+      "Used humor or play to lighten the mood",
+      "Modeled the words or tone you wanted them to use",
+      "Repeated request or instructions calmly",
+      "Left the area to give space"
     ]
   },
   "Repetitive speech": {
@@ -362,18 +348,17 @@ export const behaviorSpecificOptions: { [behavior: string]: BehaviorOptions } = 
       "Parent changed conversation topic"
     ],
     consequences: [
-      "Child was reminded to use indoor voice",
-      "Screen or toy was taken away",
-      "Parent responded with calm instruction",
-      "Activity was paused",
-      "Calm-down time was initiated",
-      "Child was redirected to a quiet task",
-      "Parent explained the consequence",
-      "Child was asked to express themselves differently",
-      "Parent provided a gentle verbal correction",
-      "Privilege was removed",
-      "Visual aid or cue card was offered",
-      "Alternative behavior was modeled"
+      "Responded to what they said",
+      "Asked them to use a calmer voice or different words",
+      "Ignored behavior and continued with task",
+      "Redirected to a different topic or activity",
+      "Ended the conversation or interaction",
+      "Praised them when they spoke appropriately afterward",
+      "Gave choices for how to communicate (e.g., write it down, show picture)",
+      "Used humor or play to lighten the mood",
+      "Modeled the words or tone you wanted them to use",
+      "Repeated request or instructions calmly",
+      "Left the area to give space"
     ]
   },
   "Using inappropriate words or profanity": {
@@ -401,18 +386,17 @@ export const behaviorSpecificOptions: { [behavior: string]: BehaviorOptions } = 
       "Parent changed conversation topic"
     ],
     consequences: [
-      "Child was reminded to use indoor voice",
-      "Screen or toy was taken away",
-      "Parent responded with calm instruction",
-      "Activity was paused",
-      "Calm-down time was initiated",
-      "Child was redirected to a quiet task",
-      "Parent explained the consequence",
-      "Child was asked to express themselves differently",
-      "Parent provided a gentle verbal correction",
-      "Privilege was removed",
-      "Visual aid or cue card was offered",
-      "Alternative behavior was modeled"
+      "Responded to what they said",
+      "Asked them to use a calmer voice or different words",
+      "Ignored behavior and continued with task",
+      "Redirected to a different topic or activity",
+      "Ended the conversation or interaction",
+      "Praised them when they spoke appropriately afterward",
+      "Gave choices for how to communicate (e.g., write it down, show picture)",
+      "Used humor or play to lighten the mood",
+      "Modeled the words or tone you wanted them to use",
+      "Repeated request or instructions calmly",
+      "Left the area to give space"
     ]
   },
   "Refusal to speak": {
@@ -440,18 +424,17 @@ export const behaviorSpecificOptions: { [behavior: string]: BehaviorOptions } = 
       "Parent changed conversation topic"
     ],
     consequences: [
-      "Child was reminded to use indoor voice",
-      "Screen or toy was taken away",
-      "Parent responded with calm instruction",
-      "Activity was paused",
-      "Calm-down time was initiated",
-      "Child was redirected to a quiet task",
-      "Parent explained the consequence",
-      "Child was asked to express themselves differently",
-      "Parent provided a gentle verbal correction",
-      "Privilege was removed",
-      "Visual aid or cue card was offered",
-      "Alternative behavior was modeled"
+      "Responded to what they said",
+      "Asked them to use a calmer voice or different words",
+      "Ignored behavior and continued with task",
+      "Redirected to a different topic or activity",
+      "Ended the conversation or interaction",
+      "Praised them when they spoke appropriately afterward",
+      "Gave choices for how to communicate (e.g., write it down, show picture)",
+      "Used humor or play to lighten the mood",
+      "Modeled the words or tone you wanted them to use",
+      "Repeated request or instructions calmly",
+      "Left the area to give space"
     ]
   },
   "Unusual vocal sounds": {
@@ -479,18 +462,17 @@ export const behaviorSpecificOptions: { [behavior: string]: BehaviorOptions } = 
       "Parent changed conversation topic"
     ],
     consequences: [
-      "Child was reminded to use indoor voice",
-      "Screen or toy was taken away",
-      "Parent responded with calm instruction",
-      "Activity was paused",
-      "Calm-down time was initiated",
-      "Child was redirected to a quiet task",
-      "Parent explained the consequence",
-      "Child was asked to express themselves differently",
-      "Parent provided a gentle verbal correction",
-      "Privilege was removed",
-      "Visual aid or cue card was offered",
-      "Alternative behavior was modeled"
+      "Responded to what they said",
+      "Asked them to use a calmer voice or different words",
+      "Ignored behavior and continued with task",
+      "Redirected to a different topic or activity",
+      "Ended the conversation or interaction",
+      "Praised them when they spoke appropriately afterward",
+      "Gave choices for how to communicate (e.g., write it down, show picture)",
+      "Used humor or play to lighten the mood",
+      "Modeled the words or tone you wanted them to use",
+      "Repeated request or instructions calmly",
+      "Left the area to give space"
     ]
   },
 
@@ -520,16 +502,17 @@ export const behaviorSpecificOptions: { [behavior: string]: BehaviorOptions } = 
       "Object they were using was moved"
     ],
     consequences: [
-      "Child was redirected to a new activity",
-      "Calm-down time was initiated",
-      "Parent modeled an alternative behavior",
-      "Environment was changed (e.g. moved to quiet room)",
-      "Child was given a fidget or sensory tool",
-      "Activity was stopped",
-      "Verbal reminder was given",
-      "Consequence was explained",
-      "Space was provided to regulate",
-      "No direct response was given (behavior ignored)"
+      "Allowed the behavior without comment",
+      "Redirected to a different movement or activity",
+      "Offered a sensory toy or fidget",
+      "Joined in briefly to connect, then redirected",
+      "Asked them to pause or take a break",
+      "Provided comfort or reassurance",
+      "Moved them to a quieter/less stimulating space",
+      "Started a calming activity (e.g., deep breathing, music)",
+      "Changed environment to remove possible triggers",
+      "Offered a task that uses similar movement in a functional way (e.g., carrying items)",
+      "Ignored and continued with the routine"
     ]
   },
   "Rocking back and forth": {
@@ -745,18 +728,18 @@ export const behaviorSpecificOptions: { [behavior: string]: BehaviorOptions } = 
       "Book or screen was closed"
     ],
     consequences: [
-      "Extra time was provided before transition",
-      "Activity was ended",
-      "Calm-down time was initiated",
-      "Parent explained next steps clearly",
-      "Child was guided through the transition",
-      "Child was redirected to new task",
-      "Verbal encouragement was provided",
-      "Visual schedule was shown",
-      "Reward was delayed or removed",
-      "Physical prompting was used",
-      "Consequence was explained",
-      "No response was given (behavior ignored)"
+      "Gave a verbal prompt to continue with the activity",
+      "Offered help or did the task together",
+      "Allowed extra time before moving on",
+      "Switched to a different task/activity",
+      "Ended the activity early",
+      "Gave praise or reward for completing part/all of it",
+      "Gave a countdown before the next step (e.g., “2 more minutes”)",
+      "Used a visual schedule or checklist to guide them",
+      "Broke the task into smaller steps",
+      "Let them choose between two activities",
+      "Removed distractions before trying again",
+      "Provided extra encouragement or reassurance"
     ]
   },
   "Resisting meals": {
