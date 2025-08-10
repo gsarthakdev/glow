@@ -1446,7 +1446,8 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         >
           <View style={styles.commentModalContent}>
             <View style={styles.commentModalHeader}>
-              <Text style={styles.commentModalTitle}>Add Comment</Text>
+              <Text style={styles.commentModalTitle}>Add Comment <Text style={{color: "#666", fontSize: 14, fontStyle: 'italic', marginTop: 8, fontWeight: '400'}}>(optional)</Text></Text>
+              
             </View>
             
             <TextInput
