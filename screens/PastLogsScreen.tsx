@@ -129,6 +129,15 @@ const DailyDetailModal: React.FC<DailyDetailModalProps> = ({
     ]);
   };
 
+  const handleAddLogForDate = () => {
+    onClose();
+    // Navigate to the same behavior logging flow with the past date
+    navigation.navigate('FlowBasic1BaseScrn', { 
+      mode: 'add', 
+      selectedDate: selectedDate 
+    });
+  };
+
   const dateLogs = getLogsForDate(selectedDate);
   const dateGoals = getGoalsForDate(selectedDate);
 
@@ -176,6 +185,13 @@ const DailyDetailModal: React.FC<DailyDetailModalProps> = ({
               <View style={dailyDetailStyles.emptyState}>
                 <Ionicons name="document-outline" size={48} color="#ccc" />
                 <Text style={dailyDetailStyles.emptyText}>No behavior logs for this day</Text>
+                <TouchableOpacity 
+                  style={dailyDetailStyles.addLogButton}
+                  onPress={handleAddLogForDate}
+                >
+                  <Ionicons name="add-circle-outline" size={20} color="#fff" />
+                  <Text style={dailyDetailStyles.addLogButtonText}>Add Log</Text>
+                </TouchableOpacity>
               </View>
             ) : (
               dateLogs.map((log, index) => (
@@ -186,7 +202,7 @@ const DailyDetailModal: React.FC<DailyDetailModalProps> = ({
                       {log.edited && (
                         <Text style={dailyDetailStyles.editedLabel}> · edited</Text>
                       )}
-                      <View
+                      {/* <View
                         style={[
                           dailyDetailStyles.sentimentBadge,
                           log.responses?.whatDidTheyDo?.sentiment === 'positive'
@@ -204,7 +220,7 @@ const DailyDetailModal: React.FC<DailyDetailModalProps> = ({
                         >
                           {log.responses?.whatDidTheyDo?.sentiment === 'positive' ? 'Positive' : 'Negative'}
                         </Text>
-                      </View>
+                      </View> */}
                     </View>
                     <View style={dailyDetailStyles.logHeaderActions}>
                       <TouchableOpacity onPress={() => handleEditLog(log)} style={dailyDetailStyles.iconButton}>
@@ -2847,5 +2863,26 @@ const dailyDetailStyles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#fff',
+  },
+  addLogButton: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginTop: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  addLogButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
   },
 });

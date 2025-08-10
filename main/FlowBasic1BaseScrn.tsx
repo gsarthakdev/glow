@@ -76,6 +76,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
   const route = useRoute<any>();
   const isEditMode = route.params?.mode === 'edit';
   const editLog: any = route.params?.editLog;
+  const selectedDate = route.params?.selectedDate; // For past date logging
 
 
   // Add ref for ScrollView
@@ -486,7 +487,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       totalSets = getTotalGPTSets(gptSuggestions, questionType);
     } else {
       // For predefined behaviors, use behavior-specific sets
-      totalSets = getTotalSets(selectedBehavior, questionType);
+      totalSets = getTotalSets(selectedBehavior || '', questionType);
     }
     
     // Cycle to next set, or back to 0 if we've reached the end
@@ -921,10 +922,22 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
           params: { reopenDate: dateStr, refresh: Date.now() },
         });
       } else {
-        const localTime = new Date();
+        // Create timestamp - use selectedDate if provided (for past date logging), otherwise use current time
+        let timestamp: string;
+        if (selectedDate) {
+          // Convert selectedDate (YYYY-MM-DD) to ISO timestamp at noon local time
+          const [year, month, day] = selectedDate.split('-').map(Number);
+          const localDate = new Date(year, month - 1, day, 12, 0, 0); // month is 0-indexed, set to noon
+          timestamp = new Date(localDate.getTime() - localDate.getTimezoneOffset() * 60000).toISOString();
+        } else {
+          // Use current time for regular logging
+          const localTime = new Date();
+          timestamp = new Date(localTime.getTime() - localTime.getTimezoneOffset() * 60000).toISOString();
+        }
+        
         const newLog = {
           id: `log_${uuidv4()}`,
-          timestamp: new Date(localTime.getTime() - localTime.getTimezoneOffset() * 60000).toISOString(),
+          timestamp,
           responses,
         };
         const updatedData = {
@@ -938,7 +951,18 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
           },
         };
         await AsyncStorage.setItem(currentChild.id, JSON.stringify(updatedData));
-        navigation.replace('CelebrationScreen');
+        
+        // Navigate based on whether this was a past date log or current log
+        if (selectedDate) {
+          // For past date logging, go back to Past Logs screen
+          navigation.navigate('BottomTabsStack', {
+            screen: 'Past Logs',
+            params: { reopenDate: selectedDate, refresh: Date.now() },
+          });
+        } else {
+          // For current day logging, go to celebration screen
+          navigation.replace('CelebrationScreen');
+        }
       }
     } catch (error) {
       console.error('Error saving log:', error);
