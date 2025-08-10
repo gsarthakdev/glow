@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { v4 as uuidv4 } from 'uuid';
 import { flow_basic_1 } from '../flows/flow_basic_1';
 import notificationService from '../utils/notificationService';
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
 
 // Detect if the device is an iPad/tablet based on screen width
 const isTablet = Dimensions.get('window').width >= 768;
@@ -34,6 +35,8 @@ export default function SettingsScreen() {
   const [editShowCustomPronoun, setEditShowCustomPronoun] = useState(false);
   const [editCustomPronoun, setEditCustomPronoun] = useState('');
   const [dailyReminderEnabled, setDailyReminderEnabled] = useState(false);
+  const [reminderTime, setReminderTime] = useState({ hour: 20, minute: 30 });
+  const [isTimePickerVisible, setIsTimePickerVisible] = useState(false);
 
   useEffect(() => {
     loadChildren();
@@ -50,7 +53,8 @@ export default function SettingsScreen() {
         key !== 'current_selected_child' && 
         key !== 'daily_reminder_enabled' &&
         key !== 'notification_permissions_requested_after_onboarding' &&
-        key !== 'default_email_provider'
+        key !== 'default_email_provider' &&
+        key !== 'daily_reminder_time'
       );
       console.log('SettingsScreen - Filtered child keys:', childKeys);
       
@@ -95,9 +99,58 @@ export default function SettingsScreen() {
   const loadNotificationSettings = async () => {
     try {
       const enabled = await notificationService.isReminderEnabled();
+      const time = await notificationService.getReminderTime();
       setDailyReminderEnabled(enabled);
+      setReminderTime(time);
     } catch (error) {
       console.error('Error loading notification settings:', error);
+    }
+  };
+
+  const formatTime = (hour: number, minute: number): string => {
+    const period = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    const displayMinute = minute.toString().padStart(2, '0');
+    return `${displayHour}:${displayMinute} ${period}`;
+  };
+
+  const handleTimeConfirm = async (date: Date) => {
+    console.log('Time picker confirmed with date:', date);
+    const newHour = date.getHours();
+    const newMinute = date.getMinutes();
+    
+    console.log('New time:', newHour, newMinute);
+    setReminderTime({ hour: newHour, minute: newMinute });
+    setIsTimePickerVisible(false);
+    
+    // Save the new time to AsyncStorage
+    try {
+      await AsyncStorage.setItem('daily_reminder_time', JSON.stringify({ hour: newHour, minute: newMinute }));
+      
+      // If notifications are currently enabled, update the schedule with new time
+      if (dailyReminderEnabled) {
+        try {
+          await notificationService.scheduleDailyReminder({ hour: newHour, minute: newMinute });
+          Alert.alert(
+            'Time Updated',
+            `Daily reminders will now be sent at ${formatTime(newHour, newMinute)}.`,
+            [{ text: 'Great!' }]
+          );
+        } catch (error) {
+          console.error('Error updating notification time:', error);
+          Alert.alert('Error', 'Failed to update notification time.');
+        }
+      } else {
+        // Just show confirmation that time was saved
+        Alert.alert(
+          'Time Saved',
+          `Reminder time set to ${formatTime(newHour, newMinute)}. Enable notifications to start receiving reminders.`,
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Error saving reminder time:', error);
+      Alert.alert('Error', 'Failed to save reminder time.');
     }
   };
 
@@ -121,7 +174,7 @@ export default function SettingsScreen() {
         }
         
         console.log('Scheduling daily reminder...');
-        await notificationService.scheduleDailyReminder();
+        await notificationService.scheduleDailyReminder(reminderTime);
         console.log('Daily reminder scheduled successfully');
         
         // Check notification status after scheduling
@@ -142,7 +195,7 @@ export default function SettingsScreen() {
         setDailyReminderEnabled(true);
         Alert.alert(
           'Reminders Enabled',
-          'You will receive daily reminders at 8:30 PM to log your child\'s behavior.',
+          `You will receive daily reminders at ${formatTime(reminderTime.hour, reminderTime.minute)} to log your child's behavior.`,
           [{ text: 'Great!' }]
         );
       } else {
@@ -249,20 +302,40 @@ export default function SettingsScreen() {
       {/* Notification Settings Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Daily Reminders</Text>
-        <View style={styles.settingRow}>
-        <View style={styles.settingInfo}>
-          <Text style={styles.settingLabel}>Daily Log Reminders</Text>
-          <Text style={styles.settingDescription}>
-            Receive a daily reminder at 8:30 PM to log your child's behavior
-          </Text>
-        </View>
-        <Switch
-          value={dailyReminderEnabled}
-          onValueChange={handleNotificationToggle}
-          trackColor={{ false: '#E0E0E0', true: '#5B9AA0' }}
-          thumbColor={dailyReminderEnabled ? '#fff' : '#f4f3f4'}
-        />
-      </View>
+        <TouchableOpacity 
+          style={styles.settingRow}
+          onPress={() => handleNotificationToggle(!dailyReminderEnabled)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.settingInfo}>
+            <Text style={styles.settingLabel}>Daily Log Reminders</Text>
+            <Text style={styles.settingDescription}>
+              Receive a daily reminder to log your child's behavior
+            </Text>
+          </View>
+          <Switch
+            value={dailyReminderEnabled}
+            onValueChange={handleNotificationToggle}
+            trackColor={{ false: '#E0E0E0', true: '#5B9AA0' }}
+            thumbColor={dailyReminderEnabled ? '#fff' : '#f4f3f4'}
+          />
+        </TouchableOpacity>
+        {dailyReminderEnabled && (
+          <TouchableOpacity 
+            style={styles.timeSettingRow}
+            onPress={() => {
+              console.log('Opening time picker, current time:', reminderTime);
+              setIsTimePickerVisible(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.timeSettingLabel}>Reminder Time:</Text>
+            <View style={styles.timeSettingValue}>
+              <Text style={styles.timeSettingValueText}>{formatTime(reminderTime.hour, reminderTime.minute)}</Text>
+              <Feather name="clock" size={18} color="#5B9AA0" />
+            </View>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Children Management Section */}
@@ -478,6 +551,19 @@ export default function SettingsScreen() {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+      <DateTimePickerModal
+        isVisible={isTimePickerVisible}
+        mode="time"
+        onConfirm={handleTimeConfirm}
+        onCancel={() => setIsTimePickerVisible(false)}
+        minuteInterval={1}
+        is24Hour={false}
+        pickerContainerStyleIOS={styles.timePickerContainer}
+        buttonTextColorIOS="#5B9AA0"
+        themeVariant="light"
+        accentColor="#5B9AA0"
+        textColor="#000000"
+      />
     </LinearGradient>
   );
 }
@@ -551,8 +637,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 32,
     borderRadius: 25,
-    marginTop: 10,
-    marginBottom: screenHeight < 700 ? 100 : 130,
+    marginTop: 0,
+    marginBottom: screenHeight < 700 ? 100 : 110,
+    // bottom: screenHeight < 700 ? 100 : 110,
     alignSelf: 'center',
   },
   addBtnText: {
@@ -717,7 +804,7 @@ const styles = StyleSheet.create({
   sectionSubtitle: {
     fontSize: 15,
     color: '#5B9AA0',
-    marginBottom: 16,
+    marginBottom: 0,
   },
   settingRow: {
     flexDirection: 'row',
@@ -753,5 +840,56 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#5B9AA0',
     marginTop: 2,
+  },
+  timeSettingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 10,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E1E5E9',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  timeSettingLabel: {
+    fontSize: 16,
+    color: '#3E3E6B',
+    fontWeight: '500',
+    marginRight: 10,
+  },
+  timeSettingValue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  timeSettingValueText: {
+    fontSize: 18,
+    color: '#5B9AA0',
+    fontWeight: '700',
+    marginRight: 8,
+  },
+  timePickerContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    padding: 20,
+    // margin: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
 });

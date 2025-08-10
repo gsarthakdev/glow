@@ -59,7 +59,7 @@ class NotificationService {
     }
   }
 
-  async scheduleDailyReminder(): Promise<void> {
+  async scheduleDailyReminder(customTime?: { hour: number; minute: number }): Promise<void> {
     try {
       // Ensure the service is initialized
       if (!this.isInitialized) {
@@ -69,11 +69,16 @@ class NotificationService {
       // Cancel any existing daily reminders
       await this.cancelDailyReminder();
       
-      // Schedule personalized daily reminder at 8:30 PM
-      await this.schedulePersonalizedReminder();
+      // Use custom time if provided, otherwise default to 8:30 PM
+      const targetHour = customTime?.hour ?? 20;
+      const targetMinute = customTime?.minute ?? 30;
       
-      // Save reminder preference
+      // Schedule personalized daily reminder at the specified time
+      await this.schedulePersonalizedReminder(targetHour, targetMinute);
+      
+      // Save reminder preference and time
       await AsyncStorage.setItem('daily_reminder_enabled', 'true');
+      await AsyncStorage.setItem('daily_reminder_time', JSON.stringify({ hour: targetHour, minute: targetMinute }));
     } catch (error) {
       console.error('Failed to schedule daily reminder:', error);
       throw error;
@@ -103,14 +108,28 @@ class NotificationService {
       const enabled = await AsyncStorage.getItem('daily_reminder_enabled');
       return enabled === 'true';
     } catch (error) {
-      console.error('Failed to check reminder status:', error);
+      console.error('Error checking reminder status:', error);
       return false;
+    }
+  }
+
+  async getReminderTime(): Promise<{ hour: number; minute: number }> {
+    try {
+      const timeString = await AsyncStorage.getItem('daily_reminder_time');
+      if (timeString) {
+        return JSON.parse(timeString);
+      }
+      // Default to 8:30 PM if no custom time is set
+      return { hour: 20, minute: 30 };
+    } catch (error) {
+      console.error('Error getting reminder time:', error);
+      // Default to 8:30 PM if there's an error
+      return { hour: 20, minute: 30 };
     }
   }
 
   async requestPermissionsWithExplanation(): Promise<boolean> {
     try {
-      // Request permissions
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
       
@@ -119,49 +138,29 @@ class NotificationService {
         finalStatus = status;
       }
       
-      if (finalStatus !== 'granted') {
-        return false;
-      }
-
-      // Initialize the service after permissions are granted
-      await this.initialize();
-      return true;
+      return finalStatus === 'granted';
     } catch (error) {
-      console.error('Failed to request notification permissions:', error);
+      console.error('Error requesting notification permissions:', error);
       return false;
     }
   }
 
-  async schedulePersonalizedReminder(): Promise<void> {
+  async schedulePersonalizedReminder(hour: number, minute: number): Promise<void> {
     try {
-      console.log('Scheduling daily reminder for 1:57 AM...');
-      
       // Get current time
       const now = new Date();
       const currentHour = now.getHours();
       const currentMinute = now.getMinutes();
       
-      console.log(`Current time: ${currentHour}:${currentMinute}`);
-      console.log(`Target time: 2:18`);
-      
       // Check if target time has already passed today
-      const targetHour = 20;
-      const targetMinute = 30;
-      
       const currentTimeInMinutes = currentHour * 60 + currentMinute;
-      const targetTimeInMinutes = targetHour * 60 + targetMinute;
-      
-      console.log(`Current time in minutes: ${currentTimeInMinutes}`);
-      console.log(`Target time in minutes: ${targetTimeInMinutes}`);
+      const targetTimeInMinutes = hour * 60 + minute;
       
       if (currentTimeInMinutes >= targetTimeInMinutes) {
-        console.log('Target time has already passed today. Scheduling for tomorrow.');
         // Schedule for tomorrow by adding 24 hours
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
-        tomorrow.setHours(targetHour, targetMinute, 0, 0);
-        
-        console.log(`Scheduling for tomorrow at: ${tomorrow.toLocaleString()}`);
+        tomorrow.setHours(hour, minute, 0, 0);
         
         const notificationId = await Notifications.scheduleNotificationAsync({
           content: {
@@ -172,14 +171,9 @@ class NotificationService {
           trigger: tomorrow as unknown as Notifications.NotificationTriggerInput,
         });
         
-        console.log('Daily reminder scheduled for tomorrow with ID:', notificationId);
+        console.log('Daily reminder scheduled for tomorrow at:', tomorrow.toLocaleString());
       } else {
-        console.log('Target time is in the future today. Scheduling normally.');
-        
-        // Cancel any existing daily reminders first
-        await this.cancelDailyReminder();
-        
-        // Schedule a simple daily reminder at 2:18 AM
+        // Schedule a daily reminder at the specified time
         const notificationId = await Notifications.scheduleNotificationAsync({
           content: {
             title: "Daily Log Reminder",
@@ -188,32 +182,19 @@ class NotificationService {
           },
           trigger: {
              type: 'calendar',
-             hour: targetHour,
-             minute: targetMinute,
+             hour: hour,
+             minute: minute,
              second: 0,
              repeats: true,
              ...(Platform.OS === 'android' ? { channelId: 'daily-reminders' } : {}),
           } as Notifications.CalendarTriggerInput,
         });
         
-        console.log('Daily reminder scheduled for today with ID:', notificationId);
+        console.log('Daily reminder scheduled for today at:', `${hour}:${minute.toString().padStart(2, '0')}`);
       }
-      
-      // Wait a moment and check if notification was stored
-      setTimeout(async () => {
-        const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
-        console.log('Scheduled notifications after delay:', scheduledNotifications.length);
-        scheduledNotifications.forEach((notification, index) => {
-          console.log(`Notification ${index + 1}:`, {
-            id: notification.identifier,
-            title: notification.content.title,
-            trigger: notification.trigger,
-          });
-        });
-      }, 1000);
-      
     } catch (error) {
       console.error('Failed to schedule daily reminder:', error);
+      throw error;
     }
   }
 
