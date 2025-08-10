@@ -11,7 +11,6 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
-  findNodeHandle,
   Animated,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -58,7 +57,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
   const [selectedAnswers, setSelectedAnswers] = useState<{ [key: string]: Answer[] }>({});
   const [comments, setComments] = useState<{ [key: string]: string }>({});
   const [otherText, setOtherText] = useState<{ [key: string]: string }>({});
-  const [showCommentInput, setShowCommentInput] = useState<{ [key: string]: boolean }>({});
+
   const [currentChild, setCurrentChild] = useState<any>(null);
   const [showOtherModal, setShowOtherModal] = useState<OtherModalState | null>(null);
   const [moodBefore, setMoodBefore] = useState<number>(0);
@@ -71,6 +70,10 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
   const [isLoadingGpt, setIsLoadingGpt] = useState(false);
   const [optionSets, setOptionSets] = useState<{ [questionId: string]: number }>({});
   const [fadeAnim] = useState(new Animated.Value(1));
+  
+  // New state for comment modal
+  const [showCommentModal, setShowCommentModal] = useState(false);
+  const [currentCommentQuestionId, setCurrentCommentQuestionId] = useState<string>('');
 
   // Edit mode support
   const route = useRoute<any>();
@@ -81,7 +84,6 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
 
   // Add ref for ScrollView
   const scrollViewRef = useRef<ScrollView>(null);
-  const commentInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
     loadCurrentChild();
@@ -1003,29 +1005,12 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       )
     : [];
 
-  const handleCommentPress = (questionId: string) => {
-    const showing = !showCommentInput[questionId];
-    setShowCommentInput(prev => ({
-      ...prev,
-      [questionId]: showing
-    }));
-    
-    if (showing && commentInputRef.current && scrollViewRef.current) {
-      // Wait for TextInput to render
-      setTimeout(() => {
-        const input = findNodeHandle(commentInputRef.current);
-        if (input) {
-          commentInputRef.current?.measureInWindow((x: number, y: number, width: number, height: number) => {
-            if (scrollViewRef.current) {
-              scrollViewRef.current.scrollTo({
-                y: y - 100, // Account for some padding
-                animated: true
-              });
-            }
-          });
-        }
-      }, 100);
-    } 
+
+
+  // New function to handle comment modal
+  const handleCommentModalOpen = (questionId: string) => {
+    setCurrentCommentQuestionId(questionId);
+    setShowCommentModal(true);
   };
 
   return (
@@ -1041,9 +1026,22 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
           >
-          <Text style={styles.progress}>
-            Step {currentQuestion + 1} of {currentFlow.length > 0 ? currentFlow.length : 1}
-          </Text>
+          <View style={styles.progressRow}>
+            <Text style={styles.progress}>
+              Step {currentQuestion + 1} of {currentFlow.length > 0 ? currentFlow.length : 1}
+            </Text>
+            <TouchableOpacity
+              style={styles.commentIconButton}
+              onPress={() => handleCommentModalOpen(currentQ.id)}
+            >
+              <Text style={styles.commentIcon}>💬</Text>
+              {comments[currentQ.id] && (
+                <View style={styles.commentBadge}>
+                  <Text style={styles.commentBadgeText}>✓</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
           <Text style={styles.question}>{currentQ.question}</Text>
           <Text style={styles.subheading}>{currentQ.subheading}</Text>
 
@@ -1240,30 +1238,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
             </>
           )}
 
-          {/* Comment section */}
-          {/* <TouchableOpacity
-            style={styles.commentButton}
-            onPress={() => handleCommentPress(currentQ.id)}
-          >
-            <Text style={styles.commentButtonText}>
-              {showCommentInput[currentQ.id] ? 'Hide Comment' : 'Add Comment'}
-            </Text>
-          </TouchableOpacity> */}
-
-          {showCommentInput[currentQ.id] && (
-            <TextInput
-              ref={commentInputRef}
-              style={styles.commentInput}
-              placeholder="Add your comment here"
-              multiline
-              value={comments[currentQ.id]}
-              onChangeText={(text) => setComments(prev => ({
-                ...prev,
-                [currentQ.id]: text
-              }))}
-              autoFocus
-            />
-          )}
+          {/* Comment functionality moved to header icon button */}
 
           {/* Add Modal for Other input */}
           <Modal
@@ -1457,6 +1432,52 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         </ScrollView>
         </Animated.View>
       </KeyboardAvoidingView>
+
+      {/* Comment Modal */}
+      <Modal
+        visible={showCommentModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCommentModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.commentModalOverlay}
+        >
+          <View style={styles.commentModalContent}>
+            <View style={styles.commentModalHeader}>
+              <Text style={styles.commentModalTitle}>Add Comment</Text>
+            </View>
+            
+            <TextInput
+              style={styles.commentModalInput}
+              placeholder="Add your comment here..."
+              multiline
+              value={comments[currentCommentQuestionId] || ''}
+              onChangeText={(text) => setComments(prev => ({
+                ...prev,
+                [currentCommentQuestionId]: text
+              }))}
+              autoFocus
+            />
+            
+            <View style={styles.commentModalButtons}>
+              <TouchableOpacity
+                style={[styles.commentModalButton, styles.commentModalCancelButton]}
+                onPress={() => setShowCommentModal(false)}
+              >
+                <Text style={styles.commentModalButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.commentModalButton, styles.commentModalSaveButton]}
+                onPress={() => setShowCommentModal(false)}
+              >
+                <Text style={[styles.commentModalButtonText, { color: 'white' }]}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1474,6 +1495,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginBottom: 24,
+  },
+  progressRow: {
+    position: 'relative',
+    // marginBottom: 24,
   },
   question: {
     fontSize: 28,
@@ -1499,25 +1524,7 @@ const styles = StyleSheet.create({
   choiceText: {
     fontSize: 16,
   },
-  commentButton: {
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  commentButtonText: {
-    color: '#5B9AA0',
-    fontSize: 16,
-  },
-  commentInput: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    padding: 15,
-    minHeight: 100, // Changed from fixed height
-    maxHeight: 200,
-    marginBottom: 20,
-    textAlignVertical: 'top',
-  },
+
   navigationButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1741,5 +1748,90 @@ const styles = StyleSheet.create({
     backgroundColor: '#e0e0e0',
     borderRadius: 4,
     flex: 1,
+  },
+
+  commentIconButton: {
+    position: 'absolute',
+    right: 0,
+    top: -5,
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#5B9AA0',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  commentIcon: {
+    fontSize: 16,
+    color: '#fff',
+  },
+  commentBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#28a745',
+    borderRadius: 8,
+    width: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  commentBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  commentModalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  },
+  commentModalContent: {
+    width: '80%',
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 20,
+    elevation: 5,
+  },
+  commentModalHeader: {
+    marginBottom: 15,
+  },
+  commentModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+
+  commentModalInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 15,
+    minHeight: 120,
+    maxHeight: 200,
+    textAlignVertical: 'top',
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  commentModalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  commentModalButton: {
+    padding: 10,
+    borderRadius: 10,
+    flex: 1,
+    marginHorizontal: 5,
+    alignItems: 'center',
+  },
+  commentModalCancelButton: {
+    backgroundColor: '#c0c0c0',
+  },
+  commentModalSaveButton: {
+    backgroundColor: '#5B9AA0',
+  },
+  commentModalButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
