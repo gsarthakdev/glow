@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { v4 as uuidv4 } from 'uuid';
 import { flow_basic_1 } from '../flows/flow_basic_1';
 import notificationService from '../utils/notificationService';
-import DateTimePickerModal from 'react-native-modal-datetime-picker';
+import CustomTimePicker from '../components/CustomTimePicker';
 
 // Detect if the device is an iPad/tablet based on screen width
 const isTablet = Dimensions.get('window').width >= 768;
@@ -37,6 +37,7 @@ export default function SettingsScreen() {
   const [dailyReminderEnabled, setDailyReminderEnabled] = useState(false);
   const [reminderTime, setReminderTime] = useState({ hour: 20, minute: 30 });
   const [isTimePickerVisible, setIsTimePickerVisible] = useState(false);
+  const [isNotificationSettingsLoaded, setIsNotificationSettingsLoaded] = useState(false);
 
   useEffect(() => {
     loadChildren();
@@ -100,10 +101,13 @@ export default function SettingsScreen() {
     try {
       const enabled = await notificationService.isReminderEnabled();
       const time = await notificationService.getReminderTime();
+      console.log('SettingsScreen - loadNotificationSettings:', { enabled, time });
       setDailyReminderEnabled(enabled);
       setReminderTime(time);
+      setIsNotificationSettingsLoaded(true);
     } catch (error) {
       console.error('Error loading notification settings:', error);
+      setIsNotificationSettingsLoaded(true); // Set to true even on error to prevent infinite loading
     }
   };
 
@@ -115,11 +119,9 @@ export default function SettingsScreen() {
   };
 
   const handleTimeConfirm = async (date: Date) => {
-    console.log('Time picker confirmed with date:', date);
     const newHour = date.getHours();
     const newMinute = date.getMinutes();
     
-    console.log('New time:', newHour, newMinute);
     setReminderTime({ hour: newHour, minute: newMinute });
     setIsTimePickerVisible(false);
     
@@ -133,7 +135,7 @@ export default function SettingsScreen() {
           await notificationService.scheduleDailyReminder({ hour: newHour, minute: newMinute });
           Alert.alert(
             'Time Updated',
-            `Daily reminders will now be sent at ${formatTime(newHour, newMinute)}.`,
+            `One daily reminder will now be sent at ${formatTime(newHour, newMinute)}.`,
             [{ text: 'Great!' }]
           );
         } catch (error) {
@@ -324,7 +326,7 @@ export default function SettingsScreen() {
           <TouchableOpacity 
             style={styles.timeSettingRow}
             onPress={() => {
-              console.log('Opening time picker, current time:', reminderTime);
+              console.log('SettingsScreen - Opening time picker with reminderTime:', reminderTime, 'dailyReminderEnabled:', dailyReminderEnabled);
               setIsTimePickerVisible(true);
             }}
             activeOpacity={0.7}
@@ -551,19 +553,21 @@ export default function SettingsScreen() {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
-      <DateTimePickerModal
-        isVisible={isTimePickerVisible}
-        mode="time"
-        onConfirm={handleTimeConfirm}
-        onCancel={() => setIsTimePickerVisible(false)}
-        minuteInterval={1}
-        is24Hour={false}
-        pickerContainerStyleIOS={styles.timePickerContainer}
-        buttonTextColorIOS="#5B9AA0"
-        themeVariant="light"
-        accentColor="#5B9AA0"
-        textColor="#000000"
-      />
+      {isNotificationSettingsLoaded && (
+        <CustomTimePicker
+          isVisible={isTimePickerVisible}
+          onConfirm={(hour, minute) => {
+            const date = new Date();
+            date.setHours(hour);
+            date.setMinutes(minute);
+            handleTimeConfirm(date);
+          }}
+          onCancel={() => setIsTimePickerVisible(false)}
+          initialHour={reminderTime.hour}
+          initialMinute={reminderTime.minute}
+          useCurrentTime={!dailyReminderEnabled}
+        />
+      )}
     </LinearGradient>
   );
 }
@@ -878,18 +882,5 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginRight: 8,
   },
-  timePickerContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 15,
-    padding: 20,
-    // margin: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
+
 });

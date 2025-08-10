@@ -33,7 +33,9 @@ xcrun simctl install booted /Users/sarthak/development/glow/Glow.app
 
 /*
  How to push OTA update:
-eas update --channel production --platform ios --message "GH-14: Fix: Goals to be per child, not global + have migration logic"
+eas update --channel production --platform ios --message "GH-21: Personalized pre-select options"
+
+eas env:list
 */
 /*
 
