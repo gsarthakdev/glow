@@ -925,10 +925,20 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         // Create timestamp - use selectedDate if provided (for past date logging), otherwise use current time
         let timestamp: string;
         if (selectedDate) {
-          // Convert selectedDate (YYYY-MM-DD) to ISO timestamp at noon local time
-          const [year, month, day] = selectedDate.split('-').map(Number);
-          const localDate = new Date(year, month - 1, day, 12, 0, 0); // month is 0-indexed, set to noon
-          timestamp = new Date(localDate.getTime() - localDate.getTimezoneOffset() * 60000).toISOString();
+          // Check if selectedDate is today
+          const today = new Date();
+          const todayString = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+          
+          if (selectedDate === todayString) {
+            // For current day, use exact current timestamp
+            const localTime = new Date();
+            timestamp = new Date(localTime.getTime() - localTime.getTimezoneOffset() * 60000).toISOString();
+          } else {
+            // For past dates, convert selectedDate (YYYY-MM-DD) to ISO timestamp at noon local time
+            const [year, month, day] = selectedDate.split('-').map(Number);
+            const localDate = new Date(year, month - 1, day, 12, 0, 0); // month is 0-indexed, set to noon
+            timestamp = new Date(localDate.getTime() - localDate.getTimezoneOffset() * 60000).toISOString();
+          }
         } else {
           // Use current time for regular logging
           const localTime = new Date();
