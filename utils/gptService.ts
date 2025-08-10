@@ -132,7 +132,7 @@ Choose appropriate emojis: 🚫(denials) ⏳(waiting) 💬(communication) 🧹(c
         content: prompt
       }
     ],
-    max_tokens: 600, // Reduced from 800 for faster response
+    max_tokens: 1600, // Increased to ensure complete JSON response
     temperature: 0.7,
   };
   
