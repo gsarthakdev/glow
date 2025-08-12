@@ -26,11 +26,17 @@ export const flow_basic_1 = [
         "sentiment": "negative",
         "choices": [
           { "label": "Yelling or screaming", "emoji": "😫", "sentiment": "negative" },
+          { "label": "Leading caregiver to item/place", "emoji": "🚶", "sentiment": "negative" },
           { "label": "Crying loudly", "emoji": "😭", "sentiment": "negative" },
+          { "label": "Pointing to an object", "emoji": "👉", "sentiment": "negative" },
           { "label": "Repetitive speech", "emoji": "🔁", "sentiment": "negative" },
+          { "label": "Using hand gestures to communicate", "emoji": "🤙", "sentiment": "negative" },
           { "label": "Using inappropriate words or profanity", "emoji": "🗯️", "sentiment": "negative" },
+          { "label": "Using AAC / speech device", "emoji": "📱", "sentiment": "negative" },
           { "label": "Refusal to speak", "emoji": "🤐", "sentiment": "negative" },
+          { "label": "Using PECS / picture cards", "emoji": "🖼️", "sentiment": "negative" },
           { "label": "Unusual vocal sounds", "emoji": "🎤", "sentiment": "negative" },
+          { "label": "Using sign language", "emoji": "🤟", "sentiment": "negative" },
           { "label": "Other", "emoji": "➕", "sentiment": null, "isOther": true }
         ]
       },

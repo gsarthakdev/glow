@@ -5,12 +5,14 @@ import * as Haptics from 'expo-haptics';
 
 interface MoodBubbleSliderProps {
   label: string;
+  secondary?: string;
   onValueChange: (value: number) => void;
   value?: number;
 }
 
 const MoodBubbleSlider: React.FC<MoodBubbleSliderProps> = ({
   label,
+  secondary,
   onValueChange,
   value: controlledValue,
 }) => {
@@ -63,7 +65,10 @@ const MoodBubbleSlider: React.FC<MoodBubbleSliderProps> = ({
   return (
     <View style={styles.container}>
       <View style={styles.headerContainer}>
-        <Text style={styles.label}>{label}</Text>
+        <View>
+          <Text style={styles.label}>{label}</Text>
+          {secondary ? <Text style={styles.secondaryLabel}>{secondary}</Text> : null}
+        </View>
         <TouchableOpacity 
           onPress={handleClear}
           style={styles.clearButton}
@@ -123,6 +128,12 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     color: '#333',
+  },
+  secondaryLabel: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 4,
+    maxWidth: 250,
   },
   clearButton: {
     paddingVertical: 8,

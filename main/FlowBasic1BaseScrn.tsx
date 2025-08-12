@@ -70,6 +70,8 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
   const [isLoadingGpt, setIsLoadingGpt] = useState(false);
   const [optionSets, setOptionSets] = useState<{ [questionId: string]: number }>({});
   const [fadeAnim] = useState(new Animated.Value(1));
+  // For shuffling Verbal Behavior choices
+  const [behaviorOptionSet, setBehaviorOptionSet] = useState<number>(0);
   
   // New state for comment modal
   const [showCommentModal, setShowCommentModal] = useState(false);
@@ -498,6 +500,13 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       ...prev,
       [questionId]: nextSet
     }));
+  };
+
+  // Shuffle choices within Verbal Behaviors category
+  const handleShuffleBehaviorChoices = () => {
+    if (!selectedCategory || selectedCategory.key !== 'verbalBehaviors') return;
+    const totalSets = Math.ceil(selectedCategory.choices.length / 5);
+    setBehaviorOptionSet(prev => (prev + 1) % totalSets);
   };
 
   const animateBackToCategories = () => {
@@ -1013,6 +1022,18 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     setShowCommentModal(true);
   };
 
+  // Build dynamic labels for mood sliders
+  const buildSummary = (questionId: string) => {
+    const arr = selectedAnswers[questionId] || [];
+    if (arr.length === 0) return '';
+    const first = arr[0].answer;
+    const more = arr.length - 1;
+    return more > 0 ? `${first} (+${more} more)` : first;
+  };
+
+  const antecedentSummary = buildSummary('whatHappenedBefore');
+  const consequenceSummary = buildSummary('whatHappenedAfter');
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView 
@@ -1048,13 +1069,15 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
           {currentQ.id === 'mood' ? (
             <View style={styles.moodContainer}>
               <MoodBubbleSlider
-                label="Before the incident"
+                label="Before"
+                secondary={antecedentSummary}
                 value={moodBefore}
                 onValueChange={setMoodBefore}
               />
               <View style={styles.moodDivider} />
               <MoodBubbleSlider
-                label="After the incident"
+                label="After"
+                secondary={consequenceSummary}
                 value={moodAfter}
                 onValueChange={setMoodAfter}
               />
@@ -1092,25 +1115,48 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                 ))
               ) : selectedCategory ? (
                 <>
-                  {selectedCategory.choices.map((choice) => (
-                    <TouchableOpacity
-                      key={choice.label}
-                      style={[
-                        styles.choiceButton,
-                        (choice.label === 'Other'
-                          ? isOtherSelected(currentQ.id)
-                          : isAnswerSelected(currentQ.id, choice.label)) && styles.selectedChoice,
-                      ]}
-                      onPress={() => {
-                        handleAnswer(currentQ.id, choice);
-                        // Immediately go back to main categories view
-                        setSelectedCategory(null);
-                        setSearchQuery('');
-                      }}
-                    >
-                      <Text style={styles.choiceText}>{getChoiceLabel(choice)}</Text>
-                    </TouchableOpacity>
-                  ))}
+                  {(() => {
+                    const catChoices = selectedCategory.key === 'verbalBehaviors'
+                      ? selectedCategory.choices.slice(
+                          behaviorOptionSet * 5,
+                          Math.min((behaviorOptionSet + 1) * 5, selectedCategory.choices.length)
+                        )
+                      : selectedCategory.choices;
+                    return catChoices.map((choice) => (
+                     <TouchableOpacity
+                       key={choice.label}
+                       style={[
+                         styles.choiceButton,
+                         (choice.label === 'Other'
+                           ? isOtherSelected(currentQ.id)
+                           : isAnswerSelected(currentQ.id, choice.label)) && styles.selectedChoice,
+                       ]}
+                       onPress={() => {
+                         handleAnswer(currentQ.id, choice);
+                         // Immediately go back to main categories view
+                         setSelectedCategory(null);
+                         setSearchQuery('');
+                         setBehaviorOptionSet(0);
+                       }}
+                     >
+                       <Text style={styles.choiceText}>{getChoiceLabel(choice)}</Text>
+                     </TouchableOpacity>
+                    ));
+                  })()}
+
+                  {selectedCategory.key === 'verbalBehaviors' && (
+                    <View style={styles.shuffleContainer}>
+                      <TouchableOpacity
+                        style={styles.shuffleButton}
+                        onPress={handleShuffleBehaviorChoices}
+                      >
+                        <Text style={styles.shuffleButtonText}>🔄 Shuffle options</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.shuffleInfoText}>
+                        Set {behaviorOptionSet + 1} of {Math.ceil(selectedCategory.choices.length / 5)}
+                      </Text>
+                    </View>
+                  )}
                 </>
               ) : (
                 <>
@@ -1136,7 +1182,10 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                         styles.choiceButton,
                         isCategorySelected(cat) && styles.selectedChoice
                       ]}
-                      onPress={() => setSelectedCategory(cat)}
+                      onPress={() => {
+                        setSelectedCategory(cat);
+                        setBehaviorOptionSet(0);
+                      }}
                     >
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Text style={styles.choiceText}>{`${cat.emoji} ${cat.label}`}</Text>
