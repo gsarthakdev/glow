@@ -20,8 +20,8 @@ export const flow_basic_1 = [
         ]
       },
       {
-        "key": "verbalBehaviours",
-        "label": "Verbal Behaviours",
+        "key": "verbalBehaviors",
+        "label": "Verbal Behaviors",
         "emoji": "📣",
         "sentiment": "negative",
         "choices": [
@@ -35,8 +35,8 @@ export const flow_basic_1 = [
         ]
       },
       {
-        "key": "repetitiveBehaviours",
-        "label": "Self-actions / Repetitive Behaviours",
+        "key": "repetitiveBehaviors",
+        "label": "Self-actions / Repetitive Behaviors",
         "emoji": "🔄",
         "sentiment": "negative",
         "choices": [
@@ -107,5 +107,6 @@ export const flow_basic_1 = [
     "id": "mood",
     "question": "How was your child feeling?",
     "subheading": "Select the mood or emotional state of your child during the incident.",
+    "answer_choices": []
   }
 ];

@@ -11,7 +11,7 @@ export async function finishOnboarding(childrenData: { child_name: string; prono
         const key = `${child.child_name.toLowerCase()}_${uuid}`;
         const value = {
             logs: [],
-            flow_basic_1: flow_basic_1,
+            // flow_basic_1: flow_basic_1,
             completed_logs: {
                 flow_basic_1_positive: [],
                 flow_basic_1_negative: []

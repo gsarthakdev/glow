@@ -15,11 +15,11 @@ interface CachedSuggestion {
 // Cache duration: 24 hours
 const CACHE_DURATION = 24 * 60 * 60 * 1000;
 
-export async function getABCForBehaviour(behaviour: string): Promise<ABCSuggestions> {
-  console.log('[GPT] getABCForBehaviour called with behaviour:', behaviour);
+export async function getABCForBehavior(behavior: string): Promise<ABCSuggestions> {
+  console.log('[GPT] getABCForBehavior called with behavior:', behavior);
   try {
     // Check cache first
-    const cacheKey = `gpt_suggestion_${behaviour.toLowerCase().trim()}`;
+    const cacheKey = `gpt_suggestion_${behavior.toLowerCase().trim()}`;
     console.log('[GPT] Cache key:', cacheKey);
     const cached = await AsyncStorage.getItem(cacheKey);
     
@@ -32,7 +32,7 @@ export async function getABCForBehaviour(behaviour: string): Promise<ABCSuggesti
       
       // If cache is still valid, return cached result
       if (age < CACHE_DURATION) {
-        console.log('[GPT] Using cached suggestion for:', behaviour);
+        console.log('[GPT] Using cached suggestion for:', behavior);
         console.log('[GPT] Cached suggestions:', parsed.suggestions);
         return parsed.suggestions;
       } else {
@@ -43,8 +43,8 @@ export async function getABCForBehaviour(behaviour: string): Promise<ABCSuggesti
     }
 
     // If no cache or expired, call OpenAI API
-    console.log('[GPT] Calling API for:', behaviour);
-    const suggestions = await callOpenAIAPI(behaviour);
+    console.log('[GPT] Calling API for:', behavior);
+    const suggestions = await callOpenAIAPI(behavior);
     console.log('[GPT] API returned suggestions:', suggestions);
     
     // Cache the result
@@ -64,13 +64,13 @@ export async function getABCForBehaviour(behaviour: string): Promise<ABCSuggesti
     }
     // Return offline fallback
     console.log('[GPT] Returning offline fallback');
-    const fallback = getOfflineFallback(behaviour);
+    const fallback = getOfflineFallback(behavior);
     return { ...fallback, isFallback: true };
   }
 }
 
-async function callOpenAIAPI(behaviour: string): Promise<ABCSuggestions> {
-  console.log('[GPT] callOpenAIAPI called with behaviour:', behaviour);
+async function callOpenAIAPI(behavior: string): Promise<ABCSuggestions> {
+  console.log('[GPT] callOpenAIAPI called with behavior:', behavior);
   const OPENAI_API_KEY = getOpenAIAPIKey();
   const OPENAI_API_URL = ENV.OPENAI_API_URL;
   
@@ -78,7 +78,7 @@ async function callOpenAIAPI(behaviour: string): Promise<ABCSuggestions> {
   console.log('[GPT] API Key length:', OPENAI_API_KEY?.length || 0);
   console.log('[GPT] API Key starts with:', OPENAI_API_KEY?.substring(0, 10) + '...');
   
-  const prompt = `For the behavior "${behaviour}" in a child, provide 15 likely antecedents (what happened before) and 15 likely consequences (what happened after). 
+  const prompt = `For the behavior "${behavior}" in a child, provide 15 likely antecedents (what happened before) and 15 likely consequences (what happened after). 
 
 Return only a JSON object in this exact format:
 {
@@ -192,8 +192,8 @@ Choose appropriate emojis: 🚫(denials) ⏳(waiting) 💬(communication) 🧹(c
   }
 }
 
-function getOfflineFallback(behaviour: string): Omit<ABCSuggestions, 'isFallback'> {
-  console.log('[GPT] getOfflineFallback called with behaviour:', behaviour);
+function getOfflineFallback(behavior: string): Omit<ABCSuggestions, 'isFallback'> {
+  console.log('[GPT] getOfflineFallback called with behavior:', behavior);
   
   // Static fallback suggestions based on common behaviors (expanded to 15 each)
   const fallbackMap: { [key: string]: ABCSuggestions } = {
@@ -308,11 +308,11 @@ function getOfflineFallback(behaviour: string): Omit<ABCSuggestions, 'isFallback
   };
 
   // Try to find a close match
-  const lowerBehaviour = behaviour.toLowerCase();
-  console.log('[GPT] Looking for match in fallback map for:', lowerBehaviour);
+  const lowerBehavior = behavior.toLowerCase();
+  console.log('[GPT] Looking for match in fallback map for:', lowerBehavior);
   
   for (const [key, suggestions] of Object.entries(fallbackMap)) {
-    if (lowerBehaviour.includes(key)) {
+    if (lowerBehavior.includes(key)) {
       console.log('[GPT] Found fallback match for key:', key);
       console.log('[GPT] Returning fallback suggestions:', suggestions);
       return suggestions;
@@ -385,14 +385,14 @@ export function getTotalGPTSets(gptSuggestions: ABCSuggestions | null, questionT
 }
 
 // Analytics tracking
-export async function trackGPTSuggestionUsage(behaviour: string, suggestionType: 'antecedent' | 'consequence', selectedSuggestion: string) {
+export async function trackGPTSuggestionUsage(behavior: string, suggestionType: 'antecedent' | 'consequence', selectedSuggestion: string) {
   try {
     const analyticsKey = 'gpt_suggestion_analytics';
     const existing = await AsyncStorage.getItem(analyticsKey);
     const analytics = existing ? JSON.parse(existing) : [];
     
     analytics.push({
-      behaviour,
+      behavior: behavior,
       suggestionType,
       selectedSuggestion,
       timestamp: Date.now(),

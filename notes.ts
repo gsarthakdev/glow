@@ -33,7 +33,7 @@ xcrun simctl install booted /Users/sarthak/development/glow/Glow.app
 
 /*
  How to push OTA update:
-eas update --channel production --platform ios --message "GH-21: Personalized pre-select options"
+eas update --channel production --platform ios --message "GH-24: patch bug with time picker: [sub-issue_1]: Eleri Updates"
 
 eas env:list
 */

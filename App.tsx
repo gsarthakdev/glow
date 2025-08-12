@@ -12,12 +12,13 @@ import { seeAllDBData } from './seeData';
 import { useAsyncStorage } from './hooks/useAsyncStorage';
 import TestScreen from './TestScreen';
 import { NavigationContainer } from '@react-navigation/native';
-import { writeAsyncStorageToFile } from './utils/asyncStorageUtils';
+import { logChildCompletedLogs, writeAsyncStorageToFile } from './utils/asyncStorageUtils';
 import * as Updates from "expo-updates";
 import { IS_DEBUGGING } from './flag';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { LogBox } from 'react-native';
+import EmailTestScreen from './screens/EmailTestScreen';
 
 // LogBox.ignoreAllLogs();    
 // Error Boundary Component
@@ -103,7 +104,8 @@ export default function App() {
 
   const doIt = async () => {
     try {
-      await writeAsyncStorageToFile();
+      // await writeAsyncStorageToFile();
+      await logChildCompletedLogs();
     } catch (error) {
       console.error('Error writing AsyncStorage to file:', error);
     }
@@ -149,7 +151,7 @@ export default function App() {
       </LinearGradient>
     );
   }
-
+  
   return (
     <ErrorBoundary>
       <NavigationContainer>

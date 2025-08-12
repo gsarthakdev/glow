@@ -33,6 +33,63 @@ const generateMoodValues = (sentiment: 'positive' | 'negative') => {
 const generateAnswersForQuestion = (question: any, sentiment: 'positive' | 'negative') => {
   const answers: any[] = [];
   
+  // Handle the special case of whatDidTheyDo question which has categories instead of answer_choices
+  if (question.id === 'whatDidTheyDo' && question.categories) {
+    // Randomly select 1-2 categories
+    const numCategories = getRandomNumber(1, 2);
+    const selectedCategories: any[] = [];
+    
+    for (let i = 0; i < numCategories && i < question.categories.length; i++) {
+      const category = getRandomItem(question.categories);
+      if (!selectedCategories.find(c => c.key === category.key)) {
+        selectedCategories.push(category);
+      }
+    }
+    
+    // For each selected category, pick a random choice
+    selectedCategories.forEach(category => {
+      const validChoices = category.choices.filter((choice: any) => 
+        choice.label !== 'Other' && choice.sentiment === sentiment
+      );
+      
+      if (validChoices.length > 0) {
+        const choice = getRandomItem(validChoices);
+        answers.push({
+          answer: `${category.label}: ${choice.label}`,
+          isCustom: false
+        });
+      }
+    });
+    
+    return answers;
+  }
+  
+  // Check if question has answer_choices
+  if (!question.answer_choices || question.answer_choices.length === 0) {
+    // For questions without choices, generate a simple text response
+    const defaultResponses = {
+      whatHappenedBefore: sentiment === 'positive' 
+        ? ['After praise', 'Routine followed', 'Good transition', 'Feeling supported', 'Clear expectations']
+        : ['Routine change', 'Unexpected event', 'Transition time', 'Feeling tired', 'Hunger'],
+      whatHappenedAfter: sentiment === 'positive'
+        ? ['Celebrated success', 'Felt proud', 'Stayed regulated', 'Asked to repeat', 'Positive reinforcement']
+        : ['Calmed down', 'Received support', 'Time out', 'Discussion', 'Redirection'],
+      mood: sentiment === 'positive'
+        ? ['Happy', 'Proud', 'Excited', 'Calm', 'Confident']
+        : ['Frustrated', 'Anxious', 'Overwhelmed', 'Tired', 'Hungry']
+    };
+    
+    const responses = defaultResponses[question.id as keyof typeof defaultResponses] || ['Not specified'];
+    const randomResponse = getRandomItem(responses);
+    
+    answers.push({
+      answer: randomResponse,
+      isCustom: false
+    });
+    
+    return answers;
+  }
+  
   // For each question, randomly select 1-2 answers
   const numAnswers = getRandomNumber(1, 2);
   const availableChoices = question.answer_choices.filter((choice: any) => 
@@ -61,6 +118,18 @@ const generateAnswersForQuestion = (question: any, sentiment: 'positive' | 'nega
 const generateLog = (date: Date, sentiment: 'positive' | 'negative') => {
   const flow = sentiment === 'positive' ? positiveFlow : negativeFlow;
   
+  // Validate flow data
+  if (!flow || !Array.isArray(flow) || flow.length === 0) {
+    throw new Error(`Invalid flow data for ${sentiment} sentiment`);
+  }
+  
+  // Validate each question has required properties
+  flow.forEach((question: any, index: number) => {
+    if (!question || !question.id || !question.question) {
+      throw new Error(`Invalid question at index ${index} in ${sentiment} flow: missing required properties`);
+    }
+  });
+  
   // Generate random time within the day
   const hour = getRandomNumber(6, 22);
   const minute = getRandomNumber(0, 59);
@@ -70,23 +139,35 @@ const generateLog = (date: Date, sentiment: 'positive' | 'negative') => {
   // Generate responses for each question
   const responses: any = {};
   flow.forEach((question: any) => {
-    if (question.id === 'mood') {
-      const moodValues = generateMoodValues(sentiment);
+    console.log(`Processing question: ${question.id}`, question);
+    try {
+      if (question.id === 'mood') {
+        const moodValues = generateMoodValues(sentiment);
+        responses[question.id] = {
+          question: question.question,
+          answers: [{
+            answer: `Before: ${moodValues.before}, After: ${moodValues.after}`,
+            isCustom: false
+          }],
+          comment: getRandomNumber(1, 10) <= 3 ? 'Great progress today!' : '', // 30% chance of comment
+          sentiment: sentiment
+        };
+      } else {
+        const answers = generateAnswersForQuestion(question, sentiment);
+        responses[question.id] = {
+          question: question.question,
+          answers: answers,
+          comment: getRandomNumber(1, 10) <= 2 ? 'Worth noting' : '', // 20% chance of comment
+          sentiment: sentiment
+        };
+      }
+    } catch (error) {
+      console.error(`Error processing question ${question.id}:`, error);
+      // Provide a fallback response
       responses[question.id] = {
-        question: question.question,
-        answers: [{
-          answer: `Before: ${moodValues.before}, After: ${moodValues.after}`,
-          isCustom: false
-        }],
-        comment: getRandomNumber(1, 10) <= 3 ? 'Great progress today!' : '', // 30% chance of comment
-        sentiment: sentiment
-      };
-    } else {
-      const answers = generateAnswersForQuestion(question, sentiment);
-      responses[question.id] = {
-        question: question.question,
-        answers: answers,
-        comment: getRandomNumber(1, 10) <= 2 ? 'Worth noting' : '', // 20% chance of comment
+        question: question.question || 'Question not available',
+        answers: [{ answer: 'Error generating response', isCustom: false }],
+        comment: '',
         sentiment: sentiment
       };
     }
@@ -106,6 +187,25 @@ export default function DummyLogGenerator() {
     setIsGenerating(true);
     
     try {
+      console.log('Starting dummy log generation...');
+      console.log('Positive flow:', positiveFlow);
+      console.log('Negative flow:', negativeFlow);
+      
+      // Validate flow data
+      if (!positiveFlow || !Array.isArray(positiveFlow) || positiveFlow.length === 0) {
+        console.error('Positive flow validation failed:', positiveFlow);
+        Alert.alert('Error', 'Positive flow data is invalid or missing.');
+        return;
+      }
+      
+      if (!negativeFlow || !Array.isArray(negativeFlow) || negativeFlow.length === 0) {
+        console.error('Negative flow validation failed:', negativeFlow);
+        Alert.alert('Error', 'Negative flow data is invalid or missing.');
+        return;
+      }
+      
+      console.log('Flow validation passed. Positive flow length:', positiveFlow.length, 'Negative flow length:', negativeFlow.length);
+      
       // Get current selected child
       const selectedChildJson = await AsyncStorage.getItem('current_selected_child');
       if (!selectedChildJson) {
@@ -127,7 +227,7 @@ export default function DummyLogGenerator() {
       
       // Generate logs for July 1-25, 2024
       const logs: any[] = [];
-      const startDate = new Date('2025-07-27');
+      const startDate = new Date('2025-08-03');
       
       for (let i = 0; i < 25; i++) {
         const currentDate = new Date(startDate);
@@ -137,10 +237,15 @@ export default function DummyLogGenerator() {
         const logsPerDay = getRandomNumber(1, 3);
         
         for (let j = 0; j < logsPerDay; j++) {
-          // 60% positive, 40% negative for realistic mix
-          const sentiment = getRandomNumber(1, 10) <= 6 ? 'positive' : 'negative';
-          const log = generateLog(currentDate, sentiment);
-          logs.push(log);
+          try {
+            // 60% positive, 40% negative for realistic mix
+            const sentiment = getRandomNumber(1, 10) <= 6 ? 'positive' : 'negative';
+            const log = generateLog(currentDate, sentiment);
+            logs.push(log);
+          } catch (error) {
+            console.error(`Error generating log for day ${i}, log ${j}:`, error);
+            // Continue with other logs instead of failing completely
+          }
         }
       }
       

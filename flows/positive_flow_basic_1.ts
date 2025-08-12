@@ -5,7 +5,7 @@ export const flow_basic_1 = [
         "subheading": "Describe your child's specific behavior or action during the event.",
         "answer_choices": [
             { "label": "Hit", "emoji": "🤛", "sentiment": "negative" },
-            { "label": "Followed instructions", emoji: "✅", "sentiment": "positive" },
+            { "label": "Followed instructions", "emoji": "✅", "sentiment": "positive" },
             { "label": "Screamed", "emoji": "😫", "sentiment": "negative" },
             { "label": "Stayed calm during frustration", "emoji": "🏆", "sentiment": "positive" },
             { "label": "Other", "emoji": "➕", "sentiment": null }
@@ -27,25 +27,25 @@ export const flow_basic_1 = [
         "id": "whatHappenedBefore",
         "question": "What caused the behavior?",
         "subheading": "Think about what contributed to the positive behavior.",
-        answer_choices: [
-            { label: "After praise", emoji: "👏", "sentiment": "positive" },
-            { label: "Routine was followed", emoji: "📅", "sentiment": "positive" },
-            { label: "Transition went well", emoji: "🚪", "sentiment": "positive" },
-            { label: "Felt supported", emoji: "🤗", "sentiment": "positive" },
-            { label: "Other", emoji: "➕", "sentiment": null }
+        "answer_choices": [
+            { "label": "After praise", "emoji": "👏", "sentiment": "positive" },
+            { "label": "Routine was followed", "emoji": "📅", "sentiment": "positive" },
+            { "label": "Transition went well", "emoji": "🚪", "sentiment": "positive" },
+            { "label": "Felt supported", "emoji": "🤗", "sentiment": "positive" },
+            { "label": "Other", "emoji": "➕", "sentiment": null }
         ]
     },
     {
         "id": "whatHappenedAfter",
         "question": "What happened after?",
         "subheading": "How did your child or others react to this positive moment?",
-        answer_choices: [
-            { label: "Celebrated the win", emoji: "🎉", "sentiment": "positive" },
-            { label: "Smiled or looked proud", emoji: "😊", "sentiment": "positive" },
-            { label: "Stayed regulated", emoji: "🧠", "sentiment": "positive" },
-            { label: "Asked to do it again", emoji: "🔁", "sentiment": "positive" },
-            { label: "Other", emoji: "➕", "sentiment": null }
-          ]
+        "answer_choices": [
+            { "label": "Celebrated the win", "emoji": "🎉", "sentiment": "positive" },
+            { "label": "Smiled or looked proud", "emoji": "😊", "sentiment": "positive" },
+            { "label": "Stayed regulated", "emoji": "🧠", "sentiment": "positive" },
+            { "label": "Asked to do it again", "emoji": "🔁", "sentiment": "positive" },
+            { "label": "Other", "emoji": "➕", "sentiment": null }
+        ]
     },
     {
         "id": "whoWasInvolved",
@@ -64,5 +64,6 @@ export const flow_basic_1 = [
         "id": "mood",
         "question": "How was your child feeling?",
         "subheading": "Select the mood or emotional state of your child during the situation.",
+        "answer_choices": []
     }
 ];

@@ -19,7 +19,7 @@ import { flow_basic_1 } from '../flows/flow_basic_1';
 import { flow_basic_1 as positive_flow_basic_1 } from '../flows/positive_flow_basic_1';
 import MoodBubbleSlider from '../components/MoodBubbleSlider';
 import { useRoute } from '@react-navigation/native';
-import { getABCForBehaviour, trackGPTSuggestionUsage } from '../utils/gptService';
+import { getABCForBehavior, trackGPTSuggestionUsage } from '../utils/gptService';
 import { getShuffledOptions, getTotalSets } from '../flows/behaviorSpecificOptions';
 import { getShuffledGPTOptions, getTotalGPTSets } from '../utils/gptService';
 
@@ -251,8 +251,8 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     }
   }, [isEditMode, editLog, flowSentiment, currentFlow]);
 
-  // Flatten all behaviour choices across categories so we can quick-search
-  const allBehaviourChoices = React.useMemo(() => {
+  // Flatten all behavior choices across categories so we can quick-search
+  const allBehaviorChoices = React.useMemo(() => {
     const firstQuestion = flow_basic_1[0];
     if (!firstQuestion.categories) return [];
     return firstQuestion.categories.flatMap(cat =>
@@ -418,11 +418,11 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         
         // Call GPT to get ABC suggestions for the custom behavior
         const customBehavior = otherText[currentQ.id];
-        console.log('[GPT] About to call getABCForBehaviour with behavior:', customBehavior);
+        console.log('[GPT] About to call getABCForBehavior with behavior:', customBehavior);
         if (customBehavior) {
           setIsLoadingGpt(true);
           console.log('[GPT] Setting isLoadingGpt to true');
-          getABCForBehaviour(customBehavior)
+          getABCForBehavior(customBehavior)
             .then(suggestions => {
               console.log('[GPT] Successfully got suggestions:', suggestions);
               setGptSuggestions(suggestions);
@@ -999,8 +999,8 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     return `${choice.emoji} ${choice.label}`;
   };
 
-  const filteredBehaviourChoices = searchQuery
-    ? allBehaviourChoices.filter(c =>
+  const filteredBehaviorChoices = searchQuery
+    ? allBehaviorChoices.filter(c =>
         c.label.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : [];
@@ -1071,7 +1071,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
 
               {/* Results based on search, or category/choice views */}
               {searchQuery.length > 0 ? (
-                filteredBehaviourChoices.map((choice) => (
+                filteredBehaviorChoices.map((choice) => (
                   <TouchableOpacity
                     key={choice.label}
                     style={[

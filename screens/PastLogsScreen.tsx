@@ -12,6 +12,7 @@ import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/nativ
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AffirmationModal from '../components/AffirmationModal';
 import { useEmailShare } from '../utils/useEmailShare';
+import { generateWebappUrl, prepareDataForWebapp } from '../utils/webappUrlGenerator';
 
 interface Log {
   id: string;
@@ -1230,6 +1231,43 @@ async function generateGoalsPDF(childName: string, childId: string, duration: st
   // @ts-ignore
   page.node.set(PDFName.of('Annots'), annots);
 
+  // Add webapp link to goals PDF footer
+  const webappLinkText = "Click Here to View Full Logs";
+  const webappLinkWidth = font.widthOfTextAtSize(webappLinkText, 10);
+  const webappLinkX = footerRightEdge - webappLinkWidth;
+  const webappLinkY = emailY - footerLineHeight;
+
+  page.drawText(sanitizePdfText(webappLinkText), {
+    x: webappLinkX,
+    y: webappLinkY,
+    size: 10,
+    font: font,
+    color: rgb(0, 0, 1),
+  });
+
+  // Hyperlink annotation for webapp link
+  // @ts-ignore - low-level annotation creation
+  const webappLinkAnnot = pdfDoc.context.obj({
+    Type: 'Annot',
+    Subtype: 'Link',
+    Rect: [webappLinkX, webappLinkY, webappLinkX + webappLinkWidth, webappLinkY + 12],
+    Border: [0, 0, 0],
+    A: {
+      Type: 'Action',
+      S: 'URI',
+      URI: PDFString.of('https://glow-logs.netlify.app/'),
+    },
+  });
+
+  // @ts-ignore - attach webapp annotation to page
+  const webappAnnots = page.node.lookup(PDFName.of('Annots')) || pdfDoc.context.obj([]);
+  // @ts-ignore
+  webappAnnots.push(webappLinkAnnot);
+  // @ts-ignore
+  page.node.set(PDFName.of('Annots'), webappAnnots);
+
+
+
   const pdfBytes = await pdfDoc.save();
   const base64String = uint8ToBase64(pdfBytes);
   const fileName = `${childName}_goals_report_${duration.replace(/\s/g, '_').toLowerCase()}.pdf`;
@@ -1519,6 +1557,10 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
       font: fontBold,
       color: rgb(0.24, 0.24, 0.42),
     });
+    y -= 25;
+
+    // Note: "View Full Logs" link will be added after webappUrl is generated
+
     y -= 40;
 
     // Check if we have data
@@ -1679,11 +1721,79 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
       }
     }
 
-    // --- Add footer with therapist contact and App Store link ---
+    // --- Add footer with therapist contact, App Store link, and webapp link ---
     const footerY = 40; // Position from bottom of page
     const footerText = "Therapists, to have this report customized, email";
     const therapistEmail = "hello@sarthak.pro";
     const appStoreUrl = "https://apps.apple.com/us/app/glow-logs-that-light-the-way/id6748978131";
+    
+    // Generate webapp URL for detailed logs and goals
+    let webappUrl = '';
+    try {
+      // Get goals data for the current child
+      let goalsData: any[] = [];
+      try {
+        const currentSelectedChild = await AsyncStorage.getItem('current_selected_child');
+        if (currentSelectedChild) {
+          const selectedChild = JSON.parse(currentSelectedChild);
+          const childId = selectedChild.id;
+          const childData = await AsyncStorage.getItem(childId);
+          if (childData) {
+            const child = JSON.parse(childData);
+            goalsData = child.goals || [];
+          }
+        }
+      } catch (error) {
+        console.error('Error loading goals for webapp:', error);
+      }
+      
+      const webappData = prepareDataForWebapp(logs, goalsData, childName, duration);
+      const webappResult = generateWebappUrl(webappData, 'https://glow-logs.netlify.app/');
+      webappUrl = webappResult.url;
+    } catch (error) {
+      console.error('Error generating webapp URL:', error);
+      webappUrl = 'https://glow-logs.netlify.app/';
+    }
+
+    // Now add the "View Full Logs" link under the page title
+    // We need to go back to the top of the page to add this link
+    const titleY = height - 40; // Same Y position as the title
+    const linkY = titleY - 25; // 25 pixels below the title
+    
+    // Draw "View Full Logs" webapp hyperlink right under the title
+    const webappLinkText = "Click Here to View Full Logs";
+    const webappLinkWidth = font.widthOfTextAtSize(webappLinkText, 10);
+    const webappLinkX = leftMargin;
+    const webappLinkY = linkY;
+
+    page.drawText(sanitizePdfText(webappLinkText), {
+      x: webappLinkX,
+      y: webappLinkY,
+      size: 10,
+      font: font,
+      color: rgb(0, 0, 1),
+    });
+
+    // Hyperlink annotation for "View Full Logs"
+    // @ts-ignore - low-level annotation creation
+    const webappLinkAnnot = pdfDoc.context.obj({
+      Type: 'Annot',
+      Subtype: 'Link',
+      Rect: [webappLinkX, webappLinkY, webappLinkX + webappLinkWidth, webappLinkY + 12],
+      Border: [0, 0, 0],
+      A: {
+        Type: 'Action',
+        S: 'URI',
+        URI: PDFString.of(webappUrl),
+      },
+    });
+
+    // @ts-ignore - attach webapp annotation to page
+    const webappAnnots = page.node.lookup(PDFName.of('Annots')) || pdfDoc.context.obj([]);
+    // @ts-ignore
+    webappAnnots.push(webappLinkAnnot);
+    // @ts-ignore
+    page.node.set(PDFName.of('Annots'), webappAnnots);
     
     // Calculate 50% width constraint for the links
     const maxLinkWidth = width * 0.5;
@@ -1795,19 +1905,21 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
       color: rgb(0, 0, 1),
     });
  
-    // Draw "See Glow App" hyperlink text and add actual link annotation
-    const appLinkText = "See Glow App";
-    const appLinkWidth = font.widthOfTextAtSize(appLinkText, 10);
-    const appLinkX = footerRightEdge - appLinkWidth; // right aligned
-    const appLinkY = emailY - footerLineHeight;
+      // Draw "See Glow App" hyperlink text and add actual link annotation
+  const appLinkText = "See Glow App";
+  const appLinkWidth = font.widthOfTextAtSize(appLinkText, 10);
+  const appLinkX = footerRightEdge - appLinkWidth; // right aligned
+  const appLinkY = emailY - footerLineHeight;
 
-    page.drawText(sanitizePdfText(appLinkText), {
-      x: appLinkX,
-      y: appLinkY,
-      size: 10,
-      font: font,
-      color: rgb(0, 0, 1),
-    });
+  page.drawText(sanitizePdfText(appLinkText), {
+    x: appLinkX,
+    y: appLinkY,
+    size: 10,
+    font: font,
+    color: rgb(0, 0, 1),
+  });
+
+  // Note: "View Full Logs" link is now positioned under the page title for better visibility
 
     // ---------- Hyperlink annotation for "See Glow App" ----------
     // @ts-ignore - low-level annotation creation
@@ -1829,6 +1941,8 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
     annots.push(linkAnnot);
     // @ts-ignore
     page.node.set(PDFName.of('Annots'), annots);
+
+    // Note: "View Full Logs" link is now positioned under the page title for better visibility
   }
 
   // Create both pages
