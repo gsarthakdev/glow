@@ -1330,6 +1330,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                             }));
                           }}
                           autoFocus
+                          maxLength={50}
                         />
                         
                         <View style={styles.modalButtons}>
