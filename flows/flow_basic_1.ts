@@ -112,7 +112,8 @@ export const flow_basic_1 = [
   {
     "id": "mood",
     "question": "How was your child feeling?",
-    "subheading": "Select the mood or emotional state of your child during the incident.",
+    // "subheading": "Select the mood or emotional state of your child during the incident.",
+    "subheading": "",
     "answer_choices": []
   }
 ];

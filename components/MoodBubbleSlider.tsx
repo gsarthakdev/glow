@@ -23,7 +23,7 @@ const MoodBubbleSlider: React.FC<MoodBubbleSliderProps> = ({
     setLocalValue(newValue);
     onValueChange(Math.round(newValue));
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    
+
     // Animate the bubble
     Animated.sequence([
       Animated.timing(bubbleScale, {
@@ -66,19 +66,25 @@ const MoodBubbleSlider: React.FC<MoodBubbleSliderProps> = ({
     <View style={styles.container}>
       <View style={styles.headerContainer}>
         <View>
-          <Text style={styles.label}>{label}</Text>
-          {secondary ? <Text style={styles.secondaryLabel}>{secondary}</Text> : null}
+          {label === "Before" ? (
+            // if secondary starts with the word "Parent", then we don't show the text with the word "child" vice versa for the word "caregiver"
+            <Text style={styles.label}>{label}{secondary && (secondary.toLowerCase().startsWith('parent') || secondary.toLowerCase().startsWith('child')) ? null : ' child'} {secondary ? secondary.toLowerCase() : null}</Text>
+          ) : (
+            <Text style={styles.label}>{label}{secondary && (secondary.toLowerCase().startsWith('parent') || secondary.toLowerCase().startsWith('child') || secondary.toLowerCase().startsWith('caregiver')) ? null : ' caregiver'} {secondary ? secondary.toLowerCase() : null}</Text>
+          )}
+          {/* <Text style={styles.label}>Select the mood {label.toLowerCase()} {secondary ? secondary.toLowerCase() : null}</Text> */}
+          {/* {secondary ? <Text style={styles.secondaryLabel}>{secondary}</Text> : null} */}
+          <TouchableOpacity
+            onPress={handleClear}
+            style={styles.clearButton}
+            accessibilityLabel="Clear selection"
+            accessibilityRole="button"
+          >
+            <Text style={styles.clearButtonText}>Reset</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity 
-          onPress={handleClear}
-          style={styles.clearButton}
-          accessibilityLabel="Clear selection"
-          accessibilityRole="button"
-        >
-          <Text style={styles.clearButtonText}>Clear</Text>
-        </TouchableOpacity>
       </View>
-      
+
       <View style={styles.sliderContainer}>
         {localValue > 0 && (
           <Animated.View
@@ -137,7 +143,7 @@ const styles = StyleSheet.create({
   },
   clearButton: {
     paddingVertical: 8,
-    paddingHorizontal: 12,
+    // paddingHorizontal: 12,
   },
   clearButtonText: {
     color: '#666',

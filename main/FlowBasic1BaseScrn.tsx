@@ -1064,7 +1064,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
             </TouchableOpacity>
           </View>
           <Text style={styles.question}>{currentQ.question}</Text>
-          <Text style={styles.subheading}>{currentQ.subheading}</Text>
+          {currentQ.subheading && (
+            <Text style={styles.subheading}>{currentQ.subheading}</Text>
+          )}
 
           {currentQ.id === 'mood' ? (
             <View style={styles.moodContainer}>
