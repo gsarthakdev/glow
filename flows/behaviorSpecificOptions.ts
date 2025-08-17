@@ -32,9 +32,9 @@ export const behaviorSpecificOptions: { [behavior: string]: BehaviorOptions } = 
       "Timer went off"
     ],
     consequences: [
-      "Given preferred item",
-      "Given preferred activity",
-      "Given verbal or physical attention (e.g., spoken to, patted, hugged)",
+      "Gave preferred item",
+      "Gave preferred activity",
+      "Gave verbal or physical attention (e.g., spoken to, patted, hugged)",
       "Demand or task stopped",
       "Delay or break before resuming task",
       "Removed from noisy/crowded area",
@@ -81,9 +81,9 @@ export const behaviorSpecificOptions: { [behavior: string]: BehaviorOptions } = 
       "Timer went off"
     ],
     consequences: [
-      "Given preferred item",
-      "Given preferred activity",
-      "Given verbal or physical attention (e.g., spoken to, patted, hugged)",
+      "Gave preferred item",
+      "Gave preferred activity",
+      "Gave verbal or physical attention (e.g., spoken to, patted, hugged)",
       "Demand or task stopped",
       "Delay or break before resuming task",
       "Removed from noisy/crowded area",
@@ -130,9 +130,9 @@ export const behaviorSpecificOptions: { [behavior: string]: BehaviorOptions } = 
       "Timer went off"
     ],
     consequences: [
-      "Given preferred item",
-      "Given preferred activity",
-      "Given verbal or physical attention (e.g., spoken to, patted, hugged)",
+      "Gave preferred item",
+      "Gave preferred activity",
+      "Gave verbal or physical attention (e.g., spoken to, patted, hugged)",
       "Demand or task stopped",
       "Delay or break before resuming task",
       "Removed from noisy/crowded area",
@@ -179,9 +179,9 @@ export const behaviorSpecificOptions: { [behavior: string]: BehaviorOptions } = 
       "Timer went off"
     ],
     consequences: [
-      "Given preferred item",
-      "Given preferred activity",
-      "Given verbal or physical attention (e.g., spoken to, patted, hugged)",
+      "Gave preferred item",
+      "Gave preferred activity",
+      "Gave verbal or physical attention (e.g., spoken to, patted, hugged)",
       "Demand or task stopped",
       "Delay or break before resuming task",
       "Removed from noisy/crowded area",
@@ -228,9 +228,9 @@ export const behaviorSpecificOptions: { [behavior: string]: BehaviorOptions } = 
       "Timer went off"
     ],
     consequences: [
-      "Given preferred item",
-      "Given preferred activity",
-      "Given verbal or physical attention (e.g., spoken to, patted, hugged)",
+      "Gave preferred item",
+      "Gave preferred activity",
+      "Gave verbal or physical attention (e.g., spoken to, patted, hugged)",
       "Demand or task stopped",
       "Delay or break before resuming task",
       "Removed from noisy/crowded area",
@@ -277,9 +277,9 @@ export const behaviorSpecificOptions: { [behavior: string]: BehaviorOptions } = 
       "Timer went off"
     ],
     consequences: [
-      "Given preferred item",
-      "Given preferred activity",
-      "Given verbal or physical attention (e.g., spoken to, patted, hugged)",
+      "Gave preferred item",
+      "Gave preferred activity",
+      "Gave verbal or physical attention (e.g., spoken to, patted, hugged)",
       "Demand or task stopped",
       "Delay or break before resuming task",
       "Removed from noisy/crowded area",
