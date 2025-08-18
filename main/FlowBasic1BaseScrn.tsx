@@ -29,6 +29,7 @@ interface Category {
   emoji: string;
   sentiment?: string | null;
   choices: Array<{ label: string; emoji: string; sentiment?: string | null; isOther?: boolean }>;
+  is_editable?: boolean;
 }
 
 interface Question {
@@ -37,6 +38,7 @@ interface Question {
   answer_choices?: Array<{ label: string; emoji: string; sentiment?: string | null }>;
   categories?: Category[];
   subheading?: string;
+  is_editable?: boolean;
 }
 
 interface Answer {
@@ -77,12 +79,25 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [currentCommentQuestionId, setCurrentCommentQuestionId] = useState<string>('');
 
+  // New state for custom options management
+  const [customOptions, setCustomOptions] = useState<{ [questionId: string]: Array<{ label: string; emoji: string; sentiment?: string | null }> }>({});
+  const [deletedOptions, setDeletedOptions] = useState<{ [questionId: string]: Set<string> }>({});
+  const [showAddOptionModal, setShowAddOptionModal] = useState<{ questionId: string; isVisible: boolean }>({ questionId: '', isVisible: false });
+  const [newOptionText, setNewOptionText] = useState('');
+  const [newOptionEmoji, setNewOptionEmoji] = useState('➕');
+  const [newOptionSentiment, setNewOptionSentiment] = useState<'positive' | 'negative' | null>(null);
+
+  // Common emojis for users to choose from
+  const commonEmojis = ['😊', '😢', '😠', '😴', '😰', '😤', '😭', '😌', '🤗', '😌', '🎉', '⚔️', '🚫', '⏰', '📱', '🧸', '🍽️', '🛏️', '👕', '🚪', '👥', '👫', '💬', '📖', '❓', '🙏', '🤝', '🔄', '⭐', '💡', '🧘', '👀', '💭', '📋', '🎯', '🛡️', '📍', '🌌', '🚧', '➡️', '👤', '📦', '❓'];
+
   // Edit mode support
   const route = useRoute<any>();
   const isEditMode = route.params?.mode === 'edit';
   const editLog: any = route.params?.editLog;
   const selectedDate = route.params?.selectedDate; // For past date logging
 
+  // New state for edit mode toggle
+  const [isCustomEditMode, setIsCustomEditMode] = useState(false);
 
   // Add ref for ScrollView
   const scrollViewRef = useRef<ScrollView>(null);
@@ -154,9 +169,12 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         ];
         console.log('[FLOW] All antecedent choices:', allAntecedentChoices);
         
+        // Apply filtering and custom options
+        const filteredAntecedentChoices = getFilteredOptions('whatHappenedBefore', allAntecedentChoices);
+        
         updatedFlow[antecedentQuestionIndex] = {
           ...updatedFlow[antecedentQuestionIndex],
-          answer_choices: allAntecedentChoices
+          answer_choices: filteredAntecedentChoices
         };
       }
       
@@ -202,9 +220,12 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         ];
         console.log('[FLOW] All consequence choices:', allConsequenceChoices);
         
+        // Apply filtering and custom options
+        const filteredConsequenceChoices = getFilteredOptions('whatHappenedAfter', allConsequenceChoices);
+        
         updatedFlow[consequenceQuestionIndex] = {
           ...updatedFlow[consequenceQuestionIndex],
-          answer_choices: allConsequenceChoices
+          answer_choices: filteredConsequenceChoices
         };
       }
       
@@ -269,9 +290,25 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         const selected = JSON.parse(selectedChildJson);
         const childData = await AsyncStorage.getItem(selected.id);
         if (childData) {
-          setCurrentChild({ ...selected, data: JSON.parse(childData) });
+          const parsedChildData = JSON.parse(childData);
+          setCurrentChild({ ...selected, data: parsedChildData });
+          
+          // Load custom options and deleted options from child data
+          if (parsedChildData.custom_options) {
+            setCustomOptions(parsedChildData.custom_options);
+          }
+          
+          // Load deleted options from child data
+          if (parsedChildData.deleted_options) {
+            const converted: { [questionId: string]: Set<string> } = {};
+            Object.keys(parsedChildData.deleted_options).forEach(key => {
+              converted[key] = new Set(parsedChildData.deleted_options[key]);
+            });
+            setDeletedOptions(converted);
+          }
         }
       }
+      
       setLoading(false);
     } catch (error) {
       console.error('Error loading child:', error);
@@ -507,6 +544,292 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     if (!selectedCategory || selectedCategory.key !== 'verbalBehaviors') return;
     const totalSets = Math.ceil(selectedCategory.choices.length / 5);
     setBehaviorOptionSet(prev => (prev + 1) % totalSets);
+  };
+
+  // New functions for custom options management
+  const handleDeleteOption = async (questionId: string, optionLabel: string) => {
+    try {
+      const updatedDeleted = { ...deletedOptions };
+      if (!updatedDeleted[questionId]) {
+        updatedDeleted[questionId] = new Set();
+      }
+      updatedDeleted[questionId].add(optionLabel);
+      setDeletedOptions(updatedDeleted);
+      
+      // Save to child's data in AsyncStorage
+      if (currentChild && currentChild.id) {
+        const childData = await AsyncStorage.getItem(currentChild.id);
+        if (childData) {
+          const parsedChildData = JSON.parse(childData);
+          const updatedChildData = {
+            ...parsedChildData,
+            deleted_options: Object.keys(updatedDeleted).reduce((acc, key) => {
+              acc[key] = Array.from(updatedDeleted[key]);
+              return acc;
+            }, {} as { [key: string]: string[] })
+          };
+          await AsyncStorage.setItem(currentChild.id, JSON.stringify(updatedChildData));
+          
+          // Update currentChild state to keep it in sync
+          setCurrentChild((prev: any) => prev ? { ...prev, data: updatedChildData } : null);
+        }
+      }
+      
+      // Remove from selected answers if it was selected
+      setSelectedAnswers(prev => ({
+        ...prev,
+        [questionId]: (prev[questionId] || []).filter(a => a.answer !== optionLabel)
+      }));
+      
+      // Force a flow update to immediately reflect the deleted option
+      if (currentFlow.length > 0) {
+        const updatedFlow = [...currentFlow];
+        const questionIndex = updatedFlow.findIndex(q => q.id === questionId);
+        if (questionIndex !== -1) {
+          if (questionId === 'whatDidTheyDo' && updatedFlow[questionIndex].categories) {
+            // For the main behavior question, update all categories
+            updatedFlow[questionIndex] = {
+              ...updatedFlow[questionIndex],
+              categories: updatedFlow[questionIndex].categories!.map(cat => ({
+                ...cat,
+                choices: getFilteredOptions(questionId, cat.choices)
+              }))
+            };
+          } else if (updatedFlow[questionIndex].answer_choices) {
+            // For other questions, update answer choices
+            updatedFlow[questionIndex] = {
+              ...updatedFlow[questionIndex],
+              answer_choices: getFilteredOptions(questionId, updatedFlow[questionIndex].answer_choices!)
+            };
+          }
+        }
+        
+        // For ABC questions, reset to set 0 so changes are immediately visible
+        if (questionId === 'whatHappenedBefore' || questionId === 'whatHappenedAfter') {
+          setOptionSets(prev => ({
+            ...prev,
+            [questionId]: 0
+          }));
+        }
+        
+        setCurrentFlow(updatedFlow);
+      }
+    } catch (error) {
+      console.error('Error deleting option:', error);
+    }
+  };
+
+    const handleAddOption = async () => {
+    if (!newOptionText.trim() || !showAddOptionModal.questionId) return;
+    
+    try {
+      const questionId = showAddOptionModal.questionId;
+      const newOption = {
+        label: newOptionText.trim(),
+        emoji: newOptionEmoji,
+        sentiment: newOptionSentiment
+      };
+      
+      const updatedCustom = { ...customOptions };
+      if (!updatedCustom[questionId]) {
+        updatedCustom[questionId] = [];
+      }
+      updatedCustom[questionId].push(newOption);
+      setCustomOptions(updatedCustom);
+      
+      // Save to child's data in AsyncStorage
+      if (currentChild && currentChild.id) {
+        const childData = await AsyncStorage.getItem(currentChild.id);
+        if (childData) {
+          const parsedChildData = JSON.parse(childData);
+          const updatedChildData = {
+            ...parsedChildData,
+            custom_options: updatedCustom
+          };
+          await AsyncStorage.setItem(currentChild.id, JSON.stringify(updatedChildData));
+          
+          // Update currentChild state to keep it in sync
+          setCurrentChild((prev: any) => prev ? { ...prev, data: updatedChildData } : null);
+        }
+      }
+      
+      // Force a flow update to immediately show the new option
+      // This triggers the useEffect that calls getFilteredOptions
+      if (currentFlow.length > 0) {
+        const updatedFlow = [...currentFlow];
+        
+        // Update the specific question that had the option added
+        const questionIndex = updatedFlow.findIndex(q => q.id === questionId);
+        if (questionIndex !== -1) {
+          if (questionId === 'whatDidTheyDo' && updatedFlow[questionIndex].categories) {
+            // For the main behavior question, update all categories
+            updatedFlow[questionIndex] = {
+              ...updatedFlow[questionIndex],
+              categories: updatedFlow[questionIndex].categories!.map(cat => ({
+                ...cat,
+                choices: getFilteredOptions(questionId, cat.choices)
+              }))
+            };
+          } else if (updatedFlow[questionIndex].answer_choices) {
+            // For other questions, update answer choices
+            updatedFlow[questionIndex] = {
+              ...updatedFlow[questionIndex],
+              answer_choices: getFilteredOptions(questionId, updatedFlow[questionIndex].answer_choices!)
+            };
+          }
+        }
+        
+        // For ABC questions, reset to set 0 so custom options are immediately visible
+        if (questionId === 'whatHappenedBefore' || questionId === 'whatHappenedAfter') {
+          setOptionSets(prev => ({
+            ...prev,
+            [questionId]: 0
+          }));
+        }
+        
+        setCurrentFlow(updatedFlow);
+      }
+      
+      // Reset form
+      setNewOptionText('');
+      setNewOptionEmoji('➕');
+      setNewOptionSentiment(null);
+      setShowAddOptionModal({ questionId: '', isVisible: false });
+    } catch (error) {
+      console.error('Error adding option:', error);
+    }
+  };
+
+  const openAddOptionModal = (questionId: string) => {
+    setShowAddOptionModal({ questionId, isVisible: true });
+    setNewOptionText('');
+    setNewOptionEmoji('➕');
+    setNewOptionSentiment(null);
+  };
+
+  const closeAddOptionModal = () => {
+    setShowAddOptionModal({ questionId: '', isVisible: false });
+    setNewOptionText('');
+    setNewOptionEmoji('➕');
+    setNewOptionSentiment(null);
+  };
+
+  // Function to restore deleted options
+  const handleRestoreOption = async (questionId: string, optionLabel: string) => {
+    try {
+      const updatedDeleted = { ...deletedOptions };
+      if (updatedDeleted[questionId]) {
+        updatedDeleted[questionId].delete(optionLabel);
+        if (updatedDeleted[questionId].size === 0) {
+          delete updatedDeleted[questionId];
+        }
+        setDeletedOptions(updatedDeleted);
+        
+        // Save to child's data in AsyncStorage
+        if (currentChild && currentChild.id) {
+          const childData = await AsyncStorage.getItem(currentChild.id);
+          if (childData) {
+            const parsedChildData = JSON.parse(childData);
+            const updatedChildData = {
+              ...parsedChildData,
+              deleted_options: Object.keys(updatedDeleted).reduce((acc, key) => {
+                acc[key] = Array.from(updatedDeleted[key]);
+                return acc;
+              }, {} as { [key: string]: string[] })
+            };
+            await AsyncStorage.setItem(currentChild.id, JSON.stringify(updatedChildData));
+            
+            // Update currentChild state to keep it in sync
+            setCurrentChild((prev: any) => prev ? { ...prev, data: updatedChildData } : null);
+          }
+        }
+        
+                  // Force a flow update to immediately reflect the restored option
+          if (currentFlow.length > 0) {
+            const updatedFlow = [...currentFlow];
+            const questionIndex = updatedFlow.findIndex(q => q.id === questionId);
+            if (questionIndex !== -1) {
+              if (questionId === 'whatDidTheyDo' && updatedFlow[questionIndex].categories) {
+                // For the main behavior question, update all categories
+                updatedFlow[questionIndex] = {
+                  ...updatedFlow[questionIndex],
+                  categories: updatedFlow[questionIndex].categories!.map(cat => ({
+                    ...cat,
+                    choices: getFilteredOptions(questionId, cat.choices)
+                  }))
+                };
+              } else if (updatedFlow[questionIndex].answer_choices) {
+                // For other questions, update answer choices
+                updatedFlow[questionIndex] = {
+                  ...updatedFlow[questionIndex],
+                  answer_choices: getFilteredOptions(questionId, updatedFlow[questionIndex].answer_choices!)
+                };
+              }
+            }
+            
+            // For ABC questions, reset to set 0 so changes are immediately visible
+            if (questionId === 'whatHappenedBefore' || questionId === 'whatHappenedAfter') {
+              setOptionSets(prev => ({
+                ...prev,
+                [questionId]: 0
+              }));
+            }
+            
+            setCurrentFlow(updatedFlow);
+          }
+      }
+    } catch (error) {
+      console.error('Error restoring option:', error);
+    }
+  };
+
+  // Helper function to get filtered and merged options for a question
+  const getFilteredOptions = (questionId: string, originalChoices: Array<{ label: string; emoji: string; sentiment?: string | null }>) => {
+    const deleted = deletedOptions[questionId] || new Set();
+    const custom = customOptions[questionId] || [];
+    
+    // Filter out deleted options from original choices
+    const filteredOriginal = originalChoices.filter(choice => !deleted.has(choice.label));
+    
+    // Separate "Other" option from other choices
+    const otherOption = filteredOriginal.find(choice => choice.label === 'Other');
+    const nonOtherChoices = filteredOriginal.filter(choice => choice.label !== 'Other');
+    
+    // For ABC questions (antecedents/consequences), custom options should only appear once
+    // and not be duplicated across shuffle sets
+    if (questionId === 'whatHappenedBefore' || questionId === 'whatHappenedAfter') {
+      // Only add custom options if this is the first set (set 0)
+      const currentSet = optionSets[questionId] || 0;
+      if (currentSet === 0) {
+        // Order: non-Other choices + custom options + Other option
+        return [...nonOtherChoices, ...custom, ...(otherOption ? [otherOption] : [])];
+      } else {
+        // For other sets, only show the original shuffled options (Other still last)
+        return [...nonOtherChoices, ...(otherOption ? [otherOption] : [])];
+      }
+    }
+    
+    // For non-shuffle questions (like whatDidTheyDo), always include custom options
+    // Order: non-Other choices + custom options + Other option
+    return [...nonOtherChoices, ...custom, ...(otherOption ? [otherOption] : [])];
+  };
+
+  // Helper function to get choice button border radius
+  const getChoiceButtonStyle = (choice: any, questionId: string) => {
+    const baseStyle = [
+      styles.choiceButton,
+      (choice.label === 'Other' ? isOtherSelected(questionId) : isAnswerSelected(questionId, choice.label)) && styles.selectedChoice,
+    ];
+    
+    // If edit mode is active and this choice can have a delete button, adjust border radius
+    if (isCustomEditMode && choice.label !== 'Other' && !(choice as any).isGptGenerated && !(choice as any).isBehaviorSpecific) {
+      baseStyle.push({
+        borderTopRightRadius: 0,
+        borderBottomRightRadius: 0,
+      } as any);
+    }
+    
+    return baseStyle;
   };
 
   const animateBackToCategories = () => {
@@ -910,7 +1233,14 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
 
       if (isEditMode && editLog) {
         const updatedLog = { ...editLog, responses, edited: true };
-        const updatedData = { ...currentChild.data };
+        const updatedData = { 
+          ...currentChild.data,
+          custom_options: customOptions,
+          deleted_options: Object.keys(deletedOptions).reduce((acc, key) => {
+            acc[key] = Array.from(deletedOptions[key]);
+            return acc;
+          }, {} as { [key: string]: string[] })
+        };
         const logsArr = (updatedData.completed_logs?.[storageKey] || []).map((l: any) =>
           l.id === editLog.id ? updatedLog : l
         );
@@ -963,6 +1293,11 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         };
         const updatedData = {
           ...currentChild.data,
+          custom_options: customOptions,
+          deleted_options: Object.keys(deletedOptions).reduce((acc, key) => {
+            acc[key] = Array.from(deletedOptions[key]);
+            return acc;
+          }, {} as { [key: string]: string[] }),
           completed_logs: {
             ...currentChild.data.completed_logs,
             [storageKey]: [
@@ -1051,17 +1386,30 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
             <Text style={styles.progress}>
               Step {currentQuestion + 1} of {currentFlow.length > 0 ? currentFlow.length : 1}
             </Text>
-            <TouchableOpacity
-              style={styles.commentIconButton}
-              onPress={() => handleCommentModalOpen(currentQ.id)}
-            >
-              <Text style={styles.commentIcon}>💬</Text>
-              {comments[currentQ.id] && (
-                <View style={styles.commentBadge}>
-                  <Text style={styles.commentBadgeText}>✓</Text>
-                </View>
+            <View style={styles.headerButtons}>
+              <TouchableOpacity
+                style={styles.commentIconButton}
+                onPress={() => handleCommentModalOpen(currentQ.id)}
+              >
+                <Text style={styles.commentIcon}>💬</Text>
+                {comments[currentQ.id] && (
+                  <View style={styles.commentBadge}>
+                    <Text style={styles.commentBadgeText}>✓</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+              {currentQ.is_editable !== false && (
+                <TouchableOpacity
+                  style={[
+                    styles.editModeButton,
+                    isCustomEditMode && styles.editModeButtonActive
+                  ]}
+                  onPress={() => setIsCustomEditMode(!isCustomEditMode)}
+                >
+                  <Text style={styles.editModeIcon}>✏️</Text>
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
+            </View>
           </View>
           <Text style={styles.question}>{currentQ.question}</Text>
           {currentQ.subheading && (
@@ -1096,25 +1444,49 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
 
               {/* Results based on search, or category/choice views */}
               {searchQuery.length > 0 ? (
-                filteredBehaviorChoices.map((choice) => (
-                  <TouchableOpacity
-                    key={choice.label}
-                    style={[
-                      styles.choiceButton,
-                      (choice.label === 'Other'
-                        ? isOtherSelected(currentQ.id)
-                        : isAnswerSelected(currentQ.id, choice.label)) && styles.selectedChoice,
-                    ]}
-                                          onPress={() => {
-                        handleAnswer(currentQ.id, choice);
-                        // Immediately go back to main categories view
-                        setSelectedCategory(null);
-                        setSearchQuery('');
-                      }}
-                  >
-                    <Text style={styles.choiceText}>{getChoiceLabel(choice)}</Text>
-                  </TouchableOpacity>
-                ))
+                <>
+                  {getFilteredOptions(currentQ.id, filteredBehaviorChoices).map((choice) => (
+                    <View key={choice.label} style={styles.choiceContainer}>
+                      <TouchableOpacity
+                        style={getChoiceButtonStyle(choice, currentQ.id)}
+                        onPress={() => {
+                          handleAnswer(currentQ.id, choice);
+                          // Immediately go back to main categories view
+                          setSelectedCategory(null);
+                          setSearchQuery('');
+                        }}
+                      >
+                        <View style={styles.choiceContent}>
+                          <Text style={styles.choiceText}>{getChoiceLabel(choice)}</Text>
+                          {customOptions[currentQ.id]?.some(opt => opt.label === choice.label) && (
+                            <Text style={styles.customBadge}>Custom</Text>
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                      {choice.label !== 'Other' && isCustomEditMode && currentQ.is_editable !== false && (
+                        <TouchableOpacity
+                          style={styles.deleteButton}
+                          onPress={() => handleDeleteOption(currentQ.id, choice.label)}
+                        >
+                          <Text style={styles.deleteButtonText}>🗑️</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ))}
+                  {isCustomEditMode && currentQ.is_editable !== false && (
+                    <TouchableOpacity
+                      style={styles.addOptionButton}
+                      onPress={() => openAddOptionModal(currentQ.id)}
+                    >
+                      <Text style={styles.addOptionButtonText}>
+                        ➕ Add New Option
+                        {deletedOptions[currentQ.id] && deletedOptions[currentQ.id].size > 0 && (
+                          <Text style={styles.deletedCountText}> ({deletedOptions[currentQ.id].size} deleted)</Text>
+                        )}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </>
               ) : selectedCategory ? (
                 <>
                   {(() => {
@@ -1124,25 +1496,38 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                           Math.min((behaviorOptionSet + 1) * 5, selectedCategory.choices.length)
                         )
                       : selectedCategory.choices;
-                    return catChoices.map((choice) => (
-                     <TouchableOpacity
-                       key={choice.label}
-                       style={[
-                         styles.choiceButton,
-                         (choice.label === 'Other'
-                           ? isOtherSelected(currentQ.id)
-                           : isAnswerSelected(currentQ.id, choice.label)) && styles.selectedChoice,
-                       ]}
-                       onPress={() => {
-                         handleAnswer(currentQ.id, choice);
-                         // Immediately go back to main categories view
-                         setSelectedCategory(null);
-                         setSearchQuery('');
-                         setBehaviorOptionSet(0);
-                       }}
-                     >
-                       <Text style={styles.choiceText}>{getChoiceLabel(choice)}</Text>
-                     </TouchableOpacity>
+                    
+                    // Apply filtering and custom options
+                    const filteredChoices = getFilteredOptions(currentQ.id, catChoices);
+                    
+                    return filteredChoices.map((choice) => (
+                     <View key={choice.label} style={styles.choiceContainer}>
+                       <TouchableOpacity
+                         style={getChoiceButtonStyle(choice, currentQ.id)}
+                         onPress={() => {
+                           handleAnswer(currentQ.id, choice);
+                           // Immediately go back to main categories view
+                           setSelectedCategory(null);
+                           setSearchQuery('');
+                           setBehaviorOptionSet(0);
+                         }}
+                       >
+                                                  <View style={styles.choiceContent}>
+                           <Text style={styles.choiceText}>{getChoiceLabel(choice)}</Text>
+                           {customOptions[currentQ.id]?.some(opt => opt.label === choice.label) && (
+                             <Text style={styles.customBadge}>Custom</Text>
+                           )}
+                         </View>
+                       </TouchableOpacity>
+                       {choice.label !== 'Other' && !(choice as any).isGptGenerated && !(choice as any).isBehaviorSpecific && isCustomEditMode && currentQ.is_editable !== false && (
+                         <TouchableOpacity
+                           style={styles.deleteButton}
+                           onPress={() => handleDeleteOption(currentQ.id, choice.label)}
+                         >
+                           <Text style={styles.deleteButtonText}>🗑️</Text>
+                         </TouchableOpacity>
+                       )}
+                     </View>
                     ));
                   })()}
 
@@ -1158,6 +1543,20 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                         Set {behaviorOptionSet + 1} of {Math.ceil(selectedCategory.choices.length / 5)}
                       </Text>
                     </View>
+                  )}
+                  
+                  {isCustomEditMode && currentQ.is_editable !== false && (
+                    <TouchableOpacity
+                      style={styles.addOptionButton}
+                      onPress={() => openAddOptionModal(currentQ.id)}
+                    >
+                      <Text style={styles.addOptionButtonText}>
+                        ➕ Add New Option
+                        {deletedOptions[currentQ.id] && deletedOptions[currentQ.id].size > 0 && (
+                          <Text style={styles.deletedCountText}> ({deletedOptions[currentQ.id].size} deleted)</Text>
+                        )}
+                      </Text>
+                    </TouchableOpacity>
                   )}
                 </>
               ) : (
@@ -1197,6 +1596,20 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                       </View>
                     </TouchableOpacity>
                   ))}
+                  
+                  {isCustomEditMode && currentQ.is_editable !== false && (
+                    <TouchableOpacity
+                      style={styles.addOptionButton}
+                      onPress={() => openAddOptionModal(currentQ.id)}
+                    >
+                      <Text style={styles.addOptionButtonText}>
+                        ➕ Add New Option
+                        {deletedOptions[currentQ.id] && deletedOptions[currentQ.id].size > 0 && (
+                          <Text style={styles.deletedCountText}> ({deletedOptions[currentQ.id].size} deleted)</Text>
+                        )}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </>
               )}
             </>
@@ -1221,18 +1634,29 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                   // Show behavior-specific options or message
                   currentQ.answer_choices && currentQ.answer_choices.length > 0 ? (
                   currentQ.answer_choices.map((choice) => (
-                    <TouchableOpacity
-                      key={choice.label}
-                      style={[
-                        styles.choiceButton,
-                        (choice.label === 'Other' ? isOtherSelected(currentQ.id) : isAnswerSelected(currentQ.id, choice.label)) && styles.selectedChoice
-                      ]}
-                      onPress={() => handleAnswer(currentQ.id, choice)}
-                    >
-                      <Text style={styles.choiceText}>
-                        {getChoiceLabel(choice)}
-                      </Text>
-                    </TouchableOpacity>
+                    <View key={choice.label} style={styles.choiceContainer}>
+                      <TouchableOpacity
+                        style={getChoiceButtonStyle(choice, currentQ.id)}
+                        onPress={() => handleAnswer(currentQ.id, choice)}
+                      >
+                        <View style={styles.choiceContent}>
+                          <Text style={styles.choiceText}>
+                            {getChoiceLabel(choice)}
+                          </Text>
+                          {customOptions[currentQ.id]?.some(opt => opt.label === choice.label) && (
+                            <Text style={styles.customBadge}>Custom</Text>
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                      {choice.label !== 'Other' && isCustomEditMode && currentQ.is_editable !== false && (
+                        <TouchableOpacity
+                          style={styles.deleteButton}
+                          onPress={() => handleDeleteOption(currentQ.id, choice.label)}
+                        >
+                          <Text style={styles.deleteButtonText}>🗑️</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
                   ))
                 ) : (
                   <View style={styles.noOptionsContainer}>
@@ -1245,20 +1669,31 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
               ) : (
                                 // Regular questions (not ABC questions)
                 currentQ.answer_choices?.map((choice) => (
-                  <TouchableOpacity
-                    key={choice.label}
-                    style={[
-                      styles.choiceButton,
-                      (choice.label === 'Other' ? isOtherSelected(currentQ.id) : isAnswerSelected(currentQ.id, choice.label)) && styles.selectedChoice
-                    ]}
-                    onPress={() => handleAnswer(currentQ.id, choice)}
-                  >
-                    <Text style={styles.choiceText}>
-                      {getChoiceLabel(choice)}
-                    </Text>
-                  </TouchableOpacity>
-                                 ))
-               )}
+                  <View key={choice.label} style={styles.choiceContainer}>
+                    <TouchableOpacity
+                      style={getChoiceButtonStyle(choice, currentQ.id)}
+                      onPress={() => handleAnswer(currentQ.id, choice)}
+                    >
+                      <View style={styles.choiceContent}>
+                        <Text style={styles.choiceText}>
+                          {getChoiceLabel(choice)}
+                        </Text>
+                        {customOptions[currentQ.id]?.some(opt => opt.label === choice.label) && (
+                          <Text style={styles.customBadge}>Custom</Text>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                    {choice.label !== 'Other' && isCustomEditMode && currentQ.is_editable !== false && (
+                      <TouchableOpacity
+                        style={styles.deleteButton}
+                        onPress={() => handleDeleteOption(currentQ.id, choice.label)}
+                      >
+                        <Text style={styles.deleteButtonText}>🗑️</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ))
+              )}
               
               {/* Shuffle button for ABC questions */}
               {(currentQ.id === 'whatHappenedBefore' || currentQ.id === 'whatHappenedAfter') && (
@@ -1285,6 +1720,21 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                     }
                   </Text>
                 </View>
+              )}
+              
+              {/* Consolidated Add option button - shows for all question types */}
+              {isCustomEditMode && currentQ.is_editable !== false && (
+                <TouchableOpacity
+                  style={styles.addOptionButton}
+                  onPress={() => openAddOptionModal(currentQ.id)}
+                >
+                  <Text style={styles.addOptionButtonText}>
+                    ➕ Add New Option
+                    {deletedOptions[currentQ.id] && deletedOptions[currentQ.id].size > 0 && (
+                      <Text style={styles.deletedCountText}> ({deletedOptions[currentQ.id].size} deleted)</Text>
+                    )}
+                  </Text>
+                </TouchableOpacity>
               )}
             </>
           )}
@@ -1485,13 +1935,132 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         </Animated.View>
       </KeyboardAvoidingView>
 
-      {/* Comment Modal */}
-      <Modal
-        visible={showCommentModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowCommentModal(false)}
-      >
+                {/* Add Option Modal */}
+          <Modal
+            visible={showAddOptionModal.isVisible}
+            transparent
+            animationType="fade"
+            onRequestClose={closeAddOptionModal}
+          >
+            <TouchableOpacity
+              style={styles.modalOverlay}
+              activeOpacity={1}
+              onPress={closeAddOptionModal}
+            >
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Add New Option</Text>
+                
+                <Text style={styles.modalLabel}>Option Text:</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Type your option here..."
+                  value={newOptionText}
+                  onChangeText={setNewOptionText}
+                  autoFocus
+                  maxLength={50}
+                />
+                
+                <Text style={styles.modalLabel}>Emoji:</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Choose an emoji..."
+                  value={newOptionEmoji}
+                  onChangeText={setNewOptionEmoji}
+                  maxLength={2}
+                />
+                <Text style={styles.modalLabel}>Quick Emoji Picks:</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.emojiScrollView}>
+                  {commonEmojis.map((emoji, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.emojiOption,
+                        newOptionEmoji === emoji && styles.selectedEmoji
+                      ]}
+                      onPress={() => setNewOptionEmoji(emoji)}
+                    >
+                      <Text style={styles.emojiOptionText}>{emoji}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+                
+                {/* Show deleted options for restoration */}
+                {deletedOptions[currentQ.id] && deletedOptions[currentQ.id].size > 0 && (
+                  <>
+                    <Text style={styles.modalLabel}>Restore Deleted Options:</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.deletedOptionsScrollView}>
+                      {Array.from(deletedOptions[currentQ.id]).map((deletedOption, index) => (
+                        <TouchableOpacity
+                          key={index}
+                          style={styles.deletedOptionButton}
+                          onPress={() => handleRestoreOption(currentQ.id, deletedOption)}
+                        >
+                          <Text style={styles.deletedOptionText}>{deletedOption}</Text>
+                          <Text style={styles.restoreIcon}>↩️</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </>
+                )}
+                
+                {currentQ.id === 'whatDidTheyDo' && (
+                  <>
+                    <Text style={styles.modalLabel}>Sentiment:</Text>
+                    <View style={styles.sentimentButtons}>
+                      <TouchableOpacity
+                        style={[
+                          styles.sentimentButton,
+                          newOptionSentiment === 'positive' && styles.selectedSentiment,
+                          {backgroundColor: "lightgreen"}
+                        ]}
+                        onPress={() => setNewOptionSentiment('positive')}
+                      >
+                        <Text style={styles.sentimentButtonText}>🎉 Win</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.sentimentButton,
+                          newOptionSentiment === 'negative' && styles.selectedSentiment,
+                          {backgroundColor: "orange"}
+                        ]}
+                        onPress={() => setNewOptionSentiment('negative')}
+                      >
+                        <Text style={styles.sentimentButtonText}>⚔️ Challenge</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                )}
+                
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity
+                    style={styles.modalButton}
+                    onPress={closeAddOptionModal}
+                  >
+                    <Text style={styles.modalButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.modalButton, 
+                      styles.submitButton,
+                      !newOptionText.trim() && styles.disabledButton
+                    ]}
+                    disabled={!newOptionText.trim()}
+                    onPress={handleAddOption}
+                  >
+                    <Text style={[styles.modalButtonText, { color: 'white' }]}>Add</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableOpacity>
+          </Modal>
+
+          {/* Comment Modal */}
+          <Modal
+            visible={showCommentModal}
+            transparent
+            animationType="slide"
+            onRequestClose={() => setShowCommentModal(false)}
+          >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.commentModalOverlay}
@@ -1569,6 +2138,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
     marginBottom: 10,
+    flex: 1,
   },
   selectedChoice: {
     backgroundColor: '#E8F3F4',
@@ -1886,5 +2456,136 @@ const styles = StyleSheet.create({
   commentModalButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  choiceContainer: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    marginBottom: 10,
+  },
+  deleteButton: {
+    marginLeft: 0,
+    padding: 8,
+    borderRadius: 0,
+    borderTopRightRadius: 10,
+    borderBottomRightRadius: 10,
+    backgroundColor: '#ff6b6b',
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 36,
+    minHeight: 36,
+  },
+  deleteButtonText: {
+    fontSize: 16,
+    color: '#fff',
+  },
+  addOptionButton: {
+    backgroundColor: '#28a745',
+    padding: 15,
+    borderRadius: 10,
+    marginTop: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#28a745',
+  },
+  addOptionButtonText: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  modalLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: '#333',
+  },
+  emojiScrollView: {
+    maxHeight: 60,
+    marginBottom: 15,
+  },
+  emojiOption: {
+    padding: 8,
+    marginRight: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    backgroundColor: '#f8f8f8',
+    minWidth: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectedEmoji: {
+    backgroundColor: '#E8F3F4',
+    borderColor: '#5B9AA0',
+  },
+  emojiOptionText: {
+    fontSize: 20,
+  },
+  choiceContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  customBadge: {
+    fontSize: 10,
+    color: '#fff',
+    backgroundColor: '#28a745',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    fontWeight: 'bold',
+  },
+  deletedOptionsScrollView: {
+    maxHeight: 60,
+    marginBottom: 15,
+  },
+  deletedOptionButton: {
+    padding: 8,
+    marginRight: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#ff6b6b',
+    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: 80,
+    justifyContent: 'space-between',
+  },
+  deletedOptionText: {
+    fontSize: 12,
+    color: '#666',
+    marginRight: 4,
+  },
+  restoreIcon: {
+    fontSize: 14,
+  },
+  deletedCountText: {
+    fontSize: 12,
+    color: '#ff6b6b',
+    fontStyle: 'italic',
+  },
+  headerButtons: {
+    position: 'absolute',
+    right: 0,
+    top: -5,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  editModeButton: {
+    marginLeft: 8,
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 36,
+    minHeight: 36,
+  },
+  editModeButtonActive: {
+    backgroundColor: '#5B9AA0',
+  },
+  editModeIcon: {
+    fontSize: 16,
+    color: '#666',
   },
 });

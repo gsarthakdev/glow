@@ -12,7 +12,7 @@ import { seeAllDBData } from './seeData';
 import { useAsyncStorage } from './hooks/useAsyncStorage';
 import TestScreen from './TestScreen';
 import { NavigationContainer } from '@react-navigation/native';
-import { logChildCompletedLogs, writeAsyncStorageToFile } from './utils/asyncStorageUtils';
+import { logChildCompletedLogs, logCustomOptionsData, writeAsyncStorageToFile } from './utils/asyncStorageUtils';
 import * as Updates from "expo-updates";
 import { IS_DEBUGGING } from './flag';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -104,8 +104,9 @@ export default function App() {
 
   const doIt = async () => {
     try {
-      // await writeAsyncStorageToFile();
-      await logChildCompletedLogs();
+      await writeAsyncStorageToFile();
+      // await logChildCompletedLogs();
+      // await logCustomOptionsData();
     } catch (error) {
       console.error('Error writing AsyncStorage to file:', error);
     }

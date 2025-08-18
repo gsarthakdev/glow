@@ -17,7 +17,7 @@ export const writeAsyncStorageToFile = async () => {
     
     // Pretty print the data to console
     console.log('\n=== AsyncStorage Data ===\n');
-    console.log(JSON.stringify(parsedData, null, 2));
+    console.log(JSON.stringify(parsedData, null));
     console.log('\n=== End of AsyncStorage Data ===\n');
   } catch (error) {
     console.error('Error fetching AsyncStorage data:', error);
@@ -104,6 +104,61 @@ export const cleanupCorruptedData = async (): Promise<void> => {
     }
   } catch (error) {
     console.error('Error during cleanup:', error);
+  }
+};
+
+// Log custom options and deleted options data from child objects
+export const logCustomOptionsData = async (): Promise<void> => {
+  try {
+    console.log('\n=== Custom Options & Deleted Options Data (Child-Based) ===\n');
+    
+    // Get all keys to find child objects
+    const allKeys = await safeGetAllKeys();
+    const childKeys = allKeys.filter(key => 
+      key !== 'current_selected_child' && 
+      key !== 'custom_options' && 
+      key !== 'deleted_options' &&
+      !key.includes('_') // Filter out other system keys
+    );
+    
+    if (childKeys.length === 0) {
+      console.log('👶 No child objects found');
+      return;
+    }
+    
+    // Get data for each child
+    for (const childKey of childKeys) {
+      const childDataJson = await safeGetItem(childKey);
+      if (childDataJson) {
+        const childData = safeParseJSON(childDataJson, {});
+        
+        console.log(`\n👶 Child: ${childKey}`);
+        if (childData.name) {
+          console.log(`   Name: ${childData.name}`);
+        }
+        
+        // Show custom options
+        if (childData.custom_options && Object.keys(childData.custom_options).length > 0) {
+          console.log('   📝 Custom Options:');
+          console.log('   ', JSON.stringify(childData.custom_options, null, 2));
+        } else {
+          console.log('   📝 Custom Options: None');
+        }
+        
+        // Show deleted options
+        if (childData.deleted_options && Object.keys(childData.deleted_options).length > 0) {
+          console.log('   🗑️ Deleted Options:');
+          console.log('   ', JSON.stringify(childData.deleted_options, null, 2));
+        } else {
+          console.log('   🗑️ Deleted Options: None');
+        }
+      }
+    }
+    
+    console.log('\n=== End of Custom Options & Deleted Options Data ===\n');
+    
+  } catch (error) {
+    console.error('Error logging custom options data:', error);
   }
 };
 
@@ -204,5 +259,84 @@ export const logChildCompletedLogs = async (): Promise<void> => {
 
   } catch (error) {
     console.error('Error logging child completed logs:', error);
+  }
+};
+
+// Migrate custom options and deleted options from top-level keys to child-based storage
+export const migrateCustomOptionsToChildStorage = async (): Promise<void> => {
+  try {
+    console.log('\n=== Starting Migration of Custom Options to Child Storage ===\n');
+    
+    // Get current selected child
+    const selectedChildJson = await safeGetItem('current_selected_child');
+    if (!selectedChildJson) {
+      console.log('❌ No current selected child found. Cannot migrate data.');
+      return;
+    }
+    
+    const selectedChild = safeParseJSON(selectedChildJson, {});
+    if (!selectedChild.id) {
+      console.log('❌ Invalid selected child data. Cannot migrate data.');
+      return;
+    }
+    
+    console.log(`👶 Migrating data for child: ${selectedChild.id}`);
+    
+    // Get existing top-level custom options
+    const existingCustomOptions = await safeGetItem('custom_options');
+    const existingDeletedOptions = await safeGetItem('deleted_options');
+    
+    let hasDataToMigrate = false;
+    
+    // Get child's current data
+    const childDataJson = await safeGetItem(selectedChild.id);
+    if (!childDataJson) {
+      console.log('❌ Child data not found. Cannot migrate data.');
+      return;
+    }
+    
+    const childData = safeParseJSON(childDataJson, {});
+    let updatedChildData = { ...childData };
+    
+    // Migrate custom options
+    if (existingCustomOptions) {
+      const customOptions = safeParseJSON(existingCustomOptions, {});
+      if (Object.keys(customOptions).length > 0) {
+        console.log('📝 Migrating custom options...');
+        updatedChildData.custom_options = customOptions;
+        hasDataToMigrate = true;
+        
+        // Remove old top-level key
+        await safeRemoveItem('custom_options');
+        console.log('✅ Custom options migrated and old key removed');
+      }
+    }
+    
+    // Migrate deleted options
+    if (existingDeletedOptions) {
+      const deletedOptions = safeParseJSON(existingDeletedOptions, {});
+      if (Object.keys(deletedOptions).length > 0) {
+        console.log('🗑️ Migrating deleted options...');
+        updatedChildData.deleted_options = deletedOptions;
+        hasDataToMigrate = true;
+        
+        // Remove old top-level key
+        await safeRemoveItem('deleted_options');
+        console.log('✅ Deleted options migrated and old key removed');
+      }
+    }
+    
+    if (hasDataToMigrate) {
+      // Save updated child data
+      await safeSetItem(selectedChild.id, JSON.stringify(updatedChildData));
+      console.log('✅ Child data updated with migrated options');
+    } else {
+      console.log('ℹ️ No data to migrate found');
+    }
+    
+    console.log('\n=== Migration Complete ===\n');
+    
+  } catch (error) {
+    console.error('❌ Error during migration:', error);
   }
 };
