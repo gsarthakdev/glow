@@ -621,7 +621,7 @@ export const behaviorSpecificOptions: { [behavior: string]: BehaviorOptions } = 
       "Therapist reinforced use in session"
     ]
   },
-  "Leading caregiver to item / place": {
+  "Leading caregiver to item/place": {
     antecedents: [
       "Desired item in another room",
       "Child unable to name item",

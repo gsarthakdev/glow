@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
+  Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { v4 as uuidv4 } from 'uuid';
@@ -617,6 +618,14 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
   // New functions for custom options management
   const handleDeleteOption = async (questionId: string, optionLabel: string) => {
     try {
+      // First, remove the option from customOptions
+      const updatedCustom = { ...customOptions };
+      if (updatedCustom[questionId]) {
+        updatedCustom[questionId] = updatedCustom[questionId].filter(opt => opt.label !== optionLabel);
+        setCustomOptions(updatedCustom);
+      }
+      
+      // Also add to deletedOptions for tracking (in case we want to restore later)
       const updatedDeleted = { ...deletedOptions };
       if (!updatedDeleted[questionId]) {
         updatedDeleted[questionId] = new Set();
@@ -631,6 +640,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
           const parsedChildData = JSON.parse(childData);
           const updatedChildData = {
             ...parsedChildData,
+            custom_options: updatedCustom,
             deleted_options: Object.keys(updatedDeleted).reduce((acc, key) => {
               acc[key] = Array.from(updatedDeleted[key]);
               return acc;
@@ -703,6 +713,14 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       if (!updatedCustom[questionId]) {
         updatedCustom[questionId] = [];
       }
+      
+      // Check if this option already exists (prevent duplicates)
+      const existingOption = updatedCustom[questionId].find(opt => opt.label === newOption.label);
+      if (existingOption) {
+        console.warn(`[ADD] Custom option "${newOption.label}" already exists for ${questionId}, skipping duplicate`);
+        return;
+      }
+      
       updatedCustom[questionId].push(newOption);
       setCustomOptions(updatedCustom);
       
@@ -882,7 +900,12 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         // Set 0: Custom options first, then hardcoded options
         const customOptionsForSet0 = filteredCustom.slice(0, 5); // Max 5 custom options in Set 0
         const remainingSlots = 5 - customOptionsForSet0.length;
-        const hardcodedOptionsForSet0 = nonOtherChoices.slice(0, remainingSlots);
+        
+        // Get hardcoded options, but exclude any that have the same label as custom options
+        const customLabels = new Set(customOptionsForSet0.map(opt => opt.label));
+        const hardcodedOptionsForSet0 = nonOtherChoices
+          .filter(choice => !customLabels.has(choice.label))
+          .slice(0, remainingSlots);
         
         finalOptions = [...customOptionsForSet0, ...hardcodedOptionsForSet0];
       } else {
@@ -901,7 +924,16 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       
       console.log(`[FILTER] ${questionId} Set ${currentSet}: ${finalOptions.length} options (${finalOptions.length - (otherOption ? 1 : 0)} content + Other)`);
       
-      return finalOptions;
+      // Ensure no duplicate labels in the final options
+      const uniqueOptions = finalOptions.filter((option, index, self) => 
+        index === self.findIndex(o => o.label === option.label)
+      );
+      
+      if (uniqueOptions.length !== finalOptions.length) {
+        console.warn(`[FILTER] Duplicate labels detected in ${questionId} Set ${currentSet}. Original: ${finalOptions.length}, Unique: ${uniqueOptions.length}`);
+      }
+      
+      return uniqueOptions;
     }
     
     // For non-shuffle questions (like whatDidTheyDo), always include custom options
@@ -1609,10 +1641,26 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                           )}
                         </View>
                       </TouchableOpacity>
-                      {choice.label !== 'Other' && isCustomEditMode && currentQ.is_editable !== false && (
+                      {choice.label !== 'Other'
+                        && isCustomEditMode
+                        && currentQ.is_editable !== false
+                        && (customOptions[currentQ.id]?.some(opt => opt.label === choice.label)) && (
                         <TouchableOpacity
                           style={styles.deleteButton}
-                          onPress={() => handleDeleteOption(currentQ.id, choice.label)}
+                          onPress={() => {
+                            Alert.alert(
+                              'Delete custom option?',
+                              `Are you sure you want to delete "${choice.label}"?`,
+                              [
+                                { text: 'Cancel', style: 'cancel' },
+                                {
+                                  text: 'Delete',
+                                  style: 'destructive',
+                                  onPress: () => handleDeleteOption(currentQ.id, choice.label)
+                                }
+                              ]
+                            );
+                          }}
                         >
                           <Text style={styles.deleteButtonText}>🗑️</Text>
                         </TouchableOpacity>
@@ -1791,8 +1839,8 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                 ) : (
                   // Show behavior-specific options or message
                   currentQ.answer_choices && currentQ.answer_choices.length > 0 ? (
-                  currentQ.answer_choices.map((choice) => (
-                    <View key={choice.label} style={styles.choiceContainer}>
+                  currentQ.answer_choices.map((choice, index) => (
+                    <View key={`${currentQ.id}-${choice.label}-${index}`} style={styles.choiceContainer}>
                       <TouchableOpacity
                         style={getChoiceButtonStyle(choice, currentQ.id)}
                         onPress={() => handleAnswer(currentQ.id, choice)}
@@ -1826,8 +1874,8 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
               )
               ) : (
                                 // Regular questions (not ABC questions)
-                currentQ.answer_choices?.map((choice) => (
-                  <View key={choice.label} style={styles.choiceContainer}>
+                currentQ.answer_choices?.map((choice, index) => (
+                  <View key={`${currentQ.id}-${choice.label}-${index}`} style={styles.choiceContainer}>
                     <TouchableOpacity
                       style={getChoiceButtonStyle(choice, currentQ.id)}
                       onPress={() => handleAnswer(currentQ.id, choice)}
