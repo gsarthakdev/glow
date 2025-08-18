@@ -20,7 +20,7 @@ import { flow_basic_1 as positive_flow_basic_1 } from '../flows/positive_flow_ba
 import MoodBubbleSlider from '../components/MoodBubbleSlider';
 import { useRoute } from '@react-navigation/native';
 import { getABCForBehavior, trackGPTSuggestionUsage } from '../utils/gptService';
-import { getShuffledOptions, getTotalSets } from '../flows/behaviorSpecificOptions';
+import { getShuffledOptions, getTotalSets, behaviorSpecificOptions } from '../flows/behaviorSpecificOptions';
 import { getShuffledGPTOptions, getTotalGPTSets } from '../utils/gptService';
 
 interface Category {
@@ -80,8 +80,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
   const [currentCommentQuestionId, setCurrentCommentQuestionId] = useState<string>('');
 
   // New state for custom options management
-  const [customOptions, setCustomOptions] = useState<{ [questionId: string]: Array<{ label: string; emoji: string; sentiment?: string | null }> }>({});
+  const [customOptions, setCustomOptions] = useState<{ [questionId: string]: Array<{ label: string; emoji: string; sentiment?: string | null; category?: string }> }>({});
   const [deletedOptions, setDeletedOptions] = useState<{ [questionId: string]: Set<string> }>({});
+  const [selectedBehaviorCategory, setSelectedBehaviorCategory] = useState<string | null>(null);
   const [showAddOptionModal, setShowAddOptionModal] = useState<{ questionId: string; isVisible: boolean }>({ questionId: '', isVisible: false });
   const [newOptionText, setNewOptionText] = useState('');
   const [newOptionEmoji, setNewOptionEmoji] = useState('➕');
@@ -111,8 +112,19 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     if (flowSentiment) {
       const flow = flowSentiment === 'positive' ? positive_flow_basic_1 : flow_basic_1;
       setCurrentFlow(flow);
+      
+      // If we already have a selected behavior, trigger the ABC population useEffect
+      const selectedBehavior = selectedAnswers['whatDidTheyDo']?.[0]?.answer;
+      if (selectedBehavior) {
+        console.log('[FLOW] Flow initialized with existing behavior, will trigger ABC population for:', selectedBehavior);
+        // Force a small delay to ensure the flow is set, then trigger the population
+        setTimeout(() => {
+          // This will trigger the useEffect that populates ABC questions
+          setOptionSets(prev => ({ ...prev }));
+        }, 100);
+      }
     }
-  }, [flowSentiment]);
+  }, [flowSentiment, selectedAnswers]);
 
   // Inject behavior-specific options and GPT suggestions into the flow
   useEffect(() => {
@@ -140,9 +152,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         let antecedentChoices = [];
         
         if (isCustomResponse && gptSuggestions && !gptSuggestions.isFallback) {
-          // For custom responses, use only GPT options
-          const gptAntecedents = getShuffledGPTOptions(gptSuggestions, 'antecedents', currentSet);
-          console.log('[FLOW] GPT antecedents for custom response:', gptAntecedents);
+          // For custom responses, use full GPT options pool (pagination handled later)
+          const gptAntecedents = gptSuggestions.antecedents || [];
+          console.log('[FLOW] GPT antecedents (full pool) for custom response:', gptAntecedents);
           
           antecedentChoices = gptAntecedents.map(antecedent => ({
             label: antecedent.text, // Save only the text for AsyncStorage
@@ -151,16 +163,16 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
             isGptGenerated: true
           }));
         } else {
-          // For predefined behaviors, use behavior-specific options
-          const behaviorAntecedents = getShuffledOptions(selectedBehavior, 'antecedents', currentSet);
-          console.log('[FLOW] Behavior antecedents for predefined behavior:', behaviorAntecedents);
+          // For predefined behaviors, use full behavior-specific options pool (pagination handled later)
+          const behaviorAntecedents = behaviorSpecificOptions[selectedBehavior]?.antecedents || [];
+          console.log('[FLOW] Behavior antecedents (full pool) for predefined behavior:', behaviorAntecedents);
           
-            antecedentChoices = behaviorAntecedents.map((antecedent: string, index: number) => ({
-    label: antecedent,
-    emoji: getAntecedentEmoji(antecedent), // Use relevant emoji for behavior-specific options
-    sentiment: 'negative',
-    isBehaviorSpecific: true
-  }));
+          antecedentChoices = behaviorAntecedents.map((antecedent: string) => ({
+            label: antecedent,
+            emoji: getAntecedentEmoji(antecedent), // Use relevant emoji for behavior-specific options
+            sentiment: 'negative',
+            isBehaviorSpecific: true
+          }));
         }
         
         const allAntecedentChoices = [
@@ -191,9 +203,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         let consequenceChoices = [];
         
         if (isCustomResponse && gptSuggestions && !gptSuggestions.isFallback) {
-          // For custom responses, use only GPT options
-          const gptConsequences = getShuffledGPTOptions(gptSuggestions, 'consequences', currentSet);
-          console.log('[FLOW] GPT consequences for custom response:', gptConsequences);
+          // For custom responses, use full GPT options pool (pagination handled later)
+          const gptConsequences = gptSuggestions.consequences || [];
+          console.log('[FLOW] GPT consequences (full pool) for custom response:', gptConsequences);
           
           consequenceChoices = gptConsequences.map(consequence => ({
             label: consequence.text, // Save only the text for AsyncStorage
@@ -202,16 +214,16 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
             isGptGenerated: true
           }));
         } else {
-          // For predefined behaviors, use behavior-specific options
-          const behaviorConsequences = getShuffledOptions(selectedBehavior, 'consequences', currentSet);
-          console.log('[FLOW] Behavior consequences for predefined behavior:', behaviorConsequences);
+          // For predefined behaviors, use full behavior-specific options pool (pagination handled later)
+          const behaviorConsequences = behaviorSpecificOptions[selectedBehavior]?.consequences || [];
+          console.log('[FLOW] Behavior consequences (full pool) for predefined behavior:', behaviorConsequences);
           
-            consequenceChoices = behaviorConsequences.map((consequence: string, index: number) => ({
-    label: consequence,
-    emoji: getConsequenceEmoji(consequence), // Use relevant emoji for behavior-specific options
-    sentiment: 'negative',
-    isBehaviorSpecific: true
-  }));
+          consequenceChoices = behaviorConsequences.map((consequence: string) => ({
+            label: consequence,
+            emoji: getConsequenceEmoji(consequence), // Use relevant emoji for behavior-specific options
+            sentiment: 'negative',
+            isBehaviorSpecific: true
+          }));
         }
         
         const allConsequenceChoices = [
@@ -422,6 +434,59 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         };
       }
     });
+    
+    // If this was a behavior selection, immediately populate ABC questions
+    if (questionId === 'whatDidTheyDo' && currentFlow.length > 0) {
+      const selectedBehavior = answer.label;
+      console.log('[FLOW] Behavior selected, immediately populating ABC questions for:', selectedBehavior);
+      
+      // Force immediate population of ABC questions
+      const updatedFlow = [...currentFlow];
+      
+      // Populate antecedents
+      const antecedentQuestionIndex = updatedFlow.findIndex(q => q.id === 'whatHappenedBefore');
+      if (antecedentQuestionIndex !== -1) {
+        const antecedentChoices = behaviorSpecificOptions[selectedBehavior]?.antecedents?.map(antecedent => ({
+          label: antecedent,
+          emoji: getAntecedentEmoji(antecedent),
+          sentiment: 'negative',
+          isBehaviorSpecific: true
+        })) || [];
+        
+        const allAntecedentChoices = [
+          ...antecedentChoices,
+          { label: "Other", emoji: "➕", sentiment: null }
+        ];
+        
+        updatedFlow[antecedentQuestionIndex] = {
+          ...updatedFlow[antecedentQuestionIndex],
+          answer_choices: allAntecedentChoices
+        };
+      }
+      
+      // Populate consequences
+      const consequenceQuestionIndex = updatedFlow.findIndex(q => q.id === 'whatHappenedAfter');
+      if (consequenceQuestionIndex !== -1) {
+        const consequenceChoices = behaviorSpecificOptions[selectedBehavior]?.consequences?.map(consequence => ({
+          label: consequence,
+          emoji: getConsequenceEmoji(consequence),
+          sentiment: 'negative',
+          isBehaviorSpecific: true
+        })) || [];
+        
+        const allConsequenceChoices = [
+          ...consequenceChoices,
+          { label: "Other", emoji: "➕", sentiment: null }
+        ];
+        
+        updatedFlow[consequenceQuestionIndex] = {
+          ...updatedFlow[consequenceQuestionIndex],
+          answer_choices: allConsequenceChoices
+        };
+      }
+      
+      setCurrentFlow(updatedFlow);
+    }
   };
 
   // Add new handleOtherSubmit function
@@ -526,6 +591,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     if (isCustomResponse && gptSuggestions && !gptSuggestions.isFallback) {
       // For custom responses, use GPT sets
       totalSets = getTotalGPTSets(gptSuggestions, questionType);
+    } else if (questionId === 'whatHappenedBefore' || questionId === 'whatHappenedAfter') {
+      // For ABC questions, use our custom set calculation that includes custom options
+      totalSets = getTotalSetsWithCustomOptions(questionId);
     } else {
       // For predefined behaviors, use behavior-specific sets
       totalSets = getTotalSets(selectedBehavior || '', questionType);
@@ -627,7 +695,8 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       const newOption = {
         label: newOptionText.trim(),
         emoji: newOptionEmoji,
-        sentiment: newOptionSentiment
+        sentiment: newOptionSentiment,
+        category: selectedBehaviorCategory || undefined // Associate with the selected category
       };
       
       const updatedCustom = { ...customOptions };
@@ -788,6 +857,11 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     const deleted = deletedOptions[questionId] || new Set();
     const custom = customOptions[questionId] || [];
     
+    // Filter custom options to only show those matching the selected category
+    const filteredCustom = custom.filter(option => 
+      !option.category || option.category === selectedBehaviorCategory
+    );
+    
     // Filter out deleted options from original choices
     const filteredOriginal = originalChoices.filter(choice => !deleted.has(choice.label));
     
@@ -795,23 +869,95 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     const otherOption = filteredOriginal.find(choice => choice.label === 'Other');
     const nonOtherChoices = filteredOriginal.filter(choice => choice.label !== 'Other');
     
-    // For ABC questions (antecedents/consequences), custom options should only appear once
-    // and not be duplicated across shuffle sets
+    // For ABC questions (antecedents/consequences), implement proper set-based distribution
     if (questionId === 'whatHappenedBefore' || questionId === 'whatHappenedAfter') {
-      // Only add custom options if this is the first set (set 0)
       const currentSet = optionSets[questionId] || 0;
+      
+      // Custom options should appear at the top of Set 0, then overflow to Set 1 if needed
+      // Hardcoded options fill the remaining slots in each set
+      
+      let finalOptions: Array<{ label: string; emoji: string; sentiment?: string | null }> = [];
+      
       if (currentSet === 0) {
-        // Order: non-Other choices + custom options + Other option
-        return [...nonOtherChoices, ...custom, ...(otherOption ? [otherOption] : [])];
+        // Set 0: Custom options first, then hardcoded options
+        const customOptionsForSet0 = filteredCustom.slice(0, 5); // Max 5 custom options in Set 0
+        const remainingSlots = 5 - customOptionsForSet0.length;
+        const hardcodedOptionsForSet0 = nonOtherChoices.slice(0, remainingSlots);
+        
+        finalOptions = [...customOptionsForSet0, ...hardcodedOptionsForSet0];
       } else {
-        // For other sets, only show the original shuffled options (Other still last)
-        return [...nonOtherChoices, ...(otherOption ? [otherOption] : [])];
+        // Set 1+: Only hardcoded options (no custom options duplicated)
+        const startIndex = (currentSet - 1) * 5 + (5 - filteredCustom.length); // Adjust for custom options in Set 0
+        const endIndex = startIndex + 5;
+        const hardcodedOptionsForSet = nonOtherChoices.slice(startIndex, endIndex);
+        
+        finalOptions = hardcodedOptionsForSet;
       }
+      
+      // Always add "Other" option at the end
+      if (otherOption) {
+        finalOptions.push(otherOption);
+      }
+      
+      console.log(`[FILTER] ${questionId} Set ${currentSet}: ${finalOptions.length} options (${finalOptions.length - (otherOption ? 1 : 0)} content + Other)`);
+      
+      return finalOptions;
     }
     
     // For non-shuffle questions (like whatDidTheyDo), always include custom options
     // Order: non-Other choices + custom options + Other option
-    return [...nonOtherChoices, ...custom, ...(otherOption ? [otherOption] : [])];
+    return [...nonOtherChoices, ...filteredCustom, ...(otherOption ? [otherOption] : [])];
+  };
+
+  // Helper function to calculate total sets for ABC questions based on available options
+  const getTotalSetsWithCustomOptions = (questionId: string): number => {
+    if (questionId !== 'whatHappenedBefore' && questionId !== 'whatHappenedAfter') {
+      return 1; // Non-ABC questions only have 1 set
+    }
+    
+    // Get the selected behavior to determine original options
+    const selectedBehavior = selectedAnswers['whatDidTheyDo']?.[0]?.answer;
+    if (!selectedBehavior) {
+      return 1;
+    }
+    
+    const deleted = deletedOptions[questionId] || new Set();
+    const custom = customOptions[questionId] || [];
+    
+    // Filter custom options to only count those matching the selected category
+    const filteredCustom = custom.filter(option => 
+      !option.category || option.category === selectedBehaviorCategory
+    );
+    
+    // Get original behavior-specific options (before any filtering)
+    let originalOptions: string[] = [];
+    const isCustomResponse = selectedAnswers['whatDidTheyDo']?.[0]?.isCustom;
+    
+    if (isCustomResponse && gptSuggestions && !gptSuggestions.isFallback) {
+      // For custom responses, use GPT options
+      const questionType = questionId === 'whatHappenedBefore' ? 'antecedents' : 'consequences';
+      originalOptions = gptSuggestions[questionType]?.map(option => option.text) || [];
+    } else {
+      // For predefined behaviors, use behavior-specific options
+      const behaviorOptions = behaviorSpecificOptions[selectedBehavior];
+      if (behaviorOptions) {
+        originalOptions = behaviorOptions[questionId === 'whatHappenedBefore' ? 'antecedents' : 'consequences'] || [];
+      }
+    }
+    
+    // Filter out deleted options from original options
+    const availableOriginalOptions = originalOptions.filter(option => !deleted.has(option));
+    
+    // Total available options (original + filtered custom)
+    const totalAvailableOptions = availableOriginalOptions.length + filteredCustom.length;
+    
+    // Target 5 options per set (plus "Other" which is always included)
+    const optionsPerSet = 5;
+    const totalSets = Math.ceil(totalAvailableOptions / optionsPerSet);
+    
+    console.log(`[SETS] ${questionId}: ${availableOriginalOptions.length} original + ${custom.length} custom = ${totalAvailableOptions} total, ${totalSets} sets needed`);
+    
+    return Math.max(1, totalSets); // Always at least 1 set
   };
 
   // Helper function to get choice button border radius
@@ -1584,8 +1730,20 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                         isCategorySelected(cat) && styles.selectedChoice
                       ]}
                       onPress={() => {
+                        // If changing categories, clear previous selections and reset flow
+                        if (selectedBehaviorCategory && selectedBehaviorCategory !== cat.key) {
+                          setSelectedAnswers({});
+                          setCurrentQuestion(0);
+                          setFlowSentiment(null);
+                          setCurrentFlow([]);
+                          setOptionSets({});
+                          setBehaviorOptionSet(0);
+                        }
+                        
                         setSelectedCategory(cat);
                         setBehaviorOptionSet(0);
+                        // Track the selected category for custom options
+                        setSelectedBehaviorCategory(cat.key);
                       }}
                     >
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1713,6 +1871,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                         
                         if (isCustomResponse && gptSuggestions && !gptSuggestions.isFallback) {
                           return getTotalGPTSets(gptSuggestions, questionType);
+                        } else if (currentQ.id === 'whatHappenedBefore' || currentQ.id === 'whatHappenedAfter') {
+                          // For ABC questions, use our custom set calculation that includes custom options
+                          return getTotalSetsWithCustomOptions(currentQ.id);
                         } else {
                           return getTotalSets(selectedBehavior || '', questionType);
                         }
