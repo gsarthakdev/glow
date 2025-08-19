@@ -1584,7 +1584,12 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                   ]}
                   onPress={() => setIsCustomEditMode(!isCustomEditMode)}
                 >
-                  <Text style={styles.editModeIcon}>✏️</Text>
+                  <Text style={[
+                    styles.editModeIcon,
+                    isCustomEditMode && { color: '#fff' }
+                  ]}>
+                    {isCustomEditMode ? '✓' : '✏️'}
+                  </Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -1674,9 +1679,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                     >
                       <Text style={styles.addOptionButtonText}>
                         ➕ Add New Option
-                        {deletedOptions[currentQ.id] && deletedOptions[currentQ.id].size > 0 && (
+                        {/* {deletedOptions[currentQ.id] && deletedOptions[currentQ.id].size > 0 && (
                           <Text style={styles.deletedCountText}> ({deletedOptions[currentQ.id].size} deleted)</Text>
-                        )}
+                        )} */}
                       </Text>
                     </TouchableOpacity>
                   )}
@@ -1746,9 +1751,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                     >
                       <Text style={styles.addOptionButtonText}>
                         ➕ Add New Option
-                        {deletedOptions[currentQ.id] && deletedOptions[currentQ.id].size > 0 && (
+                        {/* {deletedOptions[currentQ.id] && deletedOptions[currentQ.id].size > 0 && (
                           <Text style={styles.deletedCountText}> ({deletedOptions[currentQ.id].size} deleted)</Text>
-                        )}
+                        )} */}
                       </Text>
                     </TouchableOpacity>
                   )}
@@ -1810,9 +1815,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                     >
                       <Text style={styles.addOptionButtonText}>
                         ➕ Add New Option
-                        {deletedOptions[currentQ.id] && deletedOptions[currentQ.id].size > 0 && (
+                        {/* {deletedOptions[currentQ.id] && deletedOptions[currentQ.id].size > 0 && (
                           <Text style={styles.deletedCountText}> ({deletedOptions[currentQ.id].size} deleted)</Text>
-                        )}
+                        )} */}
                       </Text>
                     </TouchableOpacity>
                   )}
@@ -1939,9 +1944,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                 >
                   <Text style={styles.addOptionButtonText}>
                     ➕ Add New Option
-                    {deletedOptions[currentQ.id] && deletedOptions[currentQ.id].size > 0 && (
+                    {/* {deletedOptions[currentQ.id] && deletedOptions[currentQ.id].size > 0 && (
                       <Text style={styles.deletedCountText}> ({deletedOptions[currentQ.id].size} deleted)</Text>
-                    )}
+                    )} */}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -2169,7 +2174,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                   maxLength={50}
                 />
                 
-                <Text style={styles.modalLabel}>Emoji:</Text>
+                {/* <Text style={styles.modalLabel}>Emoji:</Text>
                 <TextInput
                   style={styles.modalInput}
                   placeholder="Choose an emoji..."
@@ -2191,10 +2196,10 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                       <Text style={styles.emojiOptionText}>{emoji}</Text>
                     </TouchableOpacity>
                   ))}
-                </ScrollView>
+                </ScrollView> */}
                 
                 {/* Show deleted options for restoration */}
-                {deletedOptions[currentQ.id] && deletedOptions[currentQ.id].size > 0 && (
+                {/* {deletedOptions[currentQ.id] && deletedOptions[currentQ.id].size > 0 && (
                   <>
                     <Text style={styles.modalLabel}>Restore Deleted Options:</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.deletedOptionsScrollView}>
@@ -2210,9 +2215,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                       ))}
                     </ScrollView>
                   </>
-                )}
+                )} */}
                 
-                {currentQ.id === 'whatDidTheyDo' && (
+                {/* {currentQ.id === 'whatDidTheyDo' && ( */}
                   <>
                     <Text style={styles.modalLabel}>Sentiment:</Text>
                     <View style={styles.sentimentButtons}>
@@ -2238,7 +2243,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                       </TouchableOpacity>
                     </View>
                   </>
-                )}
+                {/* )} */}
                 
                 <View style={styles.modalButtons}>
                   <TouchableOpacity
@@ -2781,17 +2786,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   editModeButton: {
-    marginLeft: 8,
-    padding: 8,
+    position: 'absolute',
+    top: -5,
     borderRadius: 8,
-    backgroundColor: '#f0f0f0',
     justifyContent: 'center',
     alignItems: 'center',
+    right: 55,
+    padding: 8,
+    backgroundColor: '#f0f0f0',
     minWidth: 36,
     minHeight: 36,
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
   editModeButtonActive: {
     backgroundColor: '#5B9AA0',
+    borderColor: '#5B9AA0',
   },
   editModeIcon: {
     fontSize: 16,
