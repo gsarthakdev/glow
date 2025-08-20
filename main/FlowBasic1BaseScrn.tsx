@@ -700,6 +700,12 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     const handleAddOption = async () => {
     if (!newOptionText.trim() || !showAddOptionModal.questionId) return;
     
+    // Sentiment is required for all questions
+    if (!newOptionSentiment) {
+      Alert.alert('Sentiment Required', 'Please select whether this is a challenge or win before adding the option.');
+      return;
+    }
+    
     try {
       const questionId = showAddOptionModal.questionId;
       const newOption = {
@@ -1002,7 +1008,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     // If edit mode is active and this choice can have a delete button, adjust border radius
     if (isCustomEditMode && choice.label !== 'Other' && !(choice as any).isGptGenerated && !(choice as any).isBehaviorSpecific) {
       baseStyle.push({
-        borderTopRightRadius: 0,
+        borderRightWidth: 0,
         borderBottomRightRadius: 0,
       } as any);
     }
@@ -1565,17 +1571,31 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
               Step {currentQuestion + 1} of {currentFlow.length > 0 ? currentFlow.length : 1}
             </Text>
             <View style={styles.headerButtons}>
-              <TouchableOpacity
-                style={styles.commentIconButton}
-                onPress={() => handleCommentModalOpen(currentQ.id)}
-              >
-                <Text style={styles.commentIcon}>💬</Text>
-                {comments[currentQ.id] && (
-                  <View style={styles.commentBadge}>
-                    <Text style={styles.commentBadgeText}>✓</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
+              {/* Show comment button only when NOT in edit mode */}
+              {!isCustomEditMode && (
+                <TouchableOpacity
+                  style={styles.commentIconButton}
+                  onPress={() => handleCommentModalOpen(currentQ.id)}
+                >
+                  <Text style={styles.commentIcon}>💬</Text>
+                  {comments[currentQ.id] && (
+                    <View style={styles.commentBadge}>
+                      <Text style={styles.commentBadgeText}>✓</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              )}
+              
+              {/* Show add option button in header when in edit mode */}
+              {isCustomEditMode && currentQ.is_editable !== false && (
+                <TouchableOpacity
+                  style={styles.headerAddOptionButton}
+                  onPress={() => openAddOptionModal(currentQ.id)}
+                >
+                  <Text style={styles.headerAddOptionButtonText}>➕ Add an option</Text>
+                </TouchableOpacity>
+              )}
+              
               {currentQ.is_editable !== false && (
                 <TouchableOpacity
                   style={[
@@ -1588,12 +1608,20 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                     styles.editModeIcon,
                     isCustomEditMode && { color: '#fff' }
                   ]}>
-                    {isCustomEditMode ? '✓' : '✏️'}
+                    {isCustomEditMode ? '✓ Finish' : 'Edit ✏️'}
                   </Text>
                 </TouchableOpacity>
               )}
             </View>
           </View>
+          
+          {/* Edit Mode Indicator */}
+          {isCustomEditMode && (
+            <View style={styles.editModeIndicator}>
+              <Text style={styles.editModeIndicatorText}>✏️ Edit Mode</Text>
+            </View>
+          )}
+          
           <Text style={styles.question}>{currentQ.question}</Text>
           {currentQ.subheading && (
             <Text style={styles.subheading}>{currentQ.subheading}</Text>
@@ -1672,19 +1700,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                       )}
                     </View>
                   ))}
-                  {isCustomEditMode && currentQ.is_editable !== false && (
-                    <TouchableOpacity
-                      style={styles.addOptionButton}
-                      onPress={() => openAddOptionModal(currentQ.id)}
-                    >
-                      <Text style={styles.addOptionButtonText}>
-                        ➕ Add New Option
-                        {/* {deletedOptions[currentQ.id] && deletedOptions[currentQ.id].size > 0 && (
-                          <Text style={styles.deletedCountText}> ({deletedOptions[currentQ.id].size} deleted)</Text>
-                        )} */}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
+                  {/* Add option button moved to header during edit mode */}
                 </>
               ) : selectedCategory ? (
                 <>
@@ -1744,19 +1760,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                     </View>
                   )}
                   
-                  {isCustomEditMode && currentQ.is_editable !== false && (
-                    <TouchableOpacity
-                      style={styles.addOptionButton}
-                      onPress={() => openAddOptionModal(currentQ.id)}
-                    >
-                      <Text style={styles.addOptionButtonText}>
-                        ➕ Add New Option
-                        {/* {deletedOptions[currentQ.id] && deletedOptions[currentQ.id].size > 0 && (
-                          <Text style={styles.deletedCountText}> ({deletedOptions[currentQ.id].size} deleted)</Text>
-                        )} */}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
+                  {/* Add option button moved to header during edit mode */}
                 </>
               ) : (
                 <>
@@ -1936,20 +1940,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                 </View>
               )}
               
-              {/* Consolidated Add option button - shows for all question types */}
-              {isCustomEditMode && currentQ.is_editable !== false && (
-                <TouchableOpacity
-                  style={styles.addOptionButton}
-                  onPress={() => openAddOptionModal(currentQ.id)}
-                >
-                  <Text style={styles.addOptionButtonText}>
-                    ➕ Add New Option
-                    {/* {deletedOptions[currentQ.id] && deletedOptions[currentQ.id].size > 0 && (
-                      <Text style={styles.deletedCountText}> ({deletedOptions[currentQ.id].size} deleted)</Text>
-                    )} */}
-                  </Text>
-                </TouchableOpacity>
-              )}
+              {/* Add option button moved to header during edit mode */}
             </>
           )}
 
@@ -2219,7 +2210,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                 
                 {/* {currentQ.id === 'whatDidTheyDo' && ( */}
                   <>
-                    <Text style={styles.modalLabel}>Sentiment:</Text>
+                    <Text style={styles.modalLabel}>Sentiment: <Text style={{color: "grey", fontWeight: 'normal'}}>(Required)</Text></Text>
                     <View style={styles.sentimentButtons}>
                       <TouchableOpacity
                         style={[
@@ -2256,9 +2247,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                     style={[
                       styles.modalButton, 
                       styles.submitButton,
-                      !newOptionText.trim() && styles.disabledButton
+                      (!newOptionText.trim() || !newOptionSentiment) && styles.disabledButton
                     ]}
-                    disabled={!newOptionText.trim()}
+                    disabled={!newOptionText.trim() || !newOptionSentiment}
                     onPress={handleAddOption}
                   >
                     <Text style={[styles.modalButtonText, { color: 'white' }]}>Add</Text>
@@ -2324,34 +2315,34 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   scrollContent: {
-    padding: 24,
-    paddingBottom: 40,
+    padding: 22,
+    paddingBottom: 36,
   },
   progress: {
     fontSize: 14,
     color: '#666',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   progressRow: {
     position: 'relative',
-    // marginBottom: 24,
+    marginBottom: 12,
   },
   question: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: 'bold',
     marginBottom: 12,
   },
   subheading: {
     color: "#666",
     fontSize: 16,
-    marginBottom: 32,
+    marginBottom: 26,
   },
   choiceButton: {
-    padding: 15,
-    borderRadius: 10,
+    padding: 14,
+    borderRadius: 9,
     borderWidth: 1,
     borderColor: '#ddd',
-    marginBottom: 10,
+    marginBottom: 9,
     flex: 1,
   },
   selectedChoice: {
@@ -2365,7 +2356,7 @@ const styles = StyleSheet.create({
   navigationButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 32,
+    marginTop: 26,
   },
   backButton: {
     backgroundColor: '#c0c0c0',
@@ -2439,14 +2430,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   moodContainer: {
-    marginTop: 24,
-    marginBottom: 32,
+    marginTop: 20,
+    marginBottom: 26,
     paddingHorizontal: 8,
   },
   moodDivider: {
     height: 1,
     backgroundColor: '#eee',
-    marginVertical: 40,
+    marginVertical: 30,
   },
   sentimentContainer: {
     marginBottom: 15,
@@ -2538,7 +2529,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   shuffleContainer: {
-    marginTop: 16,
+    marginTop: 8,
     alignItems: 'center',
   },
   shuffleInfoText: {
@@ -2588,9 +2579,6 @@ const styles = StyleSheet.create({
   },
 
   commentIconButton: {
-    position: 'absolute',
-    right: 0,
-    top: -5,
     padding: 8,
     borderRadius: 8,
     backgroundColor: '#5B9AA0',
@@ -2675,6 +2663,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'stretch',
     marginBottom: 10,
+    // borderTopRightRadius: 0,
+    // borderBottomRightRadius: 0,
   },
   deleteButton: {
     marginLeft: 0,
@@ -2686,7 +2676,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     minWidth: 36,
-    minHeight: 36,
+    height: 50
+    // height: 100,
   },
   deleteButtonText: {
     fontSize: 16,
@@ -2784,14 +2775,12 @@ const styles = StyleSheet.create({
     top: -5,
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
   editModeButton: {
-    position: 'absolute',
-    top: -5,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    right: 55,
     padding: 8,
     backgroundColor: '#f0f0f0',
     minWidth: 36,
@@ -2806,5 +2795,35 @@ const styles = StyleSheet.create({
   editModeIcon: {
     fontSize: 16,
     color: '#666',
+  },
+  headerAddOptionButton: {
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 8,
+    backgroundColor: '#28a745',
+    minWidth: 36,
+    minHeight: 36,
+    borderWidth: 1,
+    borderColor: '#28a745',
+  },
+  headerAddOptionButtonText: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  editModeIndicator: {
+    backgroundColor: '#E8F3F4',
+    padding: 6,
+    borderRadius: 6,
+    marginBottom: 8,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: '#5B9AA0',
+  },
+  editModeIndicatorText: {
+    fontSize: 12,
+    color: '#5B9AA0',
+    fontWeight: '600',
   },
 });
