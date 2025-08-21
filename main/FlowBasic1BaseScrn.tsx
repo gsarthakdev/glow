@@ -1573,6 +1573,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
             <View style={styles.headerButtons}>
               {/* Show comment button only when NOT in edit mode */}
               {!isCustomEditMode && (
+                <>
                 <TouchableOpacity
                   style={styles.commentIconButton}
                   onPress={() => handleCommentModalOpen(currentQ.id)}
@@ -1584,6 +1585,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                     </View>
                   )}
                 </TouchableOpacity>
+                </>
               )}
               
               {/* Show add option button in header when in edit mode */}
@@ -1608,7 +1610,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                     styles.editModeIcon,
                     isCustomEditMode && { color: '#fff' }
                   ]}>
-                    {isCustomEditMode ? '✓ Finish' : 'Edit ✏️'}
+                    {isCustomEditMode ? '✓ Finish' : '✏️'}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -1621,8 +1623,13 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
               <Text style={styles.editModeIndicatorText}>✏️ Edit Mode</Text>
             </View>
           )}
-          
-          <Text style={styles.question}>{currentQ.question}</Text>
+          {/* we also need to account for length of the question. IF the length of question is less than 64 characters, we need to set
+          the fontSize to 22, otherwise we need to set it to 24 */}
+          {currentQ.question.length < 49 ? (
+            <Text style={currentQ.subheading ? styles.question : [styles.question, { marginBottom: 30,  }]}>{currentQ.question}</Text>
+          ) : (
+            <Text style={currentQ.subheading ? styles.question : [styles.question, { marginBottom: 30, fontSize: 22 }]}>{currentQ.question}</Text>
+          )}
           {currentQ.subheading && (
             <Text style={styles.subheading}>{currentQ.subheading}</Text>
           )}
@@ -1812,19 +1819,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                     </TouchableOpacity>
                   ))}
                   
-                  {isCustomEditMode && currentQ.is_editable !== false && (
-                    <TouchableOpacity
-                      style={styles.addOptionButton}
-                      onPress={() => openAddOptionModal(currentQ.id)}
-                    >
-                      <Text style={styles.addOptionButtonText}>
-                        ➕ Add New Option
-                        {/* {deletedOptions[currentQ.id] && deletedOptions[currentQ.id].size > 0 && (
-                          <Text style={styles.deletedCountText}> ({deletedOptions[currentQ.id].size} deleted)</Text>
-                        )} */}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
+                  
                 </>
               )}
             </>
@@ -2325,11 +2320,12 @@ const styles = StyleSheet.create({
   },
   progressRow: {
     position: 'relative',
-    marginBottom: 12,
+    marginBottom: 20,
   },
   question: {
-    fontSize: 26,
-    fontWeight: 'bold',
+    fontSize: 29,
+    // fontWeight: 'bold',
+    fontWeight: '600',
     marginBottom: 12,
   },
   subheading: {
@@ -2518,7 +2514,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
     padding: 12,
     borderRadius: 8,
-    marginTop: 16,
+    marginTop: 6,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#ddd',
@@ -2813,6 +2809,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   editModeIndicator: {
+    position: 'absolute',
+    left: 20,
+    top: 45,
     backgroundColor: '#E8F3F4',
     padding: 6,
     borderRadius: 6,

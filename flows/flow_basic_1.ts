@@ -17,7 +17,8 @@ export const flow_basic_1 = [
           { "label": "Pushing", "emoji": "🤜", "sentiment": "negative" },
           { "label": "Pinching", "emoji": "🤏", "sentiment": "negative" },
           { "label": "Other", "emoji": "➕", "sentiment": null, "isOther": true }
-        ]
+        ],
+        "is_editable": true
       },
       {
         "key": "verbalBehaviors",
@@ -38,7 +39,8 @@ export const flow_basic_1 = [
           { "label": "Unusual vocal sounds", "emoji": "🎤", "sentiment": "negative" },
           { "label": "Using sign language", "emoji": "🤟", "sentiment": "negative" },
           { "label": "Other", "emoji": "➕", "sentiment": null, "isOther": true }
-        ]
+        ],
+        "is_editable": true
       },
       {
         "key": "repetitiveBehaviors",
@@ -53,7 +55,8 @@ export const flow_basic_1 = [
           { "label": "Covering ears or eyes repeatedly", "emoji": "🙉", "sentiment": "negative" },
           { "label": "Repetitively lining up objects", "emoji": "📚", "sentiment": "negative" },
           { "label": "Other", "emoji": "➕", "sentiment": null, "isOther": true }
-        ]
+        ],
+        "is_editable": true
       },
       {
         "key": "routineChallenges",
@@ -68,7 +71,8 @@ export const flow_basic_1 = [
           { "label": "Avoiding group interaction", "emoji": "👥", "sentiment": "negative" },
           { "label": "Refusing instructions", "emoji": "🙅", "sentiment": "negative" },
           { "label": "Other", "emoji": "➕", "sentiment": null, "isOther": true }
-        ]
+        ],
+        "is_editable": true
       }
     ]
   },
@@ -82,18 +86,22 @@ export const flow_basic_1 = [
       { "label": "Evening", "emoji": "🌇", "sentiment": "negative" },
       { "label": "Night", "emoji": "🌙", "sentiment": "negative" },
       { "label": "Other", "emoji": "➕", "sentiment": null }
-    ]
+    ],
+    "is_editable": false
   },
   {
     "id": "whatHappenedBefore",
-    "question": "What caused the behavior?",
-    "subheading": "What led up to the behavior or what triggered it?",
+    // "question": "What caused the behavior?",
+    "question": "What led up to the behavior or what triggered it?",
+    // "subheading": "What led up to the behavior or what triggered it?",
+    "subheading": null,
     "answer_choices": []
   },
   {
     "id": "whatHappenedAfter",
-    "question": "What happened after?",
-    "subheading": "Share how your child or others responded following the behavior.",
+    // "question": "What happened after?",
+    "question": "Share how your child or others responded following the behavior.",
+    // "subheading": "Share how your child or others responded following the behavior.",
     "answer_choices": []
   },
   {
@@ -107,13 +115,15 @@ export const flow_basic_1 = [
       { "label": "Teacher", "emoji": "👩‍🏫", "sentiment": "negative" },
       { "label": "Stranger", "emoji": "🕵️", "sentiment": "negative" },
       { "label": "Other", "emoji": "➕", "sentiment": null }
-    ]
+    ],
+    "is_editable": false
   },
   {
     "id": "mood",
     "question": "How was your child feeling?",
     // "subheading": "Select the mood or emotional state of your child during the incident.",
     "subheading": "",
-    "answer_choices": []
+    "answer_choices": [],
+    "is_editable": false
   }
 ];
