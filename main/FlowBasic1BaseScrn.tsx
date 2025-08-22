@@ -1688,7 +1688,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                         <View style={styles.choiceContent}>
                           <Text style={styles.choiceText}>{getChoiceLabel(choice)}</Text>
                           {customOptions[currentQ.id]?.some(opt => opt.label === choice.label) && (
-                            <Text style={styles.customBadge}>Custom</Text>
+                            <Text style={styles.customBadge}>You added</Text>
                           )}
                         </View>
                       </TouchableOpacity>
@@ -1748,7 +1748,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                                                   <View style={styles.choiceContent}>
                            <Text style={styles.choiceText}>{getChoiceLabel(choice)}</Text>
                            {customOptions[currentQ.id]?.some(opt => opt.label === choice.label) && (
-                             <Text style={styles.customBadge}>Custom</Text>
+                             <Text style={styles.customBadge}>You added</Text>
                            )}
                          </View>
                        </TouchableOpacity>
@@ -1878,7 +1878,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                             {getChoiceLabel(choice)}
                           </Text>
                           {customOptions[currentQ.id]?.some(opt => opt.label === choice.label) && (
-                            <Text style={styles.customBadge}>Custom</Text>
+                            <Text style={styles.customBadge}>You added</Text>
                           )}
                         </View>
                       </TouchableOpacity>
@@ -1926,7 +1926,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                           {getChoiceLabel(choice)}
                         </Text>
                         {customOptions[currentQ.id]?.some(opt => opt.label === choice.label) && (
-                          <Text style={styles.customBadge}>Custom</Text>
+                          <Text style={styles.customBadge}>You added</Text>
                         )}
                       </View>
                     </TouchableOpacity>
