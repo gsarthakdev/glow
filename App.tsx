@@ -10,7 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import { seeAllDBData } from './seeData';
 import { useAsyncStorage } from './hooks/useAsyncStorage';
-import TestScreen from './TestScreen';
+
 import { NavigationContainer } from '@react-navigation/native';
 import { logChildCompletedLogs, logCustomOptionsData, writeAsyncStorageToFile } from './utils/asyncStorageUtils';
 import * as Updates from "expo-updates";
@@ -18,7 +18,7 @@ import { IS_DEBUGGING } from './flag';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { LogBox } from 'react-native';
-import EmailTestScreen from './screens/EmailTestScreen';
+
 
 // LogBox.ignoreAllLogs();    
 // Error Boundary Component
@@ -178,7 +178,7 @@ export default function App() {
     </ErrorBoundary>
   );
 
-  // return <TestScreen/>;
+
 }
 
 const styles = StyleSheet.create({
