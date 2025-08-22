@@ -67,6 +67,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 
 export default function App() {
   const onboardingStatus = useAsyncStorage('onboarding_completed');
+
   const [isOnboardingCompleted, setIsOnboardingCompleted] = useState<boolean | null>(null);
   const [isUpdateChecking, setIsUpdateChecking] = useState(false);
 
@@ -112,15 +113,31 @@ export default function App() {
     }
   }
 
+  async function shouldUpdate() {
+    try {
+      const getCurrentChildName = await AsyncStorage.getItem('current_selected_child');
+      const currentChildExp = JSON.parse(getCurrentChildName);
+      return currentChildExp.child_name === "Password123"
+    } catch (error) {
+      console.error('Error getting current child name:', error);
+      return false;
+    }
+  }
+
+
   // clearAsyncStorage();
   useEffect(() => {
     const initializeApp = async () => {
       try {
         setIsOnboardingCompleted(onboardingStatus === 'true');
-        
+       
+        const shouldAppUpdate = await shouldUpdate();
+        console.log("shouldAppUpdate", shouldAppUpdate);
         // Only check for updates if not in development
         if (!__DEV__) {
-          await onFetchUpdateAsync();
+          if (shouldAppUpdate) {
+            await onFetchUpdateAsync();
+          }
         }
         
         // Only run debug functions in development
