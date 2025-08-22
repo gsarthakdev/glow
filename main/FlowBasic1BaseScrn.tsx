@@ -1689,7 +1689,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                           style={styles.deleteButton}
                           onPress={() => {
                             Alert.alert(
-                              'Delete custom option?',
+                              'Delete option?',
                               `Are you sure you want to delete "${choice.label}"?`,
                               [
                                 { text: 'Cancel', style: 'cancel' },
@@ -1744,7 +1744,20 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                        {choice.label !== 'Other' && !(choice as any).isGptGenerated && !(choice as any).isBehaviorSpecific && isCustomEditMode && currentQ.is_editable !== false && (
                          <TouchableOpacity
                            style={styles.deleteButton}
-                           onPress={() => handleDeleteOption(currentQ.id, choice.label)}
+                           onPress={() => {
+                             Alert.alert(
+                               'Delete option?',
+                               `Are you sure you want to delete "${choice.label}"?`,
+                               [
+                                 { text: 'Cancel', style: 'cancel' },
+                                 {
+                                   text: 'Delete',
+                                   style: 'destructive',
+                                   onPress: () => handleDeleteOption(currentQ.id, choice.label)
+                                 }
+                               ]
+                             );
+                           }}
                          >
                            <Text style={styles.deleteButtonText}>🗑️</Text>
                          </TouchableOpacity>
@@ -1861,7 +1874,20 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                       {choice.label !== 'Other' && isCustomEditMode && currentQ.is_editable !== false && (
                         <TouchableOpacity
                           style={styles.deleteButton}
-                          onPress={() => handleDeleteOption(currentQ.id, choice.label)}
+                          onPress={() => {
+                            Alert.alert(
+                              'Delete option?',
+                              `Are you sure you want to delete "${choice.label}"?`,
+                              [
+                                { text: 'Cancel', style: 'cancel' },
+                                {
+                                  text: 'Delete',
+                                  style: 'destructive',
+                                  onPress: () => handleDeleteOption(currentQ.id, choice.label)
+                                }
+                              ]
+                            );
+                          }}
                         >
                           <Text style={styles.deleteButtonText}>🗑️</Text>
                         </TouchableOpacity>
@@ -1896,7 +1922,20 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                     {choice.label !== 'Other' && isCustomEditMode && currentQ.is_editable !== false && (
                       <TouchableOpacity
                         style={styles.deleteButton}
-                        onPress={() => handleDeleteOption(currentQ.id, choice.label)}
+                        onPress={() => {
+                          Alert.alert(
+                            'Delete option?',
+                            `Are you sure you want to delete "${choice.label}"?`,
+                            [
+                              { text: 'Cancel', style: 'cancel' },
+                              {
+                                text: 'Delete',
+                                style: 'destructive',
+                                onPress: () => handleDeleteOption(currentQ.id, choice.label)
+                              }
+                            ]
+                          );
+                        }}
                       >
                         <Text style={styles.deleteButtonText}>🗑️</Text>
                       </TouchableOpacity>
