@@ -2139,15 +2139,14 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
           <Modal
             visible={showAddOptionModal.isVisible}
             transparent
-            animationType="fade"
+            animationType="slide"
             onRequestClose={closeAddOptionModal}
           >
-            <TouchableOpacity
-              style={styles.modalOverlay}
-              activeOpacity={1}
-              onPress={closeAddOptionModal}
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              style={styles.commentModalOverlay}
             >
-              <View style={styles.modalContent}>
+              <View style={styles.commentModalContent}>
                 <Text style={styles.modalTitle}>Add New Option</Text>
                 
                 <Text style={styles.modalLabel}>Option Text:</Text>
@@ -2251,7 +2250,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                   </TouchableOpacity>
                 </View>
               </View>
-            </TouchableOpacity>
+            </KeyboardAvoidingView>
           </Modal>
 
           {/* Comment Modal */}
@@ -2381,6 +2380,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    width: '100%',
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
   },
   modalContent: {
