@@ -708,9 +708,19 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     
     try {
       const questionId = showAddOptionModal.questionId;
+      
+      // Generate appropriate emoji based on question type and text content
+      let generatedEmoji = '🟦'; // Default fallback
+      // if (questionId === 'whatHappenedBefore') {
+      //   generatedEmoji = getAntecedentEmoji(newOptionText.trim());
+      // } else if (questionId === 'whatHappenedAfter') {
+      //   generatedEmoji = getConsequenceEmoji(newOptionText.trim());
+      // }
+      generatedEmoji = getAntecedentEmoji(newOptionText.trim());
+      
       const newOption = {
         label: newOptionText.trim(),
-        emoji: newOptionEmoji,
+        emoji: generatedEmoji,
         sentiment: newOptionSentiment,
         category: selectedBehaviorCategory || undefined // Associate with the selected category
       };
@@ -723,6 +733,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       // Check if this option already exists (prevent duplicates)
       const existingOption = updatedCustom[questionId].find(opt => opt.label === newOption.label);
       if (existingOption) {
+        Alert.alert("Duplicate option", "This option already exists for the question. Please add a different option or delete the existing one.");
         console.warn(`[ADD] Custom option "${newOption.label}" already exists for ${questionId}, skipping duplicate`);
         return;
       }
@@ -785,7 +796,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       
       // Reset form
       setNewOptionText('');
-      setNewOptionEmoji('➕');
+      setNewOptionEmoji('🟦'); // Reset to default for next use
       setNewOptionSentiment(null);
       setShowAddOptionModal({ questionId: '', isVisible: false });
     } catch (error) {
@@ -796,14 +807,14 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
   const openAddOptionModal = (questionId: string) => {
     setShowAddOptionModal({ questionId, isVisible: true });
     setNewOptionText('');
-    setNewOptionEmoji('➕');
+    setNewOptionEmoji('🟦'); // This will be overridden by generated emoji in handleAddOption
     setNewOptionSentiment(null);
   };
 
   const closeAddOptionModal = () => {
     setShowAddOptionModal({ questionId: '', isVisible: false });
     setNewOptionText('');
-    setNewOptionEmoji('➕');
+    setNewOptionEmoji('🟦'); // This will be overridden by generated emoji in handleAddOption
     setNewOptionSentiment(null);
   };
 
@@ -837,7 +848,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
           }
         }
         
-                  // Force a flow update to immediately reflect the restored option
+          // Force a flow update to immediately reflect the restored option
           if (currentFlow.length > 0) {
             const updatedFlow = [...currentFlow];
             const questionIndex = updatedFlow.findIndex(q => q.id === questionId);
