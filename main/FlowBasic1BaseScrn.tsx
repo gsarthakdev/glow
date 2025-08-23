@@ -86,7 +86,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
   const [selectedBehaviorCategory, setSelectedBehaviorCategory] = useState<string | null>(null);
   const [showAddOptionModal, setShowAddOptionModal] = useState<{ questionId: string; isVisible: boolean }>({ questionId: '', isVisible: false });
   const [newOptionText, setNewOptionText] = useState('');
-  const [newOptionEmoji, setNewOptionEmoji] = useState('➕');
+  const [newOptionEmoji, setNewOptionEmoji] = useState('🟦');
   const [newOptionSentiment, setNewOptionSentiment] = useState<'positive' | 'negative' | null>(null);
 
   // Common emojis for users to choose from
