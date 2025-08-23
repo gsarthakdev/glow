@@ -81,7 +81,14 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
   const [currentCommentQuestionId, setCurrentCommentQuestionId] = useState<string>('');
 
   // New state for custom options management
-  const [customOptions, setCustomOptions] = useState<{ [questionId: string]: Array<{ label: string; emoji: string; sentiment?: string | null; category?: string }> }>({});
+  const [customOptions, setCustomOptions] = useState<{ [questionId: string]: Array<{ 
+    label: string; 
+    emoji: string; 
+    sentiment?: string | null; 
+    category?: string; 
+    gptGeneratedAntecedents?: Array<{ text: string; emoji: string }>; 
+    gptGeneratedConsequences?: Array<{ text: string; emoji: string }>; 
+  }> }>({});
   const [deletedOptions, setDeletedOptions] = useState<{ [questionId: string]: Set<string> }>({});
   const [selectedBehaviorCategory, setSelectedBehaviorCategory] = useState<string | null>(null);
   const [showAddOptionModal, setShowAddOptionModal] = useState<{ questionId: string; isVisible: boolean }>({ questionId: '', isVisible: false });
@@ -129,7 +136,10 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
 
   // Inject behavior-specific options and GPT suggestions into the flow
   useEffect(() => {
-    console.log('[FLOW] useEffect triggered. selectedAnswers:', selectedAnswers, 'gptSuggestions:', gptSuggestions);
+    console.log('[FLOW] useEffect triggered. selectedAnswers:', selectedAnswers, 'gptSuggestions:', gptSuggestions, 'customOptions:', customOptions);
+    console.log('[FLOW] customOptions keys:', Object.keys(customOptions));
+    console.log('[FLOW] whatDidTheyDo custom options:', customOptions['whatDidTheyDo']);
+    
     if (currentFlow.length > 0) {
       const selectedBehavior = selectedAnswers['whatDidTheyDo']?.[0]?.answer;
       console.log('[FLOW] Selected behavior:', selectedBehavior);
@@ -149,6 +159,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         // Check if this is a custom "other" response (GPT should be used)
         const isCustomResponse = selectedAnswers['whatDidTheyDo']?.[0]?.isCustom;
         console.log('[FLOW] Is custom response:', isCustomResponse);
+        console.log('[FLOW] Current gptSuggestions:', gptSuggestions);
         
         let antecedentChoices = [];
         
@@ -164,16 +175,34 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
             isGptGenerated: true
           }));
         } else {
-          // For predefined behaviors, use full behavior-specific options pool (pagination handled later)
-          const behaviorAntecedents = behaviorSpecificOptions[selectedBehavior]?.antecedents || [];
-          console.log('[FLOW] Behavior antecedents (full pool) for predefined behavior:', behaviorAntecedents);
+          // Check if there's a custom option with GPT data for the selected behavior
+          const selectedBehavior = selectedAnswers['whatDidTheyDo']?.[0]?.answer;
+          const customOptionWithGpt = customOptions['whatDidTheyDo']?.find(opt => 
+            opt.label === selectedBehavior && opt.gptGeneratedAntecedents && opt.gptGeneratedAntecedents.length > 0
+          );
           
-          antecedentChoices = behaviorAntecedents.map((antecedent: string) => ({
-            label: antecedent,
-            emoji: getAntecedentEmoji(antecedent), // Use relevant emoji for behavior-specific options
-            sentiment: 'negative',
-            isBehaviorSpecific: true
-          }));
+          if (customOptionWithGpt && customOptionWithGpt.gptGeneratedAntecedents) {
+            // Use GPT-generated antecedents from the custom option
+            antecedentChoices = customOptionWithGpt.gptGeneratedAntecedents.map(antecedent => ({
+              label: antecedent.text,
+              emoji: antecedent.emoji,
+              sentiment: 'negative',
+              isGptGenerated: true,
+              isFromCustomOption: true
+            }));
+            console.log('[FLOW] Using GPT antecedents from custom option:', antecedentChoices);
+          } else {
+            // For predefined behaviors, use full behavior-specific options pool (pagination handled later)
+            const behaviorAntecedents = behaviorSpecificOptions[selectedBehavior]?.antecedents || [];
+            console.log('[FLOW] Behavior antecedents (full pool) for predefined behavior:', behaviorAntecedents);
+            
+            antecedentChoices = behaviorAntecedents.map((antecedent: string) => ({
+              label: antecedent,
+              emoji: getAntecedentEmoji(antecedent), // Use relevant emoji for behavior-specific options
+              sentiment: 'negative',
+              isBehaviorSpecific: true
+            }));
+          }
         }
         
         const allAntecedentChoices = [
@@ -200,6 +229,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         // Check if this is a custom "other" response (GPT should be used)
         const isCustomResponse = selectedAnswers['whatDidTheyDo']?.[0]?.isCustom;
         console.log('[FLOW] Is custom response for consequences:', isCustomResponse);
+        console.log('[FLOW] Current gptSuggestions for consequences:', gptSuggestions);
         
         let consequenceChoices = [];
         
@@ -215,16 +245,34 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
             isGptGenerated: true
           }));
         } else {
-          // For predefined behaviors, use full behavior-specific options pool (pagination handled later)
-          const behaviorConsequences = behaviorSpecificOptions[selectedBehavior]?.consequences || [];
-          console.log('[FLOW] Behavior consequences (full pool) for predefined behavior:', behaviorConsequences);
+          // Check if there's a custom option with GPT data for the selected behavior
+          const selectedBehavior = selectedAnswers['whatDidTheyDo']?.[0]?.answer;
+          const customOptionWithGpt = customOptions['whatDidTheyDo']?.find(opt => 
+            opt.label === selectedBehavior && opt.gptGeneratedConsequences && opt.gptGeneratedConsequences.length > 0
+          );
           
-          consequenceChoices = behaviorConsequences.map((consequence: string) => ({
-            label: consequence,
-            emoji: getConsequenceEmoji(consequence), // Use relevant emoji for behavior-specific options
-            sentiment: 'negative',
-            isBehaviorSpecific: true
-          }));
+          if (customOptionWithGpt && customOptionWithGpt.gptGeneratedConsequences) {
+            // Use GPT-generated consequences from the custom option
+            consequenceChoices = customOptionWithGpt.gptGeneratedConsequences.map(consequence => ({
+              label: consequence.text,
+              emoji: consequence.emoji,
+              sentiment: 'negative',
+              isGptGenerated: true,
+              isFromCustomOption: true
+            }));
+            console.log('[FLOW] Using GPT consequences from custom option:', consequenceChoices);
+          } else {
+            // For predefined behaviors, use full behavior-specific options pool (pagination handled later)
+            const behaviorConsequences = behaviorSpecificOptions[selectedBehavior]?.consequences || [];
+            console.log('[FLOW] Behavior consequences (full pool) for predefined behavior:', behaviorConsequences);
+            
+            consequenceChoices = behaviorConsequences.map((consequence: string) => ({
+              label: consequence,
+              emoji: getConsequenceEmoji(consequence), // Use relevant emoji for behavior-specific options
+              sentiment: 'negative',
+              isBehaviorSpecific: true
+            }));
+          }
         }
         
         const allConsequenceChoices = [
@@ -245,7 +293,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       console.log('[FLOW] Setting currentFlow with updated flow');
       setCurrentFlow(updatedFlow);
     }
-  }, [selectedAnswers, gptSuggestions, optionSets]);
+  }, [selectedAnswers, gptSuggestions, optionSets, customOptions]);
 
   // Set sentiment immediately in edit mode
   useEffect(() => {
@@ -282,6 +330,39 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         setComments(commentInit);
         if (editLog.responses?.whatDidTheyDo?.sentiment) {
           setFlowSentiment(editLog.responses.whatDidTheyDo.sentiment);
+        }
+        
+        // Restore GPT suggestions if this was a log with "Other" response
+        const isCustomResponse = editLog.responses?.whatDidTheyDo?.answers?.[0]?.isCustom;
+        console.log('[EDIT] Checking for custom response:', isCustomResponse);
+        
+        if (isCustomResponse) {
+          // Check for GPT data in the antecedent and consequence responses
+          const antecedentGptData = editLog.responses?.whatHappenedBefore?.gptGenerated;
+          const consequenceGptData = editLog.responses?.whatHappenedAfter?.gptGenerated;
+          
+          console.log('[EDIT] Found GPT data - antecedents:', antecedentGptData, 'consequences:', consequenceGptData);
+          
+          if (antecedentGptData || consequenceGptData) {
+            const gptData = {
+              antecedents: antecedentGptData || [],
+              consequences: consequenceGptData || [],
+              isFallback: false
+            };
+            setGptSuggestions(gptData);
+            console.log('[EDIT] Restored GPT suggestions from log:', gptData);
+            
+            // Force flow re-population to show GPT options
+            // Use a longer delay to ensure state updates are processed
+            setTimeout(() => {
+              console.log('[EDIT] Forcing flow re-population');
+              setOptionSets(prev => ({ ...prev }));
+            }, 200);
+          } else {
+            console.log('[EDIT] No GPT data found in log responses');
+          }
+        } else {
+          console.log('[EDIT] Not a custom response, skipping GPT restoration');
         }
       }
     }
@@ -544,7 +625,19 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         } else {
           console.log('[GPT] No custom behavior text found, skipping GPT call');
         }
+      } else if (currentQ.id === 'whoWasInvolved' || currentQ.id !== 'whatDidTheyDo') {
+        // For whoWasInvolved or non-first questions, sentiment is not required
+        // Clear all existing answers and add only the custom answer
+        setSelectedAnswers(prev => ({
+          ...prev,
+          [currentQ.id]: [{ answer: otherText[currentQ.id], isCustom: true }]
+        }));
       } else {
+        // For other questions that require sentiment, check if it's provided
+        if (!showOtherModal.sentiment) {
+          Alert.alert('Sentiment Required', 'Please select whether this is a challenge or win before submitting.');
+          return;
+        }
         // Clear all existing answers and add only the custom answer
         setSelectedAnswers(prev => ({
           ...prev,
@@ -700,8 +793,8 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     const handleAddOption = async () => {
     if (!newOptionText.trim() || !showAddOptionModal.questionId) return;
     
-    // Sentiment is required for all questions
-    if (!newOptionSentiment) {
+    // Sentiment is required for all questions except whoWasInvolved
+    if (showAddOptionModal.questionId !== 'whoWasInvolved' && !newOptionSentiment) {
       Alert.alert('Sentiment Required', 'Please select whether this is a challenge or win before adding the option.');
       return;
     }
@@ -718,12 +811,75 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       // }
       generatedEmoji = getAntecedentEmoji(newOptionText.trim());
       
-      const newOption = {
+      const newOption: {
+        label: string;
+        emoji: string;
+        sentiment: 'positive' | 'negative' | null;
+        category?: string;
+        gptGeneratedAntecedents?: Array<{ text: string; emoji: string }>;
+        gptGeneratedConsequences?: Array<{ text: string; emoji: string }>;
+      } = {
         label: newOptionText.trim(),
         emoji: generatedEmoji,
         sentiment: newOptionSentiment,
-        category: selectedBehaviorCategory || undefined // Associate with the selected category
+        category: selectedBehaviorCategory || undefined, // Associate with the selected category
+        // GPT data will be populated asynchronously in the background
       };
+      
+      // Generate GPT antecedents and consequences for this custom option
+      if (questionId === 'whatDidTheyDo') {
+        // Close modal immediately for better UX, then generate GPT in background
+        console.log('[CUSTOM_OPTION] Will generate GPT data in background for:', newOptionText.trim());
+        
+        // Generate GPT data asynchronously after modal closes
+        setTimeout(async () => {
+          try {
+            setIsLoadingGpt(true);
+            const gptSuggestions = await getABCForBehavior(newOptionText.trim());
+            
+            if (gptSuggestions && !gptSuggestions.isFallback) {
+              // Update the custom option with GPT data
+              const updatedCustom = { ...customOptions };
+              const optionIndex = updatedCustom[questionId]?.findIndex(opt => opt.label === newOptionText.trim());
+              
+              if (optionIndex !== undefined && optionIndex !== -1) {
+                updatedCustom[questionId][optionIndex].gptGeneratedAntecedents = gptSuggestions.antecedents || [];
+                updatedCustom[questionId][optionIndex].gptGeneratedConsequences = gptSuggestions.consequences || [];
+                
+                setCustomOptions(updatedCustom);
+                
+                // Save updated data to AsyncStorage
+                if (currentChild && currentChild.id) {
+                  const childData = await AsyncStorage.getItem(currentChild.id);
+                  if (childData) {
+                    const parsedChildData = JSON.parse(childData);
+                    const updatedChildData = {
+                      ...parsedChildData,
+                      custom_options: updatedCustom
+                    };
+                    await AsyncStorage.setItem(currentChild.id, JSON.stringify(updatedChildData));
+                    
+                    // Update currentChild state to keep it in sync
+                    setCurrentChild((prev: any) => prev ? { ...prev, data: updatedChildData } : null);
+                  }
+                }
+                
+                console.log('[CUSTOM_OPTION] Generated GPT data for:', newOptionText.trim());
+                console.log('[CUSTOM_OPTION] Antecedents count:', gptSuggestions.antecedents?.length || 0);
+                console.log('[CUSTOM_OPTION] Consequences count:', gptSuggestions.consequences?.length || 0);
+                console.log('[CUSTOM_OPTION] First few antecedents:', gptSuggestions.antecedents?.slice(0, 3).map(a => a.text));
+                console.log('[CUSTOM_OPTION] First few consequences:', gptSuggestions.consequences?.slice(0, 3).map(a => a.text));
+              }
+            } else {
+              console.log('[CUSTOM_OPTION] No GPT suggestions generated or fallback used');
+            }
+          } catch (error) {
+            console.error('[CUSTOM_OPTION] Failed to generate GPT data:', error);
+          } finally {
+            setIsLoadingGpt(false);
+          }
+        }, 100); // Small delay to ensure modal closes first
+      }
       
       const updatedCustom = { ...customOptions };
       if (!updatedCustom[questionId]) {
@@ -892,46 +1048,90 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     const deleted = deletedOptions[questionId] || new Set();
     const custom = customOptions[questionId] || [];
     
+    console.log(`[FILTER] getFilteredOptions called for ${questionId}`);
+    console.log(`[FILTER] Original choices count: ${originalChoices.length}`);
+    console.log(`[FILTER] Custom options count: ${custom.length}`);
+    console.log(`[FILTER] Deleted options count: ${deleted.size}`);
+    
     // Filter custom options to only show those matching the selected category
     const filteredCustom = custom.filter(option => 
       !option.category || option.category === selectedBehaviorCategory
     );
     
+    console.log(`[FILTER] Filtered custom options count: ${filteredCustom.length}`);
+    
     // Filter out deleted options from original choices
     const filteredOriginal = originalChoices.filter(choice => !deleted.has(choice.label));
+    
+    console.log(`[FILTER] Filtered original choices count: ${filteredOriginal.length}`);
     
     // Separate "Other" option from other choices
     const otherOption = filteredOriginal.find(choice => choice.label === 'Other');
     const nonOtherChoices = filteredOriginal.filter(choice => choice.label !== 'Other');
     
+    console.log(`[FILTER] Non-Other choices count: ${nonOtherChoices.length}`);
+    console.log(`[FILTER] Has Other option: ${!!otherOption}`);
+    
     // For ABC questions (antecedents/consequences), implement proper set-based distribution
     if (questionId === 'whatHappenedBefore' || questionId === 'whatHappenedAfter') {
       const currentSet = optionSets[questionId] || 0;
       
-      // Custom options should appear at the top of Set 0, then overflow to Set 1 if needed
-      // Hardcoded options fill the remaining slots in each set
+      // Check if this is a custom option with GPT data
+      const selectedBehavior = selectedAnswers['whatDidTheyDo']?.[0]?.answer;
+      const customOptionWithGpt = customOptions['whatDidTheyDo']?.find(opt => 
+        opt.label === selectedBehavior && 
+        ((questionId === 'whatHappenedBefore' && opt.gptGeneratedAntecedents && opt.gptGeneratedAntecedents.length > 0) ||
+         (questionId === 'whatHappenedAfter' && opt.gptGeneratedConsequences && opt.gptGeneratedConsequences.length > 0))
+      );
       
       let finalOptions: Array<{ label: string; emoji: string; sentiment?: string | null }> = [];
       
-      if (currentSet === 0) {
-        // Set 0: Custom options first, then hardcoded options
-        const customOptionsForSet0 = filteredCustom.slice(0, 5); // Max 5 custom options in Set 0
-        const remainingSlots = 5 - customOptionsForSet0.length;
+      if (customOptionWithGpt) {
+        // For custom options with GPT data, show all GPT options across sets
+        const gptOptions = questionId === 'whatHappenedBefore' 
+          ? customOptionWithGpt.gptGeneratedAntecedents || []
+          : customOptionWithGpt.gptGeneratedConsequences || [];
         
-        // Get hardcoded options, but exclude any that have the same label as custom options
-        const customLabels = new Set(customOptionsForSet0.map(opt => opt.label));
-        const hardcodedOptionsForSet0 = nonOtherChoices
-          .filter(choice => !customLabels.has(choice.label))
-          .slice(0, remainingSlots);
+        console.log(`[FILTER] Custom option with GPT data found for ${questionId}, total GPT options: ${gptOptions.length}`);
         
-        finalOptions = [...customOptionsForSet0, ...hardcodedOptionsForSet0];
+        // Show 5 options per set
+        const optionsPerSet = 5;
+        const startIndex = currentSet * optionsPerSet;
+        const endIndex = startIndex + optionsPerSet;
+        const currentSetOptions = gptOptions.slice(startIndex, endIndex);
+        
+        // Map GPT options to choice format
+        finalOptions = currentSetOptions.map(option => ({
+          label: option.text,
+          emoji: option.emoji,
+          sentiment: 'negative',
+          isGptGenerated: true,
+          isFromCustomOption: true
+        }));
+        
+        console.log(`[FILTER] Set ${currentSet}: showing ${finalOptions.length} GPT options (${startIndex + 1}-${Math.min(endIndex, gptOptions.length)} of ${gptOptions.length})`);
       } else {
-        // Set 1+: Only hardcoded options (no custom options duplicated)
-        const startIndex = (currentSet - 1) * 5 + (5 - filteredCustom.length); // Adjust for custom options in Set 0
-        const endIndex = startIndex + 5;
-        const hardcodedOptionsForSet = nonOtherChoices.slice(startIndex, endIndex);
-        
-        finalOptions = hardcodedOptionsForSet;
+        // Original logic for non-GPT custom options and hardcoded options
+        if (currentSet === 0) {
+          // Set 0: Custom options first, then hardcoded options
+          const customOptionsForSet0 = filteredCustom.slice(0, 5); // Max 5 custom options in Set 0
+          const remainingSlots = 5 - customOptionsForSet0.length;
+          
+          // Get hardcoded options, but exclude any that have the same label as custom options
+          const customLabels = new Set(customOptionsForSet0.map(opt => opt.label));
+          const hardcodedOptionsForSet0 = nonOtherChoices
+            .filter(choice => !customLabels.has(choice.label))
+            .slice(0, remainingSlots);
+          
+          finalOptions = [...customOptionsForSet0, ...hardcodedOptionsForSet0];
+        } else {
+          // Set 1+: Only hardcoded options (no custom options duplicated)
+          const startIndex = (currentSet - 1) * 5 + (5 - filteredCustom.length); // Adjust for custom options in Set 0
+          const endIndex = startIndex + 5;
+          const hardcodedOptionsForSet = nonOtherChoices.slice(startIndex, endIndex);
+          
+          finalOptions = hardcodedOptionsForSet;
+        }
       }
       
       // Always add "Other" option at the end
@@ -955,7 +1155,23 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     
     // For non-shuffle questions (like whatDidTheyDo), always include custom options
     // Order: non-Other choices + custom options + Other option
-    return [...nonOtherChoices, ...filteredCustom, ...(otherOption ? [otherOption] : [])];
+    const nonShuffleOptions = [...nonOtherChoices, ...filteredCustom, ...(otherOption ? [otherOption] : [])];
+    
+    // Ensure no duplicate labels in the final options for non-ABC questions too
+    const uniqueNonShuffleOptions = nonShuffleOptions.filter((option, index, self) => 
+      index === self.findIndex(o => o.label === option.label)
+    );
+    
+    if (uniqueNonShuffleOptions.length !== nonShuffleOptions.length) {
+      console.warn(`[FILTER] Duplicate labels detected in ${questionId} (non-ABC). Original: ${nonShuffleOptions.length}, Unique: ${uniqueNonShuffleOptions.length}`);
+      console.warn(`[FILTER] Duplicates found:`, nonShuffleOptions.filter((option, index, self) => 
+        self.findIndex(o => o.label === option.label) !== index
+      ).map(o => o.label));
+    }
+    
+    console.log(`[FILTER] Final options count for ${questionId}: ${uniqueNonShuffleOptions.length}`);
+    
+    return uniqueNonShuffleOptions;
   };
 
   // Helper function to calculate total sets for ABC questions based on available options
@@ -972,6 +1188,27 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     
     const deleted = deletedOptions[questionId] || new Set();
     const custom = customOptions[questionId] || [];
+    
+    // Check if this is a custom option with GPT data
+    const customOptionWithGpt = customOptions['whatDidTheyDo']?.find(opt => 
+      opt.label === selectedBehavior && 
+      ((questionId === 'whatHappenedBefore' && opt.gptGeneratedAntecedents && opt.gptGeneratedAntecedents.length > 0) ||
+       (questionId === 'whatHappenedAfter' && opt.gptGeneratedConsequences && opt.gptGeneratedConsequences.length > 0))
+    );
+    
+    if (customOptionWithGpt) {
+      // For custom options with GPT data, calculate sets based on GPT options
+      const gptOptions = questionId === 'whatHappenedBefore' 
+        ? customOptionWithGpt.gptGeneratedAntecedents || []
+        : customOptionWithGpt.gptGeneratedConsequences || [];
+      
+      const optionsPerSet = 5;
+      const totalSets = Math.ceil(gptOptions.length / optionsPerSet);
+      
+      console.log(`[SETS] ${questionId}: Custom option with GPT data, ${gptOptions.length} GPT options, ${totalSets} sets needed`);
+      
+      return Math.max(1, totalSets); // Always at least 1 set
+    }
     
     // Filter custom options to only count those matching the selected category
     const filteredCustom = custom.filter(option => 
@@ -1355,7 +1592,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     if (lowerConsequence.includes('environment was changed') || lowerConsequence.includes('moved to quiet room')) return '🏠';
     
     // Modeling behavior
-    if (lowerConsequence.includes('modeled') || lowerConsequence.includes('modeling')) return '👥';
+    if (lowerConsequence.includes('modeled') || lowerConsequence.includes('modeling')) return '��';
     if (lowerConsequence.includes('alternative behavior was modeled')) return '👥';
     
     // Visual aids
@@ -1412,17 +1649,40 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
 
   const handleSave = async () => {
     try {
-      const responses = currentFlow.reduce((acc, q) => ({
-        ...acc,
-        [q.id]: {
+      const responses = currentFlow.reduce((acc, q) => {
+        const baseResponse: {
+          question: string;
+          answers: any[];
+          comment: string;
+          sentiment: 'positive' | 'negative' | null;
+          gptGenerated?: Array<{ text: string; emoji: string }>;
+        } = {
           question: q.question,
           answers: q.id === 'mood' ? [
             { answer: `Before: ${moodBefore}, After: ${moodAfter}`, isCustom: false }
           ] : (selectedAnswers[q.id] || []),
           comment: comments[q.id] || '',
           sentiment: flowSentiment
+        };
+
+        // Add GPT-generated antecedents and consequences for "Other" responses
+        if (q.id === 'whatHappenedBefore' && gptSuggestions && !gptSuggestions.isFallback) {
+          const isCustomResponse = selectedAnswers['whatDidTheyDo']?.[0]?.isCustom;
+          if (isCustomResponse) {
+            baseResponse.gptGenerated = gptSuggestions.antecedents || [];
+          }
+        } else if (q.id === 'whatHappenedAfter' && gptSuggestions && !gptSuggestions.isFallback) {
+          const isCustomResponse = selectedAnswers['whatDidTheyDo']?.[0]?.isCustom;
+          if (isCustomResponse) {
+            baseResponse.gptGenerated = gptSuggestions.consequences || [];
+          }
         }
-      }), {});
+
+        return {
+          ...acc,
+          [q.id]: baseResponse
+        };
+      }, {});
 
       const storageKey = flowSentiment === 'positive' ? 'flow_basic_1_positive' : 'flow_basic_1_negative';
 
@@ -1690,6 +1950,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                           {customOptions[currentQ.id]?.some(opt => opt.label === choice.label) && (
                             <Text style={styles.customBadge}>You added</Text>
                           )}
+                          {/* {(choice as any).isGptGenerated && (
+                            <Text style={styles.gptBadge}>🤖 AI</Text>
+                          )} */}
                         </View>
                       </TouchableOpacity>
                       {choice.label !== 'Other'
@@ -1750,6 +2013,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                            {customOptions[currentQ.id]?.some(opt => opt.label === choice.label) && (
                              <Text style={styles.customBadge}>You added</Text>
                            )}
+                           {/* {(choice as any).isGptGenerated && (
+                             <Text style={styles.gptBadge}>🤖 AI</Text>
+                           )} */}
                          </View>
                        </TouchableOpacity>
                        {choice.label !== 'Other' && !(choice as any).isGptGenerated && !(choice as any).isBehaviorSpecific && isCustomEditMode && currentQ.is_editable !== false && (
@@ -1867,44 +2133,74 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                 ) : (
                   // Show behavior-specific options or message
                   currentQ.answer_choices && currentQ.answer_choices.length > 0 ? (
-                  currentQ.answer_choices.map((choice, index) => (
-                    <View key={`${currentQ.id}-${choice.label}-${index}`} style={styles.choiceContainer}>
-                      <TouchableOpacity
-                        style={getChoiceButtonStyle(choice, currentQ.id)}
-                        onPress={() => handleAnswer(currentQ.id, choice)}
-                      >
-                        <View style={styles.choiceContent}>
-                          <Text style={styles.choiceText}>
-                            {getChoiceLabel(choice)}
-                          </Text>
-                          {customOptions[currentQ.id]?.some(opt => opt.label === choice.label) && (
-                            <Text style={styles.customBadge}>You added</Text>
-                          )}
-                        </View>
-                      </TouchableOpacity>
-                      {choice.label !== 'Other' && isCustomEditMode && currentQ.is_editable !== false && (
+                  <>
+                    {currentQ.answer_choices.map((choice, index) => (
+                      <View key={`${currentQ.id}-${choice.label}-${index}-${choice.emoji || 'default'}`} style={styles.choiceContainer}>
                         <TouchableOpacity
-                          style={styles.deleteButton}
-                          onPress={() => {
-                            Alert.alert(
-                              'Delete option?',
-                              `Are you sure you want to delete "${choice.label}"?`,
-                              [
-                                { text: 'Cancel', style: 'cancel' },
-                                {
-                                  text: 'Delete',
-                                  style: 'destructive',
-                                  onPress: () => handleDeleteOption(currentQ.id, choice.label)
-                                }
-                              ]
-                            );
-                          }}
+                          style={getChoiceButtonStyle(choice, currentQ.id)}
+                          onPress={() => handleAnswer(currentQ.id, choice)}
                         >
-                          <Text style={styles.deleteButtonText}>🗑️</Text>
+                          <View style={styles.choiceContent}>
+                            <Text style={styles.choiceText}>
+                              {getChoiceLabel(choice)}
+                            </Text>
+                            {customOptions[currentQ.id]?.some(opt => opt.label === choice.label) && (
+                              <Text style={styles.customBadge}>You added</Text>
+                            )}
+                            {/* {(choice as any).isGptGenerated && (
+                              <Text style={styles.gptBadge}>🤖 AI</Text>
+                            )} */}
+                          </View>
                         </TouchableOpacity>
-                      )}
-                    </View>
-                  ))
+                        {choice.label !== 'Other' && isCustomEditMode && currentQ.is_editable !== false && (
+                          <TouchableOpacity
+                            style={styles.deleteButton}
+                            onPress={() => {
+                              Alert.alert(
+                                'Delete option?',
+                                `Are you sure you want to delete "${choice.label}"?`,
+                                [
+                                  { text: 'Cancel', style: 'cancel' },
+                                  {
+                                    text: 'Delete',
+                                    style: 'destructive',
+                                    onPress: () => handleDeleteOption(currentQ.id, choice.label)
+                                  }
+                                ]
+                              );
+                            }}
+                          >
+                            <Text style={styles.deleteButtonText}>🗑️</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    ))}
+                    
+                    {/* Show GPT generation status for custom options */}
+                    {(() => {
+                      const selectedBehavior = selectedAnswers['whatDidTheyDo']?.[0]?.answer;
+                      const customOption = customOptions['whatDidTheyDo']?.find(opt => opt.label === selectedBehavior);
+                      const isGeneratingGpt = isLoadingGpt && selectedBehavior && customOption;
+                      const hasGptData = customOption && 
+                        ((currentQ.id === 'whatHappenedBefore' && customOption.gptGeneratedAntecedents && customOption.gptGeneratedAntecedents.length > 0) ||
+                         (currentQ.id === 'whatHappenedAfter' && customOption.gptGeneratedConsequences && customOption.gptGeneratedConsequences.length > 0));
+                      
+                      // if (isGeneratingGpt) {
+                      //   return (
+                      //     <View style={styles.gptStatusContainer}>
+                      //       <Text style={styles.gptStatusText}>🤖 Generating AI suggestions...</Text>
+                      //     </View>
+                      //   );
+                      // } else if (hasGptData) {
+                      //   return (
+                      //     <View style={styles.gptStatusContainer}>
+                      //       <Text style={styles.gptStatusText}>🤖 AI suggestions ready</Text>
+                      //     </View>
+                      //   );
+                      // }
+                      return null;
+                    })()}
+                  </>
                 ) : (
                   <View style={styles.noOptionsContainer}>
                     <Text style={styles.noOptionsText}>
@@ -1916,7 +2212,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
               ) : (
                                 // Regular questions (not ABC questions)
                 currentQ.answer_choices?.map((choice, index) => (
-                  <View key={`${currentQ.id}-${choice.label}-${index}`} style={styles.choiceContainer}>
+                  <View key={`${currentQ.id}-${choice.label}-${index}-${choice.emoji || 'default'}`} style={styles.choiceContainer}>
                     <TouchableOpacity
                       style={getChoiceButtonStyle(choice, currentQ.id)}
                       onPress={() => handleAnswer(currentQ.id, choice)}
@@ -1928,6 +2224,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                         {customOptions[currentQ.id]?.some(opt => opt.label === choice.label) && (
                           <Text style={styles.customBadge}>You added</Text>
                         )}
+                        {/* {(choice as any).isGptGenerated && (
+                          <Text style={styles.gptBadge}>🤖 AI</Text>
+                        )} */}
                       </View>
                     </TouchableOpacity>
                     {choice.label !== 'Other' && isCustomEditMode && currentQ.is_editable !== false && (
@@ -2070,28 +2369,30 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                         <Text style={styles.modalTitle}>Is this a challenge or win?</Text>
                         <Text style={styles.modalText}>{otherText[currentQ.id]}</Text>
                         
-                        <View style={styles.sentimentButtons}>
-                          <TouchableOpacity
-                            style={[
-                              styles.sentimentButton,
-                              showOtherModal.sentiment === 'positive' && styles.selectedSentiment,
-                              {backgroundColor: "lightgreen"}
-                            ]}
-                            onPress={() => setShowOtherModal(prev => prev ? { ...prev, sentiment: 'positive' } : null)}
-                          >
-                            <Text style={styles.sentimentButtonText}>🎉 Win</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={[
-                              styles.sentimentButton,
-                              showOtherModal.sentiment === 'negative' && styles.selectedSentiment,
-                              {backgroundColor: "orange"}
-                            ]}
-                            onPress={() => setShowOtherModal(prev => prev ? { ...prev, sentiment: 'negative' } : null)}
-                          >
-                            <Text style={styles.sentimentButtonText}>⚔️ Challenge</Text>
-                          </TouchableOpacity>
-                        </View>
+                        {currentQ.id !== 'whoWasInvolved' && (
+                          <View style={styles.sentimentButtons}>
+                            <TouchableOpacity
+                              style={[
+                                styles.sentimentButton,
+                                showOtherModal.sentiment === 'positive' && styles.selectedSentiment,
+                                {backgroundColor: "lightgreen"}
+                              ]}
+                              onPress={() => setShowOtherModal(prev => prev ? { ...prev, sentiment: 'positive' } : null)}
+                            >
+                              <Text style={styles.sentimentButtonText}>🎉 Win</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[
+                                styles.sentimentButton,
+                                showOtherModal.sentiment === 'negative' && styles.selectedSentiment,
+                                {backgroundColor: "orange"}
+                              ]}
+                              onPress={() => setShowOtherModal(prev => prev ? { ...prev, sentiment: 'negative' } : null)}
+                            >
+                              <Text style={styles.sentimentButtonText}>⚔️ Challenge</Text>
+                            </TouchableOpacity>
+                          </View>
+                        )}
                         
                         <View style={styles.modalButtons}>
                           <TouchableOpacity
@@ -2104,9 +2405,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                             style={[
                               styles.modalButton, 
                               styles.submitButton,
-                              !showOtherModal.sentiment && styles.disabledButton
+                              currentQ.id === 'whoWasInvolved' || showOtherModal.sentiment ? undefined : styles.disabledButton
                             ]}
-                            disabled={!showOtherModal.sentiment}
+                            disabled={currentQ.id === 'whoWasInvolved' ? false : !showOtherModal.sentiment}
                             onPress={handleOtherSubmit}
                           >
                             <Text style={[styles.modalButtonText, { color: 'white' }]}>Submit</Text>
@@ -2253,31 +2554,33 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                 )} */}
                 
                 {/* {currentQ.id === 'whatDidTheyDo' && ( */}
-                  <>
-                    <Text style={styles.modalLabel}>Sentiment: <Text style={{color: "grey", fontWeight: 'normal'}}>(Required)</Text></Text>
-                    <View style={styles.sentimentButtons}>
-                      <TouchableOpacity
-                        style={[
-                          styles.sentimentButton,
-                          newOptionSentiment === 'positive' && styles.selectedSentiment,
-                          {backgroundColor: "lightgreen"}
-                        ]}
-                        onPress={() => setNewOptionSentiment('positive')}
-                      >
-                        <Text style={styles.sentimentButtonText}>🎉 Win</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[
-                          styles.sentimentButton,
-                          newOptionSentiment === 'negative' && styles.selectedSentiment,
-                          {backgroundColor: "orange"}
-                        ]}
-                        onPress={() => setNewOptionSentiment('negative')}
-                      >
-                        <Text style={styles.sentimentButtonText}>⚔️ Challenge</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </>
+                  {currentQ.id !== 'whoWasInvolved' && (
+                    <>
+                      <Text style={styles.modalLabel}>Sentiment: <Text style={{color: "grey", fontWeight: 'normal'}}>(Required)</Text></Text>
+                      <View style={styles.sentimentButtons}>
+                        <TouchableOpacity
+                          style={[
+                            styles.sentimentButton,
+                            newOptionSentiment === 'positive' && styles.selectedSentiment,
+                            {backgroundColor: "lightgreen"}
+                          ]}
+                          onPress={() => setNewOptionSentiment('positive')}
+                        >
+                          <Text style={styles.sentimentButtonText}>🎉 Win</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[
+                            styles.sentimentButton,
+                            newOptionSentiment === 'negative' && styles.selectedSentiment,
+                            {backgroundColor: "orange"}
+                          ]}
+                          onPress={() => setNewOptionSentiment('negative')}
+                        >
+                          <Text style={styles.sentimentButtonText}>⚔️ Challenge</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  )}
                 {/* )} */}
                 
                 <View style={styles.modalButtons}>
@@ -2291,9 +2594,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                     style={[
                       styles.modalButton, 
                       styles.submitButton,
-                      (!newOptionText.trim() || !newOptionSentiment) && styles.disabledButton
+                      currentQ.id === 'whoWasInvolved' ? undefined : (!newOptionText.trim() || !newOptionSentiment) ? styles.disabledButton : undefined
                     ]}
-                    disabled={!newOptionText.trim() || !newOptionSentiment}
+                    disabled={currentQ.id === 'whoWasInvolved' ? !newOptionText.trim() : (!newOptionText.trim() || !newOptionSentiment)}
                     onPress={handleAddOption}
                   >
                     <Text style={[styles.modalButtonText, { color: 'white' }]}>Add</Text>
@@ -2546,16 +2849,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: 8,
   },
-  gptBadge: {
-    fontSize: 10,
-    color: '#fff',
-    backgroundColor: '#5B9AA0',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-    marginLeft: 8,
-    fontWeight: 'bold',
-  },
+
   behaviorSpecificBadge: {
     fontSize: 12,
     marginLeft: 8,
@@ -2786,6 +3080,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     fontWeight: 'bold',
   },
+  gptBadge: {
+    fontSize: 10,
+    color: '#fff',
+    backgroundColor: '#6c5ce7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    fontWeight: 'bold',
+  },
   deletedOptionsScrollView: {
     maxHeight: 60,
     marginBottom: 15,
@@ -2874,5 +3177,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#5B9AA0',
     fontWeight: '600',
+  },
+  gptStatusContainer: {
+    marginTop: 10,
+    padding: 10,
+    borderRadius: 5,
+    backgroundColor: '#f0f0f0',
+    alignItems: 'center',
+  },
+  gptStatusText: {
+    fontSize: 14,
+    color: '#666',
+    fontStyle: 'italic',
   },
 });
