@@ -586,6 +586,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     if (showOtherModal.step === 'sentiment' || currentQ.id !== 'whatDidTheyDo') {
       if (!otherText[currentQ.id]?.trim()) {
         // If input is empty, remove custom answer
+        console.log('[DEBUG] Empty text, removing custom answer for:', currentQ.id);
         setSelectedAnswers(prev => ({
           ...prev,
           [currentQ.id]: (prev[currentQ.id] || []).filter(a => !a.isCustom)
@@ -594,15 +595,24 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         return;
       }
       // For the first question, we need to handle sentiment
-      if (currentQ.id === 'whatDidTheyDo' && showOtherModal.sentiment) {
-        // Set the sentiment and store the custom answer directly
-        setFlowSentiment(showOtherModal.sentiment);
-        setSelectedAnswers(prev => ({
+      if (currentQ.id === 'whatDidTheyDo' && !showOtherModal.sentiment) {
+        Alert.alert('Sentiment Required', 'Please select whether this is a challenge or win before submitting.');
+        return;
+      }
+      // Clear all existing answers and add only the custom answer
+      console.log('[DEBUG] Setting custom answer for:', currentQ.id, 'text:', otherText[currentQ.id]);
+      setSelectedAnswers(prev => {
+        const newState = {
           ...prev,
           [currentQ.id]: [{ answer: otherText[currentQ.id], isCustom: true }]
-        }));
-        
-        // Call GPT to get ABC suggestions for the custom behavior
+        };
+        console.log('[DEBUG] New selectedAnswers state:', newState);
+        return newState;
+      });
+      
+      // Only call GPT for the first question (whatDidTheyDo) to get ABC suggestions
+      // Antecedents and consequences don't need GPT generation - they're user inputs
+      if (currentQ.id === 'whatDidTheyDo') {
         const customBehavior = otherText[currentQ.id];
         console.log('[GPT] About to call getABCForBehavior with behavior:', customBehavior);
         if (customBehavior) {
@@ -625,27 +635,43 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         } else {
           console.log('[GPT] No custom behavior text found, skipping GPT call');
         }
-      } else if (currentQ.id === 'whoWasInvolved' || currentQ.id !== 'whatDidTheyDo') {
-        // For whoWasInvolved or non-first questions, sentiment is not required
-        // Clear all existing answers and add only the custom answer
-        setSelectedAnswers(prev => ({
+      } else {
+        console.log('[DEBUG] Not calling GPT for question:', currentQ.id, '- GPT is only needed for the main behavior');
+      }
+    } else if (currentQ.id === 'whoWasInvolved') {
+      // For whoWasInvolved, sentiment is not required
+      // Clear all existing answers and add only the custom answer
+      console.log('[DEBUG] Setting custom answer for whoWasInvolved:', currentQ.id, 'text:', otherText[currentQ.id]);
+      setSelectedAnswers(prev => {
+        const newState = {
           ...prev,
           [currentQ.id]: [{ answer: otherText[currentQ.id], isCustom: true }]
-        }));
-      } else {
-        // For other questions that require sentiment, check if it's provided
+        };
+        console.log('[DEBUG] New selectedAnswers state:', newState);
+        return newState;
+      });
+    } else {
+      // For all other questions, handle based on question type
+      if (currentQ.id === 'whatDidTheyDo') {
+        // This should never happen since we already handled whatDidTheyDo above
+        // But if it does, check sentiment requirement
         if (!showOtherModal.sentiment) {
           Alert.alert('Sentiment Required', 'Please select whether this is a challenge or win before submitting.');
           return;
         }
-        // Clear all existing answers and add only the custom answer
-        setSelectedAnswers(prev => ({
+      }
+      // Clear all existing answers and add only the custom answer
+      console.log('[DEBUG] Setting custom answer for question:', currentQ.id, 'text:', otherText[currentQ.id]);
+      setSelectedAnswers(prev => {
+        const newState = {
           ...prev,
           [currentQ.id]: [{ answer: otherText[currentQ.id], isCustom: true }]
-        }));
-      }
-      setShowOtherModal(null);
+        };
+        console.log('[DEBUG] New selectedAnswers state:', newState);
+        return newState;
+      });
     }
+    setShowOtherModal(null);
   };
 
   const handleOtherDeselect = () => {
@@ -1199,8 +1225,12 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
             
             // Add any options that exist in the original GPT data but not in the current GPT data
             // This handles the case where options were deleted from custom options
+            // IMPORTANT: Exclude the "Other" option from this comparison since it's not part of GPT data
             const currentGptLabels = new Set(gptOptions.map(opt => opt.text));
-            const originalGptLabels = new Set(originalChoices.map(choice => choice.label));
+            const originalGptLabels = new Set(originalChoices
+              .filter(choice => choice.label !== 'Other') // Exclude "Other" from deletion tracking
+              .map(choice => choice.label)
+            );
             
             originalGptLabels.forEach(label => {
               if (!currentGptLabels.has(label) && !updatedDeleted[questionId].has(label)) {
@@ -1293,10 +1323,14 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
           // Combine GPT options with direct custom options, prioritizing direct custom options
           finalOptions = [...directCustomOptions, ...gptFormattedOptions];
           
-          // Limit to 5 options per set to maintain consistency
-          finalOptions = finalOptions.slice(0, optionsPerSet);
+          // For Set 0 with custom options, allow more than 5 options to ensure we don't cut off important options
+          // The "Other" option will be added later, so we can be more flexible here
+          const maxOptionsForSet0 = Math.max(5, directCustomOptions.length + Math.min(gptFormattedOptions.length, 3));
+          if (finalOptions.length > maxOptionsForSet0) {
+            finalOptions = finalOptions.slice(0, maxOptionsForSet0);
+          }
           
-          console.log(`[FILTER] Set ${currentSet}: ${directCustomOptions.length} direct custom + ${gptFormattedOptions.length} GPT = ${finalOptions.length} total options`);
+          console.log(`[FILTER] Set ${currentSet}: ${directCustomOptions.length} direct custom + ${gptFormattedOptions.length} GPT = ${finalOptions.length} total options (max: ${maxOptionsForSet0})`);
           console.log(`[FILTER] Set ${currentSet}: Final options:`, finalOptions.map(opt => opt.label));
         } else {
           // For other sets, show only GPT options
@@ -1330,6 +1364,12 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       // Always add "Other" option at the end
       if (otherOption) {
         finalOptions.push(otherOption);
+        console.log(`[FILTER] Added "Other" option to final options for ${questionId} Set ${currentSet}`);
+      } else {
+        console.warn(`[FILTER] WARNING: No "Other" option found for ${questionId} Set ${currentSet}!`);
+        console.warn(`[FILTER] Original choices:`, originalChoices.map(c => c.label));
+        console.warn(`[FILTER] Filtered original:`, filteredOriginal.map(c => c.label));
+        console.warn(`[FILTER] Deleted options:`, Array.from(deleted));
       }
       
       console.log(`[FILTER] ${questionId} Set ${currentSet}: ${finalOptions.length} options (${finalOptions.length - (otherOption ? 1 : 0)} content + Other)`);
@@ -1349,6 +1389,16 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     // For non-shuffle questions (like whatDidTheyDo), always include custom options
     // Order: non-Other choices + custom options + Other option
     const nonShuffleOptions = [...nonOtherChoices, ...filteredCustom, ...(otherOption ? [otherOption] : [])];
+    
+    // Log the "Other" option status for non-ABC questions
+    if (otherOption) {
+      console.log(`[FILTER] Non-ABC: Added "Other" option to final options for ${questionId}`);
+    } else {
+      console.warn(`[FILTER] Non-ABC: WARNING: No "Other" option found for ${questionId}!`);
+      console.warn(`[FILTER] Non-ABC: Original choices:`, originalChoices.map(c => c.label));
+      console.warn(`[FILTER] Non-ABC: Filtered original:`, filteredOriginal.map(c => c.label));
+      console.warn(`[FILTER] Non-ABC: Deleted options:`, Array.from(deleted));
+    }
     
     // Ensure no duplicate labels in the final options for non-ABC questions too
     const uniqueNonShuffleOptions = nonShuffleOptions.filter((option, index, self) => 
@@ -1813,9 +1863,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
 
   const isOtherSelected = (questionId: string) => {
     const answers = selectedAnswers[questionId] || [];
-    // Only consider it "Other" selected if the "Other" option itself was selected
-    // Custom options added to the list should not count as "Other" selected
-    return answers.some(a => a.answer === 'Other');
+    // The "Other" option should be selected if there's a custom answer
+    // This covers both cases: when "Other" was literally selected and when custom text was submitted
+    return answers.some(a => a.isCustom);
   };
 
   // Helper to check if a category contains the selected answer
