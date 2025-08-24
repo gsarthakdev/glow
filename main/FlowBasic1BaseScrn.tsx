@@ -2651,7 +2651,13 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
             {currentQuestion > 0 && (
               <TouchableOpacity
                 style={styles.backButton}
-                onPress={() => setCurrentQuestion(prev => prev - 1)}
+                onPress={() => {
+                  setCurrentQuestion(prev => prev - 1);
+                  // Exit edit mode when navigating
+                  if (isCustomEditMode) {
+                    setIsCustomEditMode(false);
+                  }
+                }}
               >
                 <Text style={styles.buttonText}>Back</Text>
               </TouchableOpacity>
@@ -2660,6 +2666,11 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
               <TouchableOpacity
                 style={styles.backButton}
                 onPress={() => {
+                  // Exit edit mode when navigating
+                  if (isCustomEditMode) {
+                    setIsCustomEditMode(false);
+                  }
+                  
                   if (searchQuery) {
                     setSearchQuery('');
                   } else if (selectedCategory) {
@@ -2677,6 +2688,11 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
               style={[styles.nextButton, !canProceed() && styles.disabledButton]}
               disabled={!canProceed()}
               onPress={() => {
+                // Exit edit mode when navigating
+                if (isCustomEditMode) {
+                  setIsCustomEditMode(false);
+                }
+                
                 if (currentQuestion === (currentFlow.length - 1)) {
                   handleSave();
                 } else {
