@@ -924,6 +924,26 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       updatedCustom[questionId].push(newOption);
       setCustomOptions(updatedCustom);
       
+      // AUTO-SELECT: For ABC questions (whatHappenedBefore/whatHappenedAfter) and the first question (whatDidTheyDo),
+      // automatically select the newly added custom option
+      if (questionId === 'whatHappenedBefore' || questionId === 'whatHappenedAfter' || questionId === 'whatDidTheyDo') {
+        console.log(`[AUTO-SELECT] Auto-selecting newly added custom option: "${newOptionText.trim()}" for ${questionId}`);
+        
+        // Replace any existing selections with the new custom option
+        // Use isCustom: false since this is a predefined option in the list, not text entered via "Other"
+        setSelectedAnswers(prev => ({
+          ...prev,
+          [questionId]: [{ answer: newOptionText.trim(), isCustom: false }]
+        }));
+        
+        // SPECIAL HANDLING FOR FIRST QUESTION: If this is the first question (whatDidTheyDo),
+        // we also need to set the flow sentiment based on the custom option's sentiment
+        if (questionId === 'whatDidTheyDo' && newOptionSentiment) {
+          console.log(`[AUTO-SELECT] Setting flow sentiment to: ${newOptionSentiment} for custom behavior`);
+          setFlowSentiment(newOptionSentiment);
+        }
+      }
+      
       // Save to child's data in AsyncStorage
       if (currentChild && currentChild.id) {
         const childData = await AsyncStorage.getItem(currentChild.id);
@@ -1793,7 +1813,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
 
   const isOtherSelected = (questionId: string) => {
     const answers = selectedAnswers[questionId] || [];
-    return answers.some(a => a.isCustom);
+    // Only consider it "Other" selected if the "Other" option itself was selected
+    // Custom options added to the list should not count as "Other" selected
+    return answers.some(a => a.answer === 'Other');
   };
 
   // Helper to check if a category contains the selected answer
@@ -1970,6 +1992,8 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
 
   const getChoiceLabel = (choice: { label: string; emoji: string }) => {
     if (choice.label === 'Other') {
+      // Only show custom text for "Other" if it was specifically selected via the "Other" option
+      // Check if there's a custom answer that was entered via "Other"
       const customAnswer = selectedAnswers[currentQ.id]?.find(a => a.isCustom);
       if (customAnswer) {
         return `${choice.emoji} ${customAnswer.answer}`; // Show the custom input instead of "Other"
