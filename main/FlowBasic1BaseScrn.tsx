@@ -1155,6 +1155,8 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     console.log(`[FILTER] getFilteredOptions called for ${questionId}`);
     console.log(`[FILTER] Original choices count: ${originalChoices.length}`);
     console.log(`[FILTER] Custom options count: ${custom.length}`);
+    console.log(`[FILTER] Custom options for ${questionId}:`, custom.map(opt => ({ label: opt.label, category: opt.category })));
+    console.log(`[FILTER] Selected behavior category: ${selectedBehaviorCategory}`);
     console.log(`[FILTER] Deleted options count: ${deleted.size}`);
     
     // For ABC questions, also check if we need to sync deleted options from custom behavior options
@@ -1204,6 +1206,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     );
     
     console.log(`[FILTER] Filtered custom options count: ${filteredCustom.length}`);
+    console.log(`[FILTER] Filtered custom options:`, filteredCustom.map(opt => ({ label: opt.label, category: opt.category, matchesCategory: !opt.category || opt.category === selectedBehaviorCategory })));
     
     // Filter out deleted options from original choices
     const filteredOriginal = originalChoices.filter(choice => !deleted.has(choice.label));
@@ -1232,7 +1235,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       let finalOptions: Array<{ label: string; emoji: string; sentiment?: string | null }> = [];
       
       if (customOptionWithGpt) {
-        // For custom options with GPT data, show all GPT options across sets
+        // For custom options with GPT data, show GPT options AND custom options added to this question
         const gptOptions = questionId === 'whatHappenedBefore' 
           ? customOptionWithGpt.gptGeneratedAntecedents || []
           : customOptionWithGpt.gptGeneratedConsequences || [];
@@ -1246,7 +1249,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         const currentSetOptions = gptOptions.slice(startIndex, endIndex);
         
         // Map GPT options to choice format
-        finalOptions = currentSetOptions.map(option => ({
+        const gptFormattedOptions = currentSetOptions.map(option => ({
           label: option.text,
           emoji: option.emoji,
           sentiment: 'negative',
@@ -1254,7 +1257,32 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
           isFromCustomOption: true
         }));
         
-        console.log(`[FILTER] Set ${currentSet}: showing ${finalOptions.length} GPT options (${startIndex + 1}-${Math.min(endIndex, gptOptions.length)} of ${gptOptions.length})`);
+        // For Set 0, also include custom options added directly to this question
+        if (currentSet === 0) {
+          // Include custom options added directly to this question (antecedents/consequences)
+          const directCustomOptions = filteredCustom.map(option => ({
+            label: option.label,
+            emoji: option.emoji,
+            sentiment: option.sentiment || 'negative',
+            isCustomOption: true
+          }));
+          
+          console.log(`[FILTER] Set 0: Found ${directCustomOptions.length} direct custom options:`, directCustomOptions.map(opt => opt.label));
+          console.log(`[FILTER] Set 0: Found ${gptFormattedOptions.length} GPT options:`, gptFormattedOptions.map(opt => opt.label));
+          
+          // Combine GPT options with direct custom options, prioritizing direct custom options
+          finalOptions = [...directCustomOptions, ...gptFormattedOptions];
+          
+          // Limit to 5 options per set to maintain consistency
+          finalOptions = finalOptions.slice(0, optionsPerSet);
+          
+          console.log(`[FILTER] Set ${currentSet}: ${directCustomOptions.length} direct custom + ${gptFormattedOptions.length} GPT = ${finalOptions.length} total options`);
+          console.log(`[FILTER] Set ${currentSet}: Final options:`, finalOptions.map(opt => opt.label));
+        } else {
+          // For other sets, show only GPT options
+          finalOptions = gptFormattedOptions;
+          console.log(`[FILTER] Set ${currentSet}: showing ${finalOptions.length} GPT options (${startIndex + 1}-${Math.min(endIndex, gptOptions.length)} of ${gptOptions.length})`);
+        }
       } else {
         // Original logic for non-GPT custom options and hardcoded options
         if (currentSet === 0) {
@@ -1342,15 +1370,22 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     );
     
     if (customOptionWithGpt) {
-      // For custom options with GPT data, calculate sets based on GPT options
+      // For custom options with GPT data, calculate sets based on GPT options AND direct custom options
       const gptOptions = questionId === 'whatHappenedBefore' 
         ? customOptionWithGpt.gptGeneratedAntecedents || []
         : customOptionWithGpt.gptGeneratedConsequences || [];
       
-      const optionsPerSet = 5;
-      const totalSets = Math.ceil(gptOptions.length / optionsPerSet);
+      // Filter custom options to only count those matching the selected category
+      const filteredCustom = custom.filter(option => 
+        !option.category || option.category === selectedBehaviorCategory
+      );
       
-      console.log(`[SETS] ${questionId}: Custom option with GPT data, ${gptOptions.length} GPT options, ${totalSets} sets needed`);
+      // Total available options: GPT options + direct custom options
+      const totalAvailableOptions = gptOptions.length + filteredCustom.length;
+      const optionsPerSet = 5;
+      const totalSets = Math.ceil(totalAvailableOptions / optionsPerSet);
+      
+      console.log(`[SETS] ${questionId}: Custom option with GPT data, ${gptOptions.length} GPT options + ${filteredCustom.length} direct custom = ${totalAvailableOptions} total, ${totalSets} sets needed`);
       
       return Math.max(1, totalSets); // Always at least 1 set
     }
