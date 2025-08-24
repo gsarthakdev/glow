@@ -100,7 +100,8 @@ export const flow_basic_1 = [
   {
     "id": "whatHappenedAfter",
     // "question": "What happened after?",
-    "question": "Share how your child or others responded following the behavior.",
+    // "question": "Share how your child or others responded following the behavior.",
+    "question": "Share what happened following the behavior.",
     // "subheading": "Share how your child or others responded following the behavior.",
     "answer_choices": []
   },
@@ -116,7 +117,7 @@ export const flow_basic_1 = [
       { "label": "Stranger", "emoji": "🕵️", "sentiment": "negative" },
       { "label": "Other", "emoji": "➕", "sentiment": null }
     ],
-    "is_editable": false
+    "is_editable": true
   },
   {
     "id": "mood",
