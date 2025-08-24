@@ -2144,9 +2144,16 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
           
           {/* Edit Mode Indicator */}
           {isCustomEditMode && (
-            <View style={styles.editModeIndicator}>
+            <TouchableOpacity style={styles.editModeIndicator} onPress={() => {
+              Alert.alert("Finished editing?", "Are you sure you want to close edit mode?", [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Finish', style: 'default', onPress: () => {
+                  setIsCustomEditMode(false);
+                } }
+              ]);
+            }}>
               <Text style={styles.editModeIndicatorText}>✏️ Edit Mode</Text>
-            </View>
+            </TouchableOpacity>
           )}
           {/* we also need to account for length of the question. IF the length of question is less than 64 characters, we need to set
           the fontSize to 22, otherwise we need to set it to 24 */}
