@@ -50,8 +50,7 @@ interface Answer {
 interface OtherModalState {
   isEditing: boolean;
   previousText?: string;
-  sentiment?: 'positive' | 'negative';
-  step: 'text' | 'sentiment';
+  // sentiment and step removed since sentiment selection is commented out
 }
 
 export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) {
@@ -94,7 +93,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
   const [showAddOptionModal, setShowAddOptionModal] = useState<{ questionId: string; isVisible: boolean }>({ questionId: '', isVisible: false });
   const [newOptionText, setNewOptionText] = useState('');
   const [newOptionEmoji, setNewOptionEmoji] = useState('🟦');
-  const [newOptionSentiment, setNewOptionSentiment] = useState<'positive' | 'negative' | null>(null);
+  // newOptionSentiment state removed since sentiment selection is commented out
 
   // Common emojis for users to choose from
   const commonEmojis = ['😊', '😢', '😠', '😴', '😰', '😤', '😭', '😌', '🤗', '😌', '🎉', '⚔️', '🚫', '⏰', '📱', '🧸', '🍽️', '🛏️', '👕', '🚪', '👥', '👫', '💬', '📖', '❓', '🙏', '🤝', '🔄', '⭐', '💡', '🧘', '👀', '💭', '📋', '🎯', '🛡️', '📍', '🌌', '🚧', '➡️', '👤', '📦', '❓'];
@@ -119,7 +118,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
   useEffect(() => {
     if (flowSentiment) {
       const flow = flowSentiment === 'positive' ? positive_flow_basic_1 : flow_basic_1;
-      setCurrentFlow(flow);
+      setCurrentFlow(flow as Question[]);
       
       // If we already have a selected behavior, trigger the ABC population useEffect
       const selectedBehavior = selectedAnswers['whatDidTheyDo']?.[0]?.answer;
@@ -291,7 +290,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       }
       
       console.log('[FLOW] Setting currentFlow with updated flow');
-      setCurrentFlow(updatedFlow);
+      setCurrentFlow(updatedFlow as Question[]);
     }
   }, [selectedAnswers, gptSuggestions, optionSets, customOptions]);
 
@@ -418,8 +417,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         console.log('[DEBUG] Opening Other modal for edit. previousText:', customAnswer.answer);
         setShowOtherModal({ 
           isEditing: false, 
-          previousText: customAnswer.answer,
-          step: 'text'
+          previousText: customAnswer.answer
         });
       } else {
         // New "Other" entry - only for first question, we need sentiment selection
@@ -427,16 +425,13 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
           console.log('[DEBUG] Opening Other modal for new entry (whatDidTheyDo). previousText:', otherText[questionId]);
           setShowOtherModal({ 
             isEditing: true,
-            previousText: otherText[questionId],  // Will be undefined for first time
-            sentiment: undefined, // Will be selected by user
-            step: 'text'
+            previousText: otherText[questionId]  // Will be undefined for first time
           });
         } else {
           console.log('[DEBUG] Opening Other modal for new entry. previousText:', otherText[questionId]);
           setShowOtherModal({ 
             isEditing: true,
-            previousText: otherText[questionId],  // Will be undefined for first time
-            step: 'text'
+            previousText: otherText[questionId]  // Will be undefined for first time
           });
         }
       }
@@ -567,7 +562,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         };
       }
       
-      setCurrentFlow(updatedFlow);
+      setCurrentFlow(updatedFlow as Question[]);
     }
   };
 
@@ -576,101 +571,59 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     console.log('[DEBUG] handleOtherSubmit called. showOtherModal:', showOtherModal, 'otherText:', otherText);
     if (!showOtherModal?.isEditing) return;
 
-    // If we're on the text step and it's the first question, move to sentiment step
-    if (showOtherModal.step === 'text' && currentQ.id === 'whatDidTheyDo') {
-      handleNextStep();
+    // Sentiment selection UI has been commented out - using 'negative' as default
+    if (!otherText[currentQ.id]?.trim()) {
+      // If input is empty, remove custom answer
+      console.log('[DEBUG] Empty text, removing custom answer for:', currentQ.id);
+      setSelectedAnswers(prev => ({
+        ...prev,
+        [currentQ.id]: (prev[currentQ.id] || []).filter(a => !a.isCustom)
+      }));
+      setShowOtherModal(null);
       return;
     }
 
-    // If we're on the sentiment step or it's not the first question
-    if (showOtherModal.step === 'sentiment' || currentQ.id !== 'whatDidTheyDo') {
-      if (!otherText[currentQ.id]?.trim()) {
-        // If input is empty, remove custom answer
-        console.log('[DEBUG] Empty text, removing custom answer for:', currentQ.id);
-        setSelectedAnswers(prev => ({
-          ...prev,
-          [currentQ.id]: (prev[currentQ.id] || []).filter(a => !a.isCustom)
-        }));
-        setShowOtherModal(null);
-        return;
-      }
-      // For the first question, we need to handle sentiment
-      if (currentQ.id === 'whatDidTheyDo' && !showOtherModal.sentiment) {
-        Alert.alert('Sentiment Required', 'Please select whether this is a challenge or win before submitting.');
-        return;
-      }
-      // Clear all existing answers and add only the custom answer
-      console.log('[DEBUG] Setting custom answer for:', currentQ.id, 'text:', otherText[currentQ.id]);
-      setSelectedAnswers(prev => {
-        const newState = {
-          ...prev,
-          [currentQ.id]: [{ answer: otherText[currentQ.id], isCustom: true }]
-        };
-        console.log('[DEBUG] New selectedAnswers state:', newState);
-        return newState;
-      });
+    // Clear all existing answers and add only the custom answer
+    console.log('[DEBUG] Setting custom answer for:', currentQ.id, 'text:', otherText[currentQ.id]);
+    setSelectedAnswers(prev => {
+      const newState = {
+        ...prev,
+        [currentQ.id]: [{ answer: otherText[currentQ.id], isCustom: true }]
+      };
+      console.log('[DEBUG] New selectedAnswers state:', newState);
+      return newState;
+    });
+    
+    // For the first question, set the flow sentiment to 'negative' (default)
+    if (currentQ.id === 'whatDidTheyDo') {
+      console.log('[DEBUG] Setting flow sentiment to: negative (default)');
+      setFlowSentiment('negative');
       
-      // Only call GPT for the first question (whatDidTheyDo) to get ABC suggestions
-      // Antecedents and consequences don't need GPT generation - they're user inputs
-      if (currentQ.id === 'whatDidTheyDo') {
-        const customBehavior = otherText[currentQ.id];
-        console.log('[GPT] About to call getABCForBehavior with behavior:', customBehavior);
-        if (customBehavior) {
-          setIsLoadingGpt(true);
-          console.log('[GPT] Setting isLoadingGpt to true');
-          getABCForBehavior(customBehavior)
-            .then(suggestions => {
-              console.log('[GPT] Successfully got suggestions:', suggestions);
-              setGptSuggestions(suggestions);
-              console.log('[GPT] Set gptSuggestions state to:', suggestions);
-            })
-            .catch(error => {
-              console.error('[GPT] Failed to get suggestions:', error);
-              console.error('[GPT] Error details:', error.message, error.stack);
-            })
-            .finally(() => {
-              console.log('[GPT] Setting isLoadingGpt to false');
-              setIsLoadingGpt(false);
-            });
-        } else {
-          console.log('[GPT] No custom behavior text found, skipping GPT call');
-        }
+      // Call GPT for the first question to get ABC suggestions
+      const customBehavior = otherText[currentQ.id];
+      console.log('[GPT] About to call getABCForBehavior with behavior:', customBehavior);
+      if (customBehavior) {
+        setIsLoadingGpt(true);
+        console.log('[GPT] Setting isLoadingGpt to true');
+        getABCForBehavior(customBehavior)
+          .then(suggestions => {
+            console.log('[GPT] Successfully got suggestions:', suggestions);
+            setGptSuggestions(suggestions);
+            console.log('[GPT] Set gptSuggestions state to:', suggestions);
+          })
+          .catch(error => {
+            console.error('[GPT] Failed to get suggestions:', error);
+            console.error('[GPT] Error details:', error.message, error.stack);
+          })
+          .finally(() => {
+            console.log('[GPT] Setting isLoadingGpt to false');
+            setIsLoadingGpt(false);
+          });
       } else {
-        console.log('[DEBUG] Not calling GPT for question:', currentQ.id, '- GPT is only needed for the main behavior');
+        console.log('[GPT] No custom behavior text found, skipping GPT call');
       }
-    } else if (currentQ.id === 'whoWasInvolved') {
-      // For whoWasInvolved, sentiment is not required
-      // Clear all existing answers and add only the custom answer
-      console.log('[DEBUG] Setting custom answer for whoWasInvolved:', currentQ.id, 'text:', otherText[currentQ.id]);
-      setSelectedAnswers(prev => {
-        const newState = {
-          ...prev,
-          [currentQ.id]: [{ answer: otherText[currentQ.id], isCustom: true }]
-        };
-        console.log('[DEBUG] New selectedAnswers state:', newState);
-        return newState;
-      });
-    } else {
-      // For all other questions, handle based on question type
-      if (currentQ.id === 'whatDidTheyDo') {
-        // This should never happen since we already handled whatDidTheyDo above
-        // But if it does, check sentiment requirement
-        if (!showOtherModal.sentiment) {
-          Alert.alert('Sentiment Required', 'Please select whether this is a challenge or win before submitting.');
-          return;
-        }
-      }
-      // Clear all existing answers and add only the custom answer
-      console.log('[DEBUG] Setting custom answer for question:', currentQ.id, 'text:', otherText[currentQ.id]);
-      setSelectedAnswers(prev => {
-        const newState = {
-          ...prev,
-          [currentQ.id]: [{ answer: otherText[currentQ.id], isCustom: true }]
-        };
-        console.log('[DEBUG] New selectedAnswers state:', newState);
-        return newState;
-      });
     }
+    
     setShowOtherModal(null);
   };
 
@@ -687,16 +640,12 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     console.log('[DEBUG] handleOtherEdit called. previousText:', selectedAnswers[currentQ.id]?.find(a => a.isCustom)?.answer);
     setShowOtherModal({ 
       isEditing: true, 
-      previousText: selectedAnswers[currentQ.id]?.find(a => a.isCustom)?.answer,
-      sentiment: currentQ.id === 'whatDidTheyDo' ? (flowSentiment || undefined) : undefined,
-      step: 'text'
+      previousText: selectedAnswers[currentQ.id]?.find(a => a.isCustom)?.answer
+      // Sentiment and step removed since sentiment selection is commented out
     });
   };
 
-  const handleNextStep = () => {
-    if (!otherText[currentQ.id]?.trim()) return;
-    setShowOtherModal(prev => prev ? { ...prev, step: 'sentiment' } : null);
-  };
+  // handleNextStep function removed - no longer needed since sentiment selection is commented out
 
   const handleShuffleOptions = (questionId: string) => {
     const currentSet = optionSets[questionId] || 0;
@@ -846,11 +795,8 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     const handleAddOption = async () => {
     if (!newOptionText.trim() || !showAddOptionModal.questionId) return;
     
-    // Sentiment is required for all questions except whoWasInvolved
-    if (showAddOptionModal.questionId !== 'whoWasInvolved' && !newOptionSentiment) {
-      Alert.alert('Sentiment Required', 'Please select whether this is a challenge or win before adding the option.');
-      return;
-    }
+    // Using 'negative' as default sentiment for all questions
+    // Sentiment selection UI has been commented out
     
     try {
       const questionId = showAddOptionModal.questionId;
@@ -874,7 +820,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       } = {
         label: newOptionText.trim(),
         emoji: generatedEmoji,
-        sentiment: newOptionSentiment,
+        sentiment: 'negative', // Default sentiment since UI is commented out
         category: selectedBehaviorCategory || undefined, // Associate with the selected category
         // GPT data will be populated asynchronously in the background
       };
@@ -963,10 +909,10 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         }));
         
         // SPECIAL HANDLING FOR FIRST QUESTION: If this is the first question (whatDidTheyDo),
-        // we also need to set the flow sentiment based on the custom option's sentiment
-        if (questionId === 'whatDidTheyDo' && newOptionSentiment) {
-          console.log(`[AUTO-SELECT] Setting flow sentiment to: ${newOptionSentiment} for custom behavior`);
-          setFlowSentiment(newOptionSentiment);
+        // we also need to set the flow sentiment to 'negative' (default)
+        if (questionId === 'whatDidTheyDo') {
+          console.log(`[AUTO-SELECT] Setting flow sentiment to: negative (default) for custom behavior`);
+          setFlowSentiment('negative');
         }
       }
       
@@ -986,47 +932,46 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         }
       }
       
-      // Force a flow update to immediately show the new option
-      // This triggers the useEffect that calls getFilteredOptions
-      if (currentFlow.length > 0) {
-        const updatedFlow = [...currentFlow];
-        
-        // Update the specific question that had the option added
-        const questionIndex = updatedFlow.findIndex(q => q.id === questionId);
-        if (questionIndex !== -1) {
-          if (questionId === 'whatDidTheyDo' && updatedFlow[questionIndex].categories) {
-            // For the main behavior question, update all categories
-            updatedFlow[questionIndex] = {
-              ...updatedFlow[questionIndex],
-              categories: updatedFlow[questionIndex].categories!.map(cat => ({
-                ...cat,
-                choices: getFilteredOptions(questionId, cat.choices)
-              }))
-            };
-          } else if (updatedFlow[questionIndex].answer_choices) {
-            // For other questions, update answer choices
-            updatedFlow[questionIndex] = {
-              ...updatedFlow[questionIndex],
-              answer_choices: getFilteredOptions(questionId, updatedFlow[questionIndex].answer_choices!)
-            };
+        // Force a flow update to immediately show the new option
+        // This triggers the useEffect that calls getFilteredOptions
+        if (currentFlow.length > 0) {
+          const updatedFlow = [...currentFlow];
+          
+          // Update the specific question that had the option added
+          const questionIndex = updatedFlow.findIndex(q => q.id === questionId);
+          if (questionIndex !== -1) {
+            if (questionId === 'whatDidTheyDo' && updatedFlow[questionIndex].categories) {
+              // For the main behavior question, update all categories
+              updatedFlow[questionIndex] = {
+                ...updatedFlow[questionIndex],
+                categories: updatedFlow[questionIndex].categories!.map(cat => ({
+                  ...cat,
+                  choices: getFilteredOptions(questionId, cat.choices)
+                }))
+              };
+            } else if (updatedFlow[questionIndex].answer_choices) {
+              // For other questions, update answer choices
+              updatedFlow[questionIndex] = {
+                ...updatedFlow[questionIndex],
+                answer_choices: getFilteredOptions(questionId, updatedFlow[questionIndex].answer_choices!)
+              };
+            }
           }
+          
+          // For ABC questions, reset to set 0 so custom options are immediately visible
+          if (questionId === 'whatHappenedBefore' || questionId === 'whatHappenedAfter') {
+            setOptionSets(prev => ({
+              ...prev,
+              [questionId]: 0
+            }));
+          }
+          
+          setCurrentFlow(updatedFlow as Question[]);
         }
-        
-        // For ABC questions, reset to set 0 so custom options are immediately visible
-        if (questionId === 'whatHappenedBefore' || questionId === 'whatHappenedAfter') {
-          setOptionSets(prev => ({
-            ...prev,
-            [questionId]: 0
-          }));
-        }
-        
-        setCurrentFlow(updatedFlow);
-      }
       
       // Reset form
       setNewOptionText('');
       setNewOptionEmoji('🟦'); // Reset to default for next use
-      setNewOptionSentiment(null);
       setShowAddOptionModal({ questionId: '', isVisible: false });
     } catch (error) {
       console.error('Error adding option:', error);
@@ -1037,14 +982,12 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     setShowAddOptionModal({ questionId, isVisible: true });
     setNewOptionText('');
     setNewOptionEmoji('🟦'); // This will be overridden by generated emoji in handleAddOption
-    setNewOptionSentiment(null);
   };
 
   const closeAddOptionModal = () => {
     setShowAddOptionModal({ questionId: '', isVisible: false });
     setNewOptionText('');
     setNewOptionEmoji('🟦'); // This will be overridden by generated emoji in handleAddOption
-    setNewOptionSentiment(null);
   };
 
   // Function to restore deleted options
@@ -1185,7 +1128,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
               }));
             }
             
-            setCurrentFlow(updatedFlow);
+            setCurrentFlow(updatedFlow as Question[]);
           }
       }
     } catch (error) {
@@ -2350,7 +2293,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                           setSelectedAnswers({});
                           setCurrentQuestion(0);
                           setFlowSentiment(null);
-                          setCurrentFlow([]);
+                          setCurrentFlow([] as Question[]);
                           setOptionSets({});
                           setBehaviorOptionSet(0);
                         }
@@ -2579,106 +2522,53 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
               <View style={styles.modalContent}>
                 {showOtherModal?.isEditing ? (
                   <>
-                    {showOtherModal.step === 'text' ? (
-                      <>
-                        <Text style={styles.modalTitle}>Add Other Option</Text>
-                        <TextInput
-                          style={styles.modalInput}
-                          placeholder="Type your answer here..."
-                          value={otherText[currentQ.id] !== undefined ? otherText[currentQ.id] : (showOtherModal.previousText || '')}
-                          onChangeText={(text) => {
-                            setOtherText(prev => ({
+                    {/* Commented out sentiment selection - using 'negative' as default */}
+                    <Text style={styles.modalTitle}>Add Other Option</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      placeholder="Type your answer here..."
+                      value={otherText[currentQ.id] !== undefined ? otherText[currentQ.id] : (showOtherModal.previousText || '')}
+                      onChangeText={(text) => {
+                        setOtherText(prev => ({
+                          ...prev,
+                          [currentQ.id]: text
+                        }));
+                      }}
+                      autoFocus
+                      maxLength={50}
+                    />
+                    
+                    <View style={styles.modalButtons}>
+                      <TouchableOpacity
+                        style={styles.modalButton}
+                        onPress={() => {
+                          console.log('[DEBUG] Modal closed via Cancel button.');
+                          // If input is empty, remove custom answer
+                          if (!otherText[currentQ.id]?.trim()) {
+                            setSelectedAnswers(prev => ({
                               ...prev,
-                              [currentQ.id]: text
+                              [currentQ.id]: (prev[currentQ.id] || []).filter(a => !a.isCustom)
                             }));
-                          }}
-                          autoFocus
-                          maxLength={50}
-                        />
-                        
-                        <View style={styles.modalButtons}>
-                          <TouchableOpacity
-                            style={styles.modalButton}
-                            onPress={() => {
-                              console.log('[DEBUG] Modal closed via Cancel button.');
-                              // If input is empty, remove custom answer
-                              if (!otherText[currentQ.id]?.trim()) {
-                                setSelectedAnswers(prev => ({
-                                  ...prev,
-                                  [currentQ.id]: (prev[currentQ.id] || []).filter(a => !a.isCustom)
-                                }));
-                              }
-                              setShowOtherModal(null);
-                            }}
-                          >
-                            <Text style={styles.modalButtonText}>Cancel</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={[
-                              styles.modalButton, 
-                              styles.submitButton,
-                              !otherText[currentQ.id]?.trim() && styles.disabledButton
-                            ]}
-                            disabled={!otherText[currentQ.id]?.trim()}
-                            onPress={currentQ.id === 'whatDidTheyDo' ? handleNextStep : handleOtherSubmit}
-                          >
-                            <Text style={[styles.modalButtonText, { color: 'white' }]}>
-                              {currentQ.id === 'whatDidTheyDo' ? 'Next' : 'Submit'}
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-                      </>
-                    ) : (
-                      <>
-                        <Text style={styles.modalTitle}>Is this a challenge or win?</Text>
-                        <Text style={styles.modalText}>{otherText[currentQ.id]}</Text>
-                        
-                        {currentQ.id !== 'whoWasInvolved' && (
-                          <View style={styles.sentimentButtons}>
-                            <TouchableOpacity
-                              style={[
-                                styles.sentimentButton,
-                                showOtherModal.sentiment === 'positive' && styles.selectedSentiment,
-                                {backgroundColor: "lightgreen"}
-                              ]}
-                              onPress={() => setShowOtherModal(prev => prev ? { ...prev, sentiment: 'positive' } : null)}
-                            >
-                              <Text style={styles.sentimentButtonText}>🎉 Win</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              style={[
-                                styles.sentimentButton,
-                                showOtherModal.sentiment === 'negative' && styles.selectedSentiment,
-                                {backgroundColor: "orange"}
-                              ]}
-                              onPress={() => setShowOtherModal(prev => prev ? { ...prev, sentiment: 'negative' } : null)}
-                            >
-                              <Text style={styles.sentimentButtonText}>⚔️ Challenge</Text>
-                            </TouchableOpacity>
-                          </View>
-                        )}
-                        
-                        <View style={styles.modalButtons}>
-                          <TouchableOpacity
-                            style={styles.modalButton}
-                            onPress={() => setShowOtherModal(prev => prev ? { ...prev, step: 'text' } : null)}
-                          >
-                            <Text style={styles.modalButtonText}>Back</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={[
-                              styles.modalButton, 
-                              styles.submitButton,
-                              currentQ.id === 'whoWasInvolved' || showOtherModal.sentiment ? undefined : styles.disabledButton
-                            ]}
-                            disabled={currentQ.id === 'whoWasInvolved' ? false : !showOtherModal.sentiment}
-                            onPress={handleOtherSubmit}
-                          >
-                            <Text style={[styles.modalButtonText, { color: 'white' }]}>Submit</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </>
-                    )}
+                          }
+                          setShowOtherModal(null);
+                        }}
+                      >
+                        <Text style={styles.modalButtonText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.modalButton, 
+                          styles.submitButton,
+                          !otherText[currentQ.id]?.trim() && styles.disabledButton
+                        ]}
+                        disabled={!otherText[currentQ.id]?.trim()}
+                        onPress={handleOtherSubmit}
+                      >
+                        <Text style={[styles.modalButtonText, { color: 'white' }]}>
+                          Submit
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
                   </>
                 ) : (
                   <>
@@ -2834,33 +2724,41 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                 )} */}
                 
                 {/* {currentQ.id === 'whatDidTheyDo' && ( */}
-                  {currentQ.id !== 'whoWasInvolved' && (
+                  {/* Commented out sentiment selection - using 'negative' as default */}
+                  {/* {currentQ.id !== 'whoWasInvolved' && ( */}
                     <>
-                      <Text style={styles.modalLabel}>Sentiment: <Text style={{color: "grey", fontWeight: 'normal'}}>(Required)</Text></Text>
-                      <View style={styles.sentimentButtons}>
-                        <TouchableOpacity
-                          style={[
-                            styles.sentimentButton,
-                            newOptionSentiment === 'positive' && styles.selectedSentiment,
-                            {backgroundColor: "lightgreen"}
-                          ]}
-                          onPress={() => setNewOptionSentiment('positive')}
-                        >
-                          <Text style={styles.sentimentButtonText}>🎉 Win</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[
-                            styles.sentimentButton,
-                            newOptionSentiment === 'negative' && styles.selectedSentiment,
-                            {backgroundColor: "orange"}
-                          ]}
-                          onPress={() => setNewOptionSentiment('negative')}
-                        >
-                          <Text style={styles.sentimentButtonText}>⚔️ Challenge</Text>
-                        </TouchableOpacity>
-                      </View>
+                      {/* Sentiment selection completely removed - using 'negative' as default */}
+                      {/* {currentQ.id === 'whatDidTheyDo' && ( */}
+                      {/*   {currentQ.id !== 'whoWasInvolved' && ( */}
+                      {/*     <>
+                      {/*       <Text style={styles.modalLabel}>Sentiment: <Text style={{color: "grey", fontWeight: 'normal'}}>(Required)</Text></Text>
+                      {/*       <View style={styles.sentimentButtons}>
+                      {/*         <TouchableOpacity
+                      {/*           style={[
+                      {/*             styles.sentimentButton,
+                      {/*             newOptionSentiment === 'positive' && styles.selectedSentiment,
+                      {/*             {backgroundColor: "lightgreen"}
+                      {/*           ]}
+                      {/*           onPress={() => setNewOptionSentiment('positive')}
+                      {/*         >
+                      {/*           <Text style={styles.modalButtonText}>🎉 Win</Text>
+                      {/*         </TouchableOpacity>
+                      {/*         <TouchableOpacity
+                      {/*           style={[
+                      {/*             styles.sentimentButton,
+                      {/*             newOptionSentiment === 'negative' && styles.selectedSentiment,
+                      {/*             {backgroundColor: "orange"}
+                      {/*           ]}
+                      {/*           onPress={() => setNewOptionSentiment('negative')}
+                      {/*         >
+                      {/*           <Text style={styles.modalButtonText}>⚔️ Challenge</Text>
+                      {/*         </TouchableOpacity>
+                      {/*       </View>
+                      {/*     </> */}
+                      {/*   )} */}
+                      {/* )} */}
                     </>
-                  )}
+                  {/* )} */}
                 {/* )} */}
                 
                 <View style={styles.modalButtons}>
@@ -2871,12 +2769,12 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                     <Text style={styles.modalButtonText}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[
-                      styles.modalButton, 
-                      styles.submitButton,
-                      currentQ.id === 'whoWasInvolved' ? undefined : (!newOptionText.trim() || !newOptionSentiment) ? styles.disabledButton : undefined
-                    ]}
-                    disabled={currentQ.id === 'whoWasInvolved' ? !newOptionText.trim() : (!newOptionText.trim() || !newOptionSentiment)}
+                                          style={[
+                        styles.modalButton, 
+                        styles.submitButton,
+                        !newOptionText.trim() ? styles.disabledButton : undefined
+                      ]}
+                    disabled={!newOptionText.trim()}
                     onPress={handleAddOption}
                   >
                     <Text style={[styles.modalButtonText, { color: 'white' }]}>Add</Text>

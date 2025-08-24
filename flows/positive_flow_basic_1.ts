@@ -2,13 +2,67 @@ export const flow_basic_1 = [
     {
         "id": "whatDidTheyDo",
         "question": "What happened?",
-        "subheading": "Describe your child's specific behavior or action during the event.",
-        "answer_choices": [
-            { "label": "Hit", "emoji": "🤛", "sentiment": "negative" },
-            { "label": "Followed instructions", "emoji": "✅", "sentiment": "positive" },
-            { "label": "Screamed", "emoji": "😫", "sentiment": "negative" },
-            { "label": "Stayed calm during frustration", "emoji": "🏆", "sentiment": "positive" },
-            { "label": "Other", "emoji": "➕", "sentiment": null }
+        "subheading": "Pick a category then the behavior to describe what your child did.",
+        "categories": [
+            {
+                "key": "positiveBehaviors",
+                "label": "Positive Behaviors",
+                "emoji": "🌟",
+                "sentiment": "positive",
+                "choices": [
+                    { "label": "Followed instructions", "emoji": "✅", "sentiment": "positive" },
+                    { "label": "Stayed calm during frustration", "emoji": "🏆", "sentiment": "positive" },
+                    { "label": "Used words instead of actions", "emoji": "💬", "sentiment": "positive" },
+                    { "label": "Shared with others", "emoji": "🤝", "sentiment": "positive" },
+                    { "label": "Helped someone", "emoji": "🆘", "sentiment": "positive" },
+                    { "label": "Completed a task", "emoji": "🎯", "sentiment": "positive" },
+                    { "label": "Other", "emoji": "➕", "sentiment": null, "isOther": true }
+                ],
+                "is_editable": true
+            },
+            {
+                "key": "socialSkills",
+                "label": "Social Skills",
+                "emoji": "👥",
+                "sentiment": "positive",
+                "choices": [
+                    { "label": "Made a friend", "emoji": "🤝", "sentiment": "positive" },
+                    { "label": "Joined group activity", "emoji": "👥", "sentiment": "positive" },
+                    { "label": "Took turns", "emoji": "🔄", "sentiment": "positive" },
+                    { "label": "Apologized sincerely", "emoji": "🙏", "sentiment": "positive" },
+                    { "label": "Comforted someone", "emoji": "🤗", "sentiment": "positive" },
+                    { "label": "Other", "emoji": "➕", "sentiment": null, "isOther": true }
+                ],
+                "is_editable": true
+            },
+            {
+                "key": "selfRegulation",
+                "label": "Self-Regulation",
+                "emoji": "🧠",
+                "sentiment": "positive",
+                "choices": [
+                    { "label": "Calmed down independently", "emoji": "😌", "sentiment": "positive" },
+                    { "label": "Used coping strategies", "emoji": "🧘", "sentiment": "positive" },
+                    { "label": "Asked for help appropriately", "emoji": "🙋", "sentiment": "positive" },
+                    { "label": "Took a break when needed", "emoji": "⏸️", "sentiment": "positive" },
+                    { "label": "Other", "emoji": "➕", "sentiment": null, "isOther": true }
+                ],
+                "is_editable": true
+            },
+            {
+                "key": "academicSkills",
+                "label": "Learning & Skills",
+                "emoji": "📚",
+                "sentiment": "positive",
+                "choices": [
+                    { "label": "Learned something new", "emoji": "🎓", "sentiment": "positive" },
+                    { "label": "Solved a problem", "emoji": "💡", "sentiment": "positive" },
+                    { "label": "Read independently", "emoji": "📖", "sentiment": "positive" },
+                    { "label": "Completed homework", "emoji": "✏️", "sentiment": "positive" },
+                    { "label": "Other", "emoji": "➕", "sentiment": null, "isOther": true }
+                ],
+                "is_editable": true
+            }
         ]
     },
     {
@@ -21,7 +75,8 @@ export const flow_basic_1 = [
             { "label": "Evening", "emoji": "🌇", "sentiment": "positive" },
             { "label": "Night", "emoji": "🌙", "sentiment": "positive" },
             { "label": "Other", "emoji": "➕", "sentiment": null }
-        ]
+        ],
+        "is_editable": false
     },
     {
         "id": "whatHappenedBefore",
