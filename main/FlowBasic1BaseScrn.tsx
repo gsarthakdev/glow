@@ -474,7 +474,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       const selectedBehavior = selectedAnswers['whatDidTheyDo']?.[0]?.answer;
       if (selectedBehavior) {
         const suggestionType = questionId === 'whatHappenedBefore' ? 'antecedent' : 'consequence';
-        trackGPTSuggestionUsage(selectedBehavior, suggestionType, answer.label);
+        // trackGPTSuggestionUsage(selectedBehavior, suggestionType, answer.label);
       }
     }
 
@@ -483,7 +483,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       const selectedBehavior = selectedAnswers['whatDidTheyDo']?.[0]?.answer;
       if (selectedBehavior) {
         const suggestionType = questionId === 'whatHappenedBefore' ? 'antecedent' : 'consequence';
-        trackGPTSuggestionUsage(selectedBehavior, suggestionType, answer.label);
+        // trackGPTSuggestionUsage(selectedBehavior, suggestionType, answer.label);
       }
     }
 
@@ -716,6 +716,33 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       if (updatedCustom[questionId]) {
         updatedCustom[questionId] = updatedCustom[questionId].filter(opt => opt.label !== optionLabel);
         setCustomOptions(updatedCustom);
+      }
+      
+      // Handle deleting GPT-generated options from custom behavior options
+      if (questionId === 'whatHappenedBefore' || questionId === 'whatHappenedAfter') {
+        const selectedBehavior = selectedAnswers['whatDidTheyDo']?.[0]?.answer;
+        if (selectedBehavior && updatedCustom['whatDidTheyDo']) {
+          const behaviorOptionIndex = updatedCustom['whatDidTheyDo'].findIndex(opt => opt.label === selectedBehavior);
+          if (behaviorOptionIndex !== -1) {
+            const behaviorOption = updatedCustom['whatDidTheyDo'][behaviorOptionIndex];
+            
+            if (questionId === 'whatHappenedBefore' && behaviorOption.gptGeneratedAntecedents) {
+              // Remove the deleted antecedent from the custom option's GPT data
+              updatedCustom['whatDidTheyDo'][behaviorOptionIndex] = {
+                ...behaviorOption,
+                gptGeneratedAntecedents: behaviorOption.gptGeneratedAntecedents.filter(ant => ant.text !== optionLabel)
+              };
+            } else if (questionId === 'whatHappenedAfter' && behaviorOption.gptGeneratedConsequences) {
+              // Remove the deleted consequence from the custom option's GPT data
+              updatedCustom['whatDidTheyDo'][behaviorOptionIndex] = {
+                ...behaviorOption,
+                gptGeneratedConsequences: behaviorOption.gptGeneratedConsequences.filter(con => con.text !== optionLabel)
+              };
+            }
+            
+            setCustomOptions(updatedCustom);
+          }
+        }
       }
       
       // Also add to deletedOptions for tracking (in case we want to restore later)
@@ -985,6 +1012,83 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         }
         setDeletedOptions(updatedDeleted);
         
+        // Handle restoring GPT-generated options to custom behavior options
+        if (questionId === 'whatHappenedBefore' || questionId === 'whatHappenedAfter') {
+          const selectedBehavior = selectedAnswers['whatDidTheyDo']?.[0]?.answer;
+          if (selectedBehavior && customOptions['whatDidTheyDo']) {
+            const behaviorOptionIndex = customOptions['whatDidTheyDo'].findIndex(opt => opt.label === selectedBehavior);
+            if (behaviorOptionIndex !== -1) {
+              const behaviorOption = customOptions['whatDidTheyDo'][behaviorOptionIndex];
+              
+              // Check if this option was originally a GPT-generated option
+              if (questionId === 'whatHappenedBefore' && behaviorOption.gptGeneratedAntecedents) {
+                // Check if this option exists in the original GPT data (it might have been deleted)
+                const originalAntecedent = behaviorOption.gptGeneratedAntecedents.find(ant => ant.text === optionLabel);
+                if (!originalAntecedent) {
+                  // This option was deleted from GPT data, we need to restore it
+                  // For now, we'll add it back with a default emoji since we don't have the original
+                  const updatedCustom = { ...customOptions };
+                  updatedCustom['whatDidTheyDo'][behaviorOptionIndex] = {
+                    ...behaviorOption,
+                    gptGeneratedAntecedents: [
+                      ...behaviorOption.gptGeneratedAntecedents,
+                      { text: optionLabel, emoji: '🔄' } // Default emoji for restored option
+                    ]
+                  };
+                  setCustomOptions(updatedCustom);
+                  
+                  // Save updated custom options to AsyncStorage
+                  if (currentChild && currentChild.id) {
+                    const childData = await AsyncStorage.getItem(currentChild.id);
+                    if (childData) {
+                      const parsedChildData = JSON.parse(childData);
+                      const updatedChildData = {
+                        ...parsedChildData,
+                        custom_options: updatedCustom
+                      };
+                      await AsyncStorage.setItem(currentChild.id, JSON.stringify(updatedChildData));
+                      
+                      // Update currentChild state to keep it in sync
+                      setCurrentChild((prev: any) => prev ? { ...prev, data: updatedChildData } : null);
+                    }
+                  }
+                }
+              } else if (questionId === 'whatHappenedAfter' && behaviorOption.gptGeneratedConsequences) {
+                // Check if this option was originally a GPT-generated option
+                const originalConsequence = behaviorOption.gptGeneratedConsequences.find(con => con.text === optionLabel);
+                if (!originalConsequence) {
+                  // This option was deleted from GPT data, we need to restore it
+                  const updatedCustom = { ...customOptions };
+                  updatedCustom['whatDidTheyDo'][behaviorOptionIndex] = {
+                    ...behaviorOption,
+                    gptGeneratedConsequences: [
+                      ...behaviorOption.gptGeneratedConsequences,
+                      { text: optionLabel, emoji: '🔄' } // Default emoji for restored option
+                    ]
+                  };
+                  setCustomOptions(updatedCustom);
+                  
+                  // Save updated custom options to AsyncStorage
+                  if (currentChild && currentChild.id) {
+                    const childData = await AsyncStorage.getItem(currentChild.id);
+                    if (childData) {
+                      const parsedChildData = JSON.parse(childData);
+                      const updatedChildData = {
+                        ...parsedChildData,
+                        custom_options: updatedCustom
+                      };
+                      await AsyncStorage.setItem(currentChild.id, JSON.stringify(updatedChildData));
+                      
+                      // Update currentChild state to keep it in sync
+                      setCurrentChild((prev: any) => prev ? { ...prev, data: updatedChildData } : null);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        
         // Save to child's data in AsyncStorage
         if (currentChild && currentChild.id) {
           const childData = await AsyncStorage.getItem(currentChild.id);
@@ -1045,13 +1149,54 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
 
   // Helper function to get filtered and merged options for a question
   const getFilteredOptions = (questionId: string, originalChoices: Array<{ label: string; emoji: string; sentiment?: string | null }>) => {
-    const deleted = deletedOptions[questionId] || new Set();
+    let deleted = deletedOptions[questionId] || new Set();
     const custom = customOptions[questionId] || [];
     
     console.log(`[FILTER] getFilteredOptions called for ${questionId}`);
     console.log(`[FILTER] Original choices count: ${originalChoices.length}`);
     console.log(`[FILTER] Custom options count: ${custom.length}`);
     console.log(`[FILTER] Deleted options count: ${deleted.size}`);
+    
+    // For ABC questions, also check if we need to sync deleted options from custom behavior options
+    if (questionId === 'whatHappenedBefore' || questionId === 'whatHappenedAfter') {
+      const selectedBehavior = selectedAnswers['whatDidTheyDo']?.[0]?.answer;
+      if (selectedBehavior && customOptions['whatDidTheyDo']) {
+        const behaviorOption = customOptions['whatDidTheyDo'].find(opt => opt.label === selectedBehavior);
+        if (behaviorOption) {
+          // Check if this custom option has GPT data that should be considered for deletion tracking
+          const gptOptions = questionId === 'whatHappenedBefore' 
+            ? behaviorOption.gptGeneratedAntecedents || []
+            : behaviorOption.gptGeneratedConsequences || [];
+          
+          // If we have GPT options, ensure they're properly tracked in deletedOptions
+          if (gptOptions.length > 0) {
+            const updatedDeleted = { ...deletedOptions };
+            if (!updatedDeleted[questionId]) {
+              updatedDeleted[questionId] = new Set();
+            }
+            
+            // Add any options that exist in the original GPT data but not in the current GPT data
+            // This handles the case where options were deleted from custom options
+            const currentGptLabels = new Set(gptOptions.map(opt => opt.text));
+            const originalGptLabels = new Set(originalChoices.map(choice => choice.label));
+            
+            originalGptLabels.forEach(label => {
+              if (!currentGptLabels.has(label) && !updatedDeleted[questionId].has(label)) {
+                updatedDeleted[questionId].add(label);
+              }
+            });
+            
+            // Update the deletedOptions state if there were changes
+            if (JSON.stringify(updatedDeleted) !== JSON.stringify(deletedOptions)) {
+              setDeletedOptions(updatedDeleted);
+            }
+            
+            // Use the updated deleted options for filtering
+            deleted = updatedDeleted[questionId] || new Set();
+          }
+        }
+      }
+    }
     
     // Filter custom options to only show those matching the selected category
     const filteredCustom = custom.filter(option => 
