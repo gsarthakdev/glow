@@ -2384,7 +2384,10 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                 ) : (
                   <View style={styles.noOptionsContainer}>
                     <Text style={styles.noOptionsText}>
-                      Please select a behavior on the first question to see relevant options.
+                      Tap the "Shuffle options" button below. 
+                    </Text>
+                    <Text style={[styles.noOptionsText, { marginTop: 10 }]}>
+                    If not, make sure you selected a behavior on the first question to see relevant options.
                     </Text>
                   </View>
                 )
@@ -3069,7 +3072,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
-    fontStyle: 'italic',
+    // fontStyle: 'italic',
   },
   skeletonContainer: {
     marginBottom: 10,
