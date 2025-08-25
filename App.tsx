@@ -112,7 +112,7 @@ export default function App() {
       console.error('Error writing AsyncStorage to file:', error);
     }
   }
-
+  /*
   async function shouldUpdate() {
     try {
       const getCurrentChildName = await AsyncStorage.getItem('current_selected_child');
@@ -123,7 +123,7 @@ export default function App() {
       return false;
     }
   }
-
+  */
 
   // clearAsyncStorage();
   useEffect(() => {
@@ -131,13 +131,13 @@ export default function App() {
       try {
         setIsOnboardingCompleted(onboardingStatus === 'true');
        
-        const shouldAppUpdate = await shouldUpdate();
-        console.log("shouldAppUpdate", shouldAppUpdate);
+        // const shouldAppUpdate = await shouldUpdate();
+        // console.log("shouldAppUpdate", shouldAppUpdate);
         // Only check for updates if not in development
         if (!__DEV__) {
-          if (shouldAppUpdate) {
+          // if (shouldAppUpdate) {
             await onFetchUpdateAsync();
-          }
+          // }
         }
         
         // Only run debug functions in development
