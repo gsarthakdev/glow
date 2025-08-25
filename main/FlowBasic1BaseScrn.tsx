@@ -388,7 +388,19 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     const deleted = deletedOptions['whatDidTheyDo'] || new Set();
     const filteredBaseChoices = baseChoices.filter(choice => !deleted.has(choice.label));
     
-    return [...filteredBaseChoices, ...customChoices];
+    // Combine and remove duplicates based on label, prioritizing custom options
+    const combined = [...filteredBaseChoices, ...customChoices];
+    const seen = new Set();
+    const uniqueChoices = combined.filter(choice => {
+      if (seen.has(choice.label)) {
+        // If we've seen this label before, only keep it if the current one is custom
+        return (choice as any).isCustom;
+      }
+      seen.add(choice.label);
+      return true;
+    });
+    
+    return uniqueChoices;
   }, [customOptions, deletedOptions]);
 
   const loadCurrentChild = async () => {
@@ -2193,8 +2205,8 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
               {/* Results based on search, or category/choice views */}
               {searchQuery.length > 0 ? (
                 <>
-                  {filteredBehaviorChoices.map((choice) => (
-                    <View key={choice.label} style={styles.choiceContainer}>
+                  {filteredBehaviorChoices.map((choice, index) => (
+                    <View key={`${choice.label}-${index}-${(choice as any).isCustom ? 'custom' : 'base'}`} style={styles.choiceContainer}>
                       <TouchableOpacity
                         style={getChoiceButtonStyle(choice, currentQ.id)}
                         onPress={() => {
@@ -2255,8 +2267,8 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                     // Apply filtering and custom options
                     const filteredChoices = getFilteredOptions(currentQ.id, catChoices);
                     
-                    return filteredChoices.map((choice) => (
-                     <View key={choice.label} style={styles.choiceContainer}>
+                    return filteredChoices.map((choice, index) => (
+                     <View key={`${choice.label}-${index}-${(choice as any).isCustom ? 'custom' : 'base'}`} style={styles.choiceContainer}>
                        <TouchableOpacity
                          style={getChoiceButtonStyle(choice, currentQ.id)}
                          onPress={() => {
@@ -2394,7 +2406,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                   currentQ.answer_choices && currentQ.answer_choices.length > 0 ? (
                   <>
                     {currentQ.answer_choices.map((choice, index) => (
-                      <View key={`${currentQ.id}-${choice.label}-${index}-${choice.emoji || 'default'}`} style={styles.choiceContainer}>
+                      <View key={`${currentQ.id}-${choice.label}-${index}-${(choice as any).isCustom ? 'custom' : (choice as any).isGptGenerated ? 'gpt' : 'base'}`} style={styles.choiceContainer}>
                         <TouchableOpacity
                           style={getChoiceButtonStyle(choice, currentQ.id)}
                           onPress={() => handleAnswer(currentQ.id, choice)}
@@ -2474,7 +2486,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
               ) : (
                                 // Regular questions (not ABC questions)
                 currentQ.answer_choices?.map((choice, index) => (
-                  <View key={`${currentQ.id}-${choice.label}-${index}-${choice.emoji || 'default'}`} style={styles.choiceContainer}>
+                  <View key={`${currentQ.id}-${choice.label}-${index}-${(choice as any).isCustom ? 'custom' : (choice as any).isGptGenerated ? 'gpt' : 'base'}`} style={styles.choiceContainer}>
                     <TouchableOpacity
                       style={getChoiceButtonStyle(choice, currentQ.id)}
                       onPress={() => handleAnswer(currentQ.id, choice)}
