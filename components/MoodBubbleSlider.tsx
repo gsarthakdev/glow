@@ -66,11 +66,17 @@ const MoodBubbleSlider: React.FC<MoodBubbleSliderProps> = ({
     <View style={styles.container}>
       <View style={styles.headerContainer}>
         <View>
-          {label === "Before" ? (
+          {/* {label === "Before" ? (
             // if secondary starts with the word "Parent", then we don't show the text with the word "child" vice versa for the word "caregiver"
             <Text style={styles.label}>{label}{secondary && (secondary.toLowerCase().startsWith('parent') || secondary.toLowerCase().startsWith('child')) ? null : ' child'} {secondary ? secondary.toLowerCase() : null}</Text>
           ) : (
             <Text style={styles.label}>{label}{secondary && (secondary.toLowerCase().startsWith('parent') || secondary.toLowerCase().startsWith('child') || secondary.toLowerCase().startsWith('caregiver')) ? null : ' caregiver'} {secondary ? secondary.toLowerCase() : null}</Text>
+          )} */}
+           {label === "Before" ? (
+            // if secondary starts with the word "Parent", then we don't show the text with the word "child" vice versa for the word "caregiver"
+            <Text style={styles.label}>{label}{secondary && (secondary.toLowerCase().startsWith('parent') || secondary.toLowerCase().startsWith('child')) ? null : null} {secondary ? secondary.toLowerCase() : null}</Text>
+          ) : (
+            <Text style={styles.label}>{label}{secondary && (secondary.toLowerCase().startsWith('parent') || secondary.toLowerCase().startsWith('child') || secondary.toLowerCase().startsWith('caregiver')) ? null : null} {secondary ? secondary.toLowerCase() : null}</Text>
           )}
           {/* <Text style={styles.label}>Select the mood {label.toLowerCase()} {secondary ? secondary.toLowerCase() : null}</Text> */}
           {/* {secondary ? <Text style={styles.secondaryLabel}>{secondary}</Text> : null} */}
