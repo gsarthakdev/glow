@@ -371,10 +371,25 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
   const allBehaviorChoices = React.useMemo(() => {
     const firstQuestion = flow_basic_1[0];
     if (!firstQuestion.categories) return [];
-    return firstQuestion.categories.flatMap(cat =>
+    
+    // Get base choices from the flow
+    const baseChoices = firstQuestion.categories.flatMap(cat =>
       cat.choices.map(choice => ({ ...choice, categoryKey: cat.key }))
     );
-  }, []);
+    
+    // Get custom options for the first question
+    const customChoices = (customOptions['whatDidTheyDo'] || []).map(option => ({
+      ...option,
+      categoryKey: option.category || 'custom',
+      isCustom: true
+    }));
+    
+    // Combine base choices with custom choices, filtering out any that are deleted
+    const deleted = deletedOptions['whatDidTheyDo'] || new Set();
+    const filteredBaseChoices = baseChoices.filter(choice => !deleted.has(choice.label));
+    
+    return [...filteredBaseChoices, ...customChoices];
+  }, [customOptions, deletedOptions]);
 
   const loadCurrentChild = async () => {
     try {
@@ -491,7 +506,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       if (questionId === 'whatDidTheyDo') {
         return {
           ...prev,
-          [questionId]: [{ answer: answerText, isCustom: false }]
+          [questionId]: [{ answer: answerText, isCustom: (answer as any).isCustom || false }]
         };
       }
 
@@ -515,7 +530,13 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     // If this was a behavior selection, immediately populate ABC questions
     if (questionId === 'whatDidTheyDo' && currentFlow.length > 0) {
       const selectedBehavior = answer.label;
-      console.log('[FLOW] Behavior selected, immediately populating ABC questions for:', selectedBehavior);
+      const isCustomBehavior = (answer as any).isCustom;
+      console.log('[FLOW] Behavior selected, immediately populating ABC questions for:', selectedBehavior, 'isCustom:', isCustomBehavior);
+      
+      // Set flow sentiment for custom behaviors
+      if (isCustomBehavior) {
+        setFlowSentiment('negative');
+      }
       
       // Force immediate population of ABC questions
       const updatedFlow = [...currentFlow];
@@ -523,12 +544,29 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       // Populate antecedents
       const antecedentQuestionIndex = updatedFlow.findIndex(q => q.id === 'whatHappenedBefore');
       if (antecedentQuestionIndex !== -1) {
-        const antecedentChoices = behaviorSpecificOptions[selectedBehavior]?.antecedents?.map(antecedent => ({
-          label: antecedent,
-          emoji: getAntecedentEmoji(antecedent),
-          sentiment: 'negative',
-          isBehaviorSpecific: true
-        })) || [];
+        let antecedentChoices: Array<{ label: string; emoji: string; sentiment: string | null; isGptGenerated?: boolean; isFromCustomOption?: boolean; isBehaviorSpecific?: boolean }> = [];
+        
+        if (isCustomBehavior) {
+          // For custom behaviors, check if we have GPT data
+          const customOption = customOptions['whatDidTheyDo']?.find(opt => opt.label === selectedBehavior);
+          if (customOption?.gptGeneratedAntecedents) {
+            antecedentChoices = customOption.gptGeneratedAntecedents.map(antecedent => ({
+              label: antecedent.text,
+              emoji: antecedent.emoji,
+              sentiment: 'negative',
+              isGptGenerated: true,
+              isFromCustomOption: true
+            }));
+          }
+        } else {
+          // For predefined behaviors, use behavior-specific options
+          antecedentChoices = behaviorSpecificOptions[selectedBehavior]?.antecedents?.map(antecedent => ({
+            label: antecedent,
+            emoji: getAntecedentEmoji(antecedent),
+            sentiment: 'negative',
+            isBehaviorSpecific: true
+          })) || [];
+        }
         
         const allAntecedentChoices = [
           ...antecedentChoices,
@@ -544,12 +582,29 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       // Populate consequences
       const consequenceQuestionIndex = updatedFlow.findIndex(q => q.id === 'whatHappenedAfter');
       if (consequenceQuestionIndex !== -1) {
-        const consequenceChoices = behaviorSpecificOptions[selectedBehavior]?.consequences?.map(consequence => ({
-          label: consequence,
-          emoji: getConsequenceEmoji(consequence),
-          sentiment: 'negative',
-          isBehaviorSpecific: true
-        })) || [];
+        let consequenceChoices: Array<{ label: string; emoji: string; sentiment: string | null; isGptGenerated?: boolean; isFromCustomOption?: boolean; isBehaviorSpecific?: boolean }> = [];
+        
+        if (isCustomBehavior) {
+          // For custom behaviors, check if we have GPT data
+          const customOption = customOptions['whatDidTheyDo']?.find(opt => opt.label === selectedBehavior);
+          if (customOption?.gptGeneratedConsequences) {
+            consequenceChoices = customOption.gptGeneratedConsequences.map(consequence => ({
+              label: consequence.text,
+              emoji: consequence.emoji,
+              sentiment: 'negative',
+              isGptGenerated: true,
+              isFromCustomOption: true
+            }));
+          }
+        } else {
+          // For predefined behaviors, use behavior-specific options
+          consequenceChoices = behaviorSpecificOptions[selectedBehavior]?.consequences?.map(consequence => ({
+            label: consequence,
+            emoji: getConsequenceEmoji(consequence),
+            sentiment: 'negative',
+            isBehaviorSpecific: true
+          })) || [];
+        }
         
         const allConsequenceChoices = [
           ...consequenceChoices,
@@ -1447,7 +1502,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     ];
     
     // If edit mode is active and this choice can have a delete button, adjust border radius
-    if (isCustomEditMode && choice.label !== 'Other' && !(choice as any).isGptGenerated && !(choice as any).isBehaviorSpecific) {
+    if (isCustomEditMode && choice.label !== 'Other' && !(choice as any).isGptGenerated && !(choice as any).isBehaviorSpecific && !(choice as any).isCustom) {
       baseStyle.push({
         borderRightWidth: 0,
         borderBottomRightRadius: 0,
@@ -2138,7 +2193,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
               {/* Results based on search, or category/choice views */}
               {searchQuery.length > 0 ? (
                 <>
-                  {getFilteredOptions(currentQ.id, filteredBehaviorChoices).map((choice) => (
+                  {filteredBehaviorChoices.map((choice) => (
                     <View key={choice.label} style={styles.choiceContainer}>
                       <TouchableOpacity
                         style={getChoiceButtonStyle(choice, currentQ.id)}
@@ -2151,7 +2206,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                       >
                         <View style={styles.choiceContent}>
                           <Text style={styles.choiceText}>{getChoiceLabel(choice)}</Text>
-                          {customOptions[currentQ.id]?.some(opt => opt.label === choice.label) && (
+                          {(choice as any).isCustom && (
                             <Text style={styles.customBadge}>You added</Text>
                           )}
                           {/* {(choice as any).isGptGenerated && (
@@ -2162,7 +2217,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                       {choice.label !== 'Other'
                         && isCustomEditMode
                         && currentQ.is_editable !== false
-                        && (customOptions[currentQ.id]?.some(opt => opt.label === choice.label)) && (
+                        && (choice as any).isCustom && (
                         <TouchableOpacity
                           style={styles.deleteButton}
                           onPress={() => {
