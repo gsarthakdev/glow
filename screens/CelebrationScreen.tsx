@@ -231,7 +231,7 @@ export default function CelebrationScreen({ navigation }: { navigation: any }) {
             {/* Explanation Text */}
             <View style={styles.explanationSection}>
               <Text style={styles.explanationText}>
-                A <Text style={styles.highlightedText}>streak</Text> shows being consistent with logging behaviors! Your BCBA loves this!
+                A <Text style={styles.highlightedText}>streak</Text> shows being consistent with logging behaviors!
               </Text>
             </View>
           </View>
@@ -415,11 +415,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   subtext: {
-    fontSize: 18,
+    fontSize: 17,
     color: '#3E3E6B',
     textAlign: 'center',
-    marginBottom: 24,
+    // marginBottom: 14,
+    // marginTop: 5,
     lineHeight: 24,
+    padding: 10
   },
   thanksText: {
     fontSize: 16,
