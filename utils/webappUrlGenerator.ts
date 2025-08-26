@@ -5,6 +5,7 @@ export interface WebappData {
   logs: any[];
   goals: any[];
   duration: string;
+  dateRangeString: string;
   timestamp: number;
 }
 
@@ -76,7 +77,8 @@ export function prepareDataForWebapp(
   logs: any[], 
   goals: any[], 
   childName: string, 
-  duration: string
+  duration: string,
+  dateRangeString: string,
 ): WebappData {
   // Filter out archived goals
   const activeGoals = goals.filter((goal: any) => !goal.isArchived);
@@ -98,6 +100,7 @@ export function prepareDataForWebapp(
       isArchived: goal.isArchived
     })),
     duration,
+    dateRangeString,
     timestamp: Date.now()
   };
 }

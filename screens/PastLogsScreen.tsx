@@ -1933,7 +1933,7 @@ async function generatePDF(logs: Log[], childName: string, duration: string): Pr
         console.error('Error loading goals for webapp:', error);
       }
       
-      const webappData = prepareDataForWebapp(logs, goalsData, childName, duration);
+      const webappData = prepareDataForWebapp(logs, goalsData, childName, duration, dateRange);
       const webappResult = generateWebappUrl(webappData, 'https://glow-logs.netlify.app/');
       webappUrl = webappResult.url;
     } catch (error) {
