@@ -770,25 +770,99 @@ async function generateGoalsPDF(childName: string, childId: string, duration: st
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-  // Helper to get current week dates (Monday to Sunday)
-  const getWeekDates = () => {
-    const today = new Date();
-    const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-    const mondayOffset = currentDay === 0 ? -6 : 1 - currentDay; // Adjust for Monday start
+
+
+  // NEW: Helper to get goals date range that matches the logs date range
+  const getGoalsDateRange = (duration: string) => {
+    // Use the same timezone handling as logs - create dates in UTC and convert to local
+    const now = new Date();
+    // Create dates in UTC to match the parseUTCToLocalDate logic
+    const utcToday = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+    const utcYesterday = new Date(utcToday);
+    utcYesterday.setUTCDate(utcToday.getUTCDate() - 1);
+    const utcStartOfRollingWeek = new Date(utcToday);
+    utcStartOfRollingWeek.setUTCDate(utcToday.getUTCDate() - 6);
+
+    // Convert to local time using the same logic as parseUTCToLocalDate
+    const today = new Date(utcToday.getTime() + utcToday.getTimezoneOffset() * 60000);
+    const yesterday = new Date(utcYesterday.getTime() + utcYesterday.getTimezoneOffset() * 60000);
+    const startOfRollingWeek = new Date(utcStartOfRollingWeek.getTime() + utcStartOfRollingWeek.getTimezoneOffset() * 60000);
+
+    // DEBUG: Log the goals date range calculation
+    console.log('=== GOALS DATE RANGE CALCULATION ===');
+    console.log('duration parameter received:', duration);
+    console.log('UTC today:', utcToday.toISOString());
+    console.log('UTC yesterday:', utcYesterday.toISOString());
+    console.log('UTC startOfRollingWeek:', utcStartOfRollingWeek.toISOString());
+    console.log('Local today:', today.toISOString());
+    console.log('Local yesterday:', yesterday.toISOString());
+    console.log('Local startOfRollingWeek:', startOfRollingWeek.toISOString());
     
-    const monday = new Date(today);
-    monday.setDate(today.getDate() + mondayOffset);
-    
-    const weekDates = [];
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(monday);
-      date.setDate(monday.getDate() + i);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      weekDates.push(`${year}-${month}-${day}`);
+    // DEBUG: Step-by-step date calculation verification
+    console.log('=== DATE CALCULATION VERIFICATION ===');
+    console.log('Current time:', now.toISOString());
+    console.log('UTC today calculation:', `Date.UTC(${now.getFullYear()}, ${now.getMonth()}, ${now.getDate()})`);
+    console.log('UTC yesterday calculation:', `Date.UTC(${now.getFullYear()}, ${now.getMonth()}, ${now.getDate() - 1})`);
+    console.log('UTC startOfRollingWeek calculation:', `Date.UTC(${now.getFullYear()}, ${now.getMonth()}, ${now.getDate() - 6})`);
+    console.log('Timezone offset (minutes):', now.getTimezoneOffset());
+    console.log('Timezone offset (milliseconds):', now.getTimezoneOffset() * 60000);
+    console.log('=== END DATE CALCULATION VERIFICATION ===');
+
+    let startDate: Date;
+    let endDate: Date;
+
+    switch (duration) {
+      case 'Today':
+        startDate = today;
+        endDate = today;
+        break;
+      case 'Yesterday':
+        startDate = yesterday;
+        endDate = yesterday;
+        break;
+      case 'This Week':
+        startDate = startOfRollingWeek;
+        endDate = today;
+        break;
+      default:
+        startDate = startOfRollingWeek;
+        endDate = today;
+        break;
     }
-    return weekDates;
+
+    // Generate array of dates from start to end (inclusive)
+    const dateRange: string[] = [];
+    const currentDate = new Date(startDate.getTime()); // Create a copy to avoid modifying startDate
+    
+    while (currentDate <= endDate) {
+      const year = currentDate.getFullYear();
+      const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+      const day = String(currentDate.getDate()).padStart(2, '0');
+      dateRange.push(`${year}-${month}-${day}`);
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    console.log('goals startDate:', startDate.toISOString());
+    console.log('goals endDate:', endDate.toISOString());
+    console.log('goals dateRange:', dateRange);
+    
+    // TEST: Verify date generation logic
+    console.log('=== DATE GENERATION TEST ===');
+    console.log('startDate:', startDate.toISOString());
+    console.log('endDate:', endDate.toISOString());
+    console.log('Number of days:', dateRange.length);
+    console.log('First date:', dateRange[0]);
+    console.log('Last date:', dateRange[dateRange.length - 1]);
+    console.log('=== END DATE GENERATION TEST ===');
+    
+    // Debug: Show the date strings in the same format as logs for comparison
+    console.log('Goals date comparison debug:');
+    console.log('startDate day only:', new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()).toISOString());
+    console.log('endDate day only:', new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()).toISOString());
+    
+    console.log('=== END GOALS DATE RANGE CALCULATION ===');
+
+    return dateRange;
   };
 
   // Helper to get day name
@@ -796,16 +870,27 @@ async function generateGoalsPDF(childName: string, childId: string, duration: st
     // Parse date string in local time to avoid UTC issues
     const [year, month, day] = dateString.split('-').map(Number);
     const date = new Date(year, month - 1, day); // month is 0-indexed
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    // Convert Sunday (0) to 6, and shift other days accordingly
-    const dayIndex = date.getDay() === 0 ? 6 : date.getDay() - 1;
-    return days[dayIndex];
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    // Return the actual day name for this specific date
+    return days[date.getDay()];
   };
 
   // Helper to format date for display
   const formatDateForDisplay = (dateString: string) => {
-    const date = new Date(dateString);
-    return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+    // Parse date string in local time to avoid UTC issues
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day); // month is 0-indexed
+    const result = `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+    
+    // DEBUG: Log the date formatting process
+    console.log(`=== formatDateForDisplay DEBUG ===`);
+    console.log(`Input dateString: "${dateString}"`);
+    console.log(`Parsed year: ${year}, month: ${month}, day: ${day}`);
+    console.log(`Created Date object: ${date.toISOString()}`);
+    console.log(`Formatted result: "${result}"`);
+    console.log(`=== END formatDateForDisplay DEBUG ===`);
+    
+    return result;
   };
 
   // Load goals from child's data
@@ -851,6 +936,13 @@ async function generateGoalsPDF(childName: string, childId: string, duration: st
     return comments.filter(comment => weekDates.includes(comment.date));
   };
 
+  // NEW: Helper to filter goals by date range (show all goals, not just those with comments)
+  const filterGoalsByDateRange = (goals: any[], weekDates: string[]) => {
+    // Return all non-archived goals, regardless of whether they have comments
+    // The dailyCounts will be filtered by date range when displaying
+    return goals.filter((goal: any) => !goal.isArchived);
+  };
+
   // Helper to group comments by goal and date
   const groupCommentsByGoalAndDate = (goals: any[], weekDates: string[]) => {
     const grouped: { [goalId: string]: { goalName: string, dates: { [date: string]: any[] } } } = {};
@@ -876,9 +968,72 @@ async function generateGoalsPDF(childName: string, childId: string, duration: st
   };
 
   const goals = await loadGoals();
-  const weekDates = getWeekDates();
+  console.log('=== BEFORE CALLING getGoalsDateRange ===');
+  console.log('duration parameter:', duration);
+  const weekDates = getGoalsDateRange(duration);
+  console.log('=== AFTER CALLING getGoalsDateRange ===');
+  console.log('weekDates returned:', weekDates);
+  
+  // TEST: Verify the function is working correctly
+  console.log('=== FUNCTION VERIFICATION TEST ===');
+  console.log('Function name called:', 'getGoalsDateRange');
+  console.log('Duration parameter:', duration);
+  console.log('Expected date range type:', duration === 'This Week' ? 'rolling 7 days' : 'single day');
+  console.log('Actual date range length:', weekDates.length);
+  console.log('First date:', weekDates[0]);
+  console.log('Last date:', weekDates[weekDates.length - 1]);
+  
+  // TEST: Verify date range matches expected logs range
+  if (duration === 'This Week') {
+    console.log('=== DATE RANGE MATCHING TEST ===');
+    console.log('Expected logs range: August 19-25, 2025 (rolling 7 days)');
+    console.log('Actual goals range:', weekDates[0], 'to', weekDates[weekDates.length - 1]);
+    console.log('Range matches expected?', weekDates.length === 7 && weekDates[0] === '2025-08-19' && weekDates[6] === '2025-08-25');
+    console.log('=== END DATE RANGE MATCHING TEST ===');
+  }
+  
+  console.log('=== END FUNCTION VERIFICATION TEST ===');
+  
+  // Use the new filter function to get all goals for the date range
+  const filteredGoals = filterGoalsByDateRange(goals, weekDates);
   const startDate = formatDateForDisplay(weekDates[0]);
-  const endDate = formatDateForDisplay(weekDates[6]);
+  const endDate = formatDateForDisplay(weekDates[weekDates.length - 1]);
+
+  // DEBUG: Verify the formatted dates being used in the PDF
+  console.log('=== PDF DATE FORMAT DEBUG ===');
+  console.log('weekDates[0]:', weekDates[0]);
+  console.log('weekDates[weekDates.length - 1]:', weekDates[weekDates.length - 1]);
+  console.log('startDate formatted:', startDate);
+  console.log('endDate formatted:', endDate);
+  console.log('PDF subtitle will show:', `${duration}: ${startDate} to ${endDate}`);
+  console.log('=== END PDF DATE FORMAT DEBUG ===');
+  
+  // DEBUG: Show what goals and dailyCounts are being processed
+  console.log('=== GOALS PROCESSING DEBUG ===');
+  console.log('Total goals loaded:', goals.length);
+  console.log('Filtered goals (non-archived):', filteredGoals.length);
+  console.log('Date range for goals:', weekDates);
+  
+  // TEST: Verify date range logic
+  console.log('=== DATE RANGE VERIFICATION TEST ===');
+  const testDate = '2025-08-22'; // Use a date from the logs debug output
+  console.log('Test date:', testDate);
+  console.log('Is test date in goals date range?', weekDates.includes(testDate));
+  console.log('Goals date range contains test date:', weekDates.includes(testDate));
+  console.log('=== END DATE RANGE VERIFICATION TEST ===');
+  
+  if (filteredGoals.length > 0) {
+    console.log('Sample goal dailyCounts for date range:');
+    filteredGoals.slice(0, 2).forEach((goal: any, index: number) => {
+      console.log(`Goal ${index + 1}:`, goal.text);
+      console.log('All dailyCounts:', goal.dailyCounts);
+      
+      // Show which dailyCounts fall within the date range
+      const relevantCounts = goal.dailyCounts?.filter((dc: any) => weekDates.includes(dc.date)) || [];
+      console.log('Relevant dailyCounts for date range:', relevantCounts);
+    });
+  }
+  console.log('=== END GOALS PROCESSING DEBUG ===');
 
   // Create the goals page
   const page = pdfDoc.addPage([595, 842]); // A4 size
@@ -900,7 +1055,15 @@ async function generateGoalsPDF(childName: string, childId: string, duration: st
   y -= 30;
 
   // Week range subtitle
-  page.drawText(sanitizePdfText(`Week of ${startDate} to ${endDate}`), {
+  // DEBUG: Log the exact values being used in the PDF subtitle
+  console.log(`=== PDF SUBTITLE DEBUG ===`);
+  console.log(`duration: "${duration}"`);
+  console.log(`startDate: "${startDate}"`);
+  console.log(`endDate: "${endDate}"`);
+  console.log(`Full subtitle text: "${duration}: ${startDate} to ${endDate}"`);
+  console.log(`=== END PDF SUBTITLE DEBUG ===`);
+  
+  page.drawText(sanitizePdfText(`${duration}: ${startDate} to ${endDate}`), {
     x: leftMargin,
     y,
     size: 14,
@@ -909,9 +1072,17 @@ async function generateGoalsPDF(childName: string, childId: string, duration: st
   });
   y -= 40;
 
-  if (goals.length === 0) {
+  if (filteredGoals.length === 0) {
     // No goals message
-    page.drawText(sanitizePdfText(`No goals added for this week (${startDate} to ${endDate})`), {
+    // DEBUG: Log the exact values being used in the "No goals" message
+    console.log(`=== NO GOALS MESSAGE DEBUG ===`);
+    console.log(`duration.toLowerCase(): "${duration.toLowerCase()}"`);
+    console.log(`startDate: "${startDate}"`);
+    console.log(`endDate: "${endDate}"`);
+    console.log(`Full "No goals" message: "No goals added for ${duration.toLowerCase()} (${startDate} to ${endDate})"`);
+    console.log(`=== END NO GOALS MESSAGE DEBUG ===`);
+    
+    page.drawText(sanitizePdfText(`No goals added for ${duration.toLowerCase()} (${startDate} to ${endDate})`), {
       x: leftMargin,
       y,
       size: 14,
@@ -924,7 +1095,7 @@ async function generateGoalsPDF(childName: string, childId: string, duration: st
     const rowHeight = 25;
     const headerHeight = 30;
     const goalColWidth = tableWidth * 0.4; // 40% for goal text
-    const dayColWidth = (tableWidth - goalColWidth) / 7; // Equal width for 7 days
+    const dayColWidth = (tableWidth - goalColWidth) / weekDates.length; // Dynamic width based on number of days
 
     // Table header
     const headerY = tableStartY;
@@ -942,6 +1113,10 @@ async function generateGoalsPDF(childName: string, childId: string, duration: st
     weekDates.forEach((date, index) => {
       const dayName = getDayName(date);
       const dayX = leftMargin + goalColWidth + (index * dayColWidth);
+      
+      // DEBUG: Log the day name generation
+      console.log(`Date ${date} -> Day name: ${dayName}`);
+      
       page.drawText(dayName, {
         x: dayX + (dayColWidth / 2) - (fontBold.widthOfTextAtSize(dayName, 10) / 2),
         y: headerY - 20,
@@ -960,7 +1135,7 @@ async function generateGoalsPDF(childName: string, childId: string, duration: st
     });
 
     // Table rows
-    goals.forEach((goal: any, goalIndex: number) => {
+    filteredGoals.forEach((goal: any, goalIndex: number) => {
       const rowY = tableStartY - headerHeight - (goalIndex * rowHeight);
       
       // Goal text (with word wrapping)
@@ -1024,37 +1199,48 @@ async function generateGoalsPDF(childName: string, childId: string, duration: st
       color: rgb(0.8, 0.8, 0.8),
     });
     page.drawLine({
-      start: { x: leftMargin, y: tableStartY - headerHeight - (goals.length * rowHeight) },
-      end: { x: leftMargin + tableWidth, y: tableStartY - headerHeight - (goals.length * rowHeight) },
+      start: { x: leftMargin, y: tableStartY - headerHeight - (filteredGoals.length * rowHeight) },
+      end: { x: leftMargin + tableWidth, y: tableStartY - headerHeight - (filteredGoals.length * rowHeight) },
       thickness: 1,
       color: rgb(0.8, 0.8, 0.8),
     });
     page.drawLine({
       start: { x: leftMargin, y: tableStartY },
-      end: { x: leftMargin, y: tableStartY - headerHeight - (goals.length * rowHeight) },
+      end: { x: leftMargin, y: tableStartY - headerHeight - (filteredGoals.length * rowHeight) },
       thickness: 1,
       color: rgb(0.8, 0.8, 0.8),
     });
     page.drawLine({
       start: { x: leftMargin + tableWidth, y: tableStartY },
-      end: { x: leftMargin + tableWidth, y: tableStartY - headerHeight - (goals.length * rowHeight) },
+      end: { x: leftMargin + tableWidth, y: tableStartY - headerHeight - (filteredGoals.length * rowHeight) },
       thickness: 1,
       color: rgb(0.8, 0.8, 0.8),
     });
     page.drawLine({
       start: { x: leftMargin + goalColWidth, y: tableStartY },
-      end: { x: leftMargin + goalColWidth, y: tableStartY - headerHeight - (goals.length * rowHeight) },
+      end: { x: leftMargin + goalColWidth, y: tableStartY - headerHeight - (filteredGoals.length * rowHeight) },
       thickness: 1,
       color: rgb(0.8, 0.8, 0.8),
     });
 
+    // Draw vertical lines for each day column
+    for (let i = 1; i < weekDates.length; i++) {
+      const dayX = leftMargin + goalColWidth + (i * dayColWidth);
+      page.drawLine({
+        start: { x: dayX, y: tableStartY },
+        end: { x: dayX, y: tableStartY - headerHeight - (filteredGoals.length * rowHeight) },
+        thickness: 1,
+        color: rgb(0.8, 0.8, 0.8),
+      });
+    }
+
     // Add comments section if there are comments for the current week
-    const groupedComments = groupCommentsByGoalAndDate(goals, weekDates);
+    const groupedComments = groupCommentsByGoalAndDate(filteredGoals, weekDates);
     const hasComments = Object.keys(groupedComments).length > 0;
     
     if (hasComments) {
       // Calculate where the goals table ended
-      const tableEndY = tableStartY - headerHeight - (goals.length * rowHeight);
+      const tableEndY = tableStartY - headerHeight - (filteredGoals.length * rowHeight);
       y = tableEndY - 40;
       
       // Comments section title
@@ -2318,29 +2504,68 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
   };
 
   const getLogsForDuration = () => {
+    // Use the same timezone handling as goals - create dates in UTC and convert to local
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    // Rolling 7-day window: today + previous 6 days
-    const startOfRollingWeek = new Date(today);
-    startOfRollingWeek.setDate(today.getDate() - 6);
+    // Create dates in UTC to match the parseUTCToLocalDate logic
+    const utcToday = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+    const utcYesterday = new Date(utcToday);
+    utcYesterday.setUTCDate(utcToday.getUTCDate() - 1);
+    const utcStartOfRollingWeek = new Date(utcToday);
+    utcStartOfRollingWeek.setUTCDate(utcToday.getUTCDate() - 6);
 
-    return logs.filter((log: Log) => {
+    // Convert to local time using the same logic as parseUTCToLocalDate
+    const today = new Date(utcToday.getTime() + utcToday.getTimezoneOffset() * 60000);
+    const yesterday = new Date(utcYesterday.getTime() + utcYesterday.getTimezoneOffset() * 60000);
+    const startOfRollingWeek = new Date(utcStartOfRollingWeek.getTime() + utcStartOfRollingWeek.getTimezoneOffset() * 60000);
+    
+    // DEBUG: Log the exact date range being used for logs
+    console.log('=== LOGS DATE RANGE DEBUG ===');
+    console.log('selectedDuration:', selectedDuration);
+    console.log('UTC today:', utcToday.toISOString());
+    console.log('UTC yesterday:', utcYesterday.toISOString());
+    console.log('UTC startOfRollingWeek:', utcStartOfRollingWeek.toISOString());
+    console.log('Local today:', today.toISOString());
+    console.log('Local yesterday:', yesterday.toISOString());
+    console.log('Local startOfRollingWeek:', startOfRollingWeek.toISOString());
+    
+    const filteredLogs = logs.filter((log: Log) => {
       const logDate = parseUTCToLocalDate(log.timestamp);
       // Zero out time for comparison using local date
       const logDay = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate());
+      
+      // Also zero out time for the comparison dates to ensure day-level comparison
+      const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const yesterdayDay = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+      const startOfRollingWeekDay = new Date(startOfRollingWeek.getFullYear(), startOfRollingWeek.getMonth(), startOfRollingWeek.getDate());
+      
       switch (selectedDuration) {
         case 'Today':
-          return logDay.getTime() === today.getTime();
+          return logDay.getTime() === todayDay.getTime();
         case 'Yesterday':
-          return logDay.getTime() === yesterday.getTime();
+          return logDay.getTime() === yesterdayDay.getTime();
         case 'This Week':
-          return logDay >= startOfRollingWeek && logDay <= today;
+          return logDay >= startOfRollingWeekDay && logDay <= todayDay;
         default:
           return false;
       }
     });
+
+    // DEBUG: Log the filtered logs and their dates
+    console.log('filteredLogs count:', filteredLogs.length);
+    if (filteredLogs.length > 0) {
+      const firstLog = parseUTCToLocalDate(filteredLogs[0].timestamp);
+      const lastLog = parseUTCToLocalDate(filteredLogs[filteredLogs.length - 1].timestamp);
+      console.log('firstLog date:', firstLog.toISOString());
+      console.log('lastLog date:', lastLog.toISOString());
+      
+      // Debug: Show the actual date strings being used for comparison
+      console.log('Date comparison debug:');
+      console.log('todayDay:', new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString());
+      console.log('startOfRollingWeekDay:', new Date(startOfRollingWeek.getFullYear(), startOfRollingWeek.getMonth(), startOfRollingWeek.getDate()).toISOString());
+    }
+    console.log('=== END LOGS DEBUG ===');
+
+    return filteredLogs;
   };
 
   const sendLogs = async () => {
@@ -2348,6 +2573,7 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
       setSending(true);
       setAffirmationModalVisible(true);
       const selectedLogs = getLogsForDuration();
+      
       // Get current selected child's name
       const currentSelectedChild = await AsyncStorage.getItem('current_selected_child');
       let childName = 'Child';
@@ -2365,6 +2591,10 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
       
       // Generate both PDFs
       const behaviorLogsUri = await generatePDF(selectedLogs, childName, selectedDuration);
+      console.log('=== CALLING generateGoalsPDF ===');
+      console.log('childName:', childName);
+      console.log('childId:', childId);
+      console.log('selectedDuration being passed:', selectedDuration);
       const goalsUri = await generateGoalsPDF(childName, childId, selectedDuration);
       
       // Merge the PDFs
@@ -2408,6 +2638,10 @@ export default function PastLogsScreen({ navigation }: { navigation: any }) {
       const selectedLogs = getLogsForDuration();
       
       // Generate both PDFs
+      console.log('=== CALLING generateGoalsPDF from handleProviderSelect ===');
+      console.log('childName:', childName);
+      console.log('childId:', childId);
+      console.log('selectedDuration being passed:', selectedDuration);
       const behaviorLogsUri = await generatePDF(selectedLogs, childName, selectedDuration);
       const goalsUri = await generateGoalsPDF(childName, childId, selectedDuration);
       
