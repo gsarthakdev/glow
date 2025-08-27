@@ -1418,39 +1418,39 @@ async function generateGoalsPDF(childName: string, childId: string, duration: st
   page.node.set(PDFName.of('Annots'), annots);
 
   // Add webapp link to goals PDF footer
-  const webappLinkText = "Click Here to View Full Logs";
-  const webappLinkWidth = font.widthOfTextAtSize(webappLinkText, 10);
-  const webappLinkX = footerRightEdge - webappLinkWidth;
-  const webappLinkY = emailY - footerLineHeight;
+  // const webappLinkText = "Click Here to View Full Logs";
+  // const webappLinkWidth = font.widthOfTextAtSize(webappLinkText, 10);
+  // const webappLinkX = footerRightEdge - webappLinkWidth;
+  // const webappLinkY = emailY - footerLineHeight;
 
-  page.drawText(sanitizePdfText(webappLinkText), {
-    x: webappLinkX,
-    y: webappLinkY,
-    size: 10,
-    font: font,
-    color: rgb(0, 0, 1),
-  });
+  // page.drawText(sanitizePdfText(webappLinkText), {
+  //   x: webappLinkX,
+  //   y: webappLinkY,
+  //   size: 10,
+  //   font: font,
+  //   color: rgb(0, 0, 1),
+  // });
 
   // Hyperlink annotation for webapp link
   // @ts-ignore - low-level annotation creation
-  const webappLinkAnnot = pdfDoc.context.obj({
-    Type: 'Annot',
-    Subtype: 'Link',
-    Rect: [webappLinkX, webappLinkY, webappLinkX + webappLinkWidth, webappLinkY + 12],
-    Border: [0, 0, 0],
-    A: {
-      Type: 'Action',
-      S: 'URI',
-      URI: PDFString.of('https://glow-logs.netlify.app/'),
-    },
-  });
+  // const webappLinkAnnot = pdfDoc.context.obj({
+  //   Type: 'Annot',
+  //   Subtype: 'Link',
+  //   Rect: [webappLinkX, webappLinkY, webappLinkX + webappLinkWidth, webappLinkY + 12],
+  //   Border: [0, 0, 0],
+  //   A: {
+  //     Type: 'Action',
+  //     S: 'URI',
+  //     URI: PDFString.of('https://glow-logs.netlify.app/'),
+  //   },
+  // });
 
-  // @ts-ignore - attach webapp annotation to page
-  const webappAnnots = page.node.lookup(PDFName.of('Annots')) || pdfDoc.context.obj([]);
-  // @ts-ignore
-  webappAnnots.push(webappLinkAnnot);
-  // @ts-ignore
-  page.node.set(PDFName.of('Annots'), webappAnnots);
+  // // @ts-ignore - attach webapp annotation to page
+  // const webappAnnots = page.node.lookup(PDFName.of('Annots')) || pdfDoc.context.obj([]);
+  // // @ts-ignore
+  // webappAnnots.push(webappLinkAnnot);
+  // // @ts-ignore
+  // page.node.set(PDFName.of('Annots'), webappAnnots);
 
 
 
