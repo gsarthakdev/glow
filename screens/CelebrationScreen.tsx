@@ -238,7 +238,7 @@ export default function CelebrationScreen({ navigation }: { navigation: any }) {
         </View>
 
         <Text style={styles.subtext}>
-          You've helped your therapist better understand what happened at home.
+          You're helping your child's therapist personalize their treatment plan!
         </Text>
         {/* <Text style={styles.thanksText}>
           Thanks for doing your part in logging!
