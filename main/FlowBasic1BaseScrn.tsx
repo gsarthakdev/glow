@@ -140,10 +140,10 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     console.log('[FLOW] whatDidTheyDo custom options:', customOptions['whatDidTheyDo']);
     
     if (currentFlow.length > 0) {
-      const selectedBehavior = selectedAnswers['whatDidTheyDo']?.[0]?.answer;
-      console.log('[FLOW] Selected behavior:', selectedBehavior);
-      if (!selectedBehavior) {
-        console.log('[FLOW] No selected behavior found, returning early');
+      const selectedBehaviors = selectedAnswers['whatDidTheyDo'] || [];
+      console.log('[FLOW] Selected behaviors:', selectedBehaviors.map(b => b.answer));
+      if (selectedBehaviors.length === 0) {
+        console.log('[FLOW] No selected behaviors found, returning early');
         return;
       }
 
@@ -155,54 +155,8 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       if (antecedentQuestionIndex !== -1) {
         const currentSet = optionSets['whatHappenedBefore'] || 0;
         
-        // Check if this is a custom "other" response (GPT should be used)
-        const isCustomResponse = selectedAnswers['whatDidTheyDo']?.[0]?.isCustom;
-        console.log('[FLOW] Is custom response:', isCustomResponse);
-        console.log('[FLOW] Current gptSuggestions:', gptSuggestions);
-        
-        let antecedentChoices = [];
-        
-        if (isCustomResponse && gptSuggestions && !gptSuggestions.isFallback) {
-          // For custom responses, use full GPT options pool (pagination handled later)
-          const gptAntecedents = gptSuggestions.antecedents || [];
-          console.log('[FLOW] GPT antecedents (full pool) for custom response:', gptAntecedents);
-          
-          antecedentChoices = gptAntecedents.map(antecedent => ({
-            label: antecedent.text, // Save only the text for AsyncStorage
-            emoji: antecedent.emoji, // Use GPT's emoji
-            sentiment: 'negative',
-            isGptGenerated: true
-          }));
-        } else {
-          // Check if there's a custom option with GPT data for the selected behavior
-          const selectedBehavior = selectedAnswers['whatDidTheyDo']?.[0]?.answer;
-          const customOptionWithGpt = customOptions['whatDidTheyDo']?.find(opt => 
-            opt.label === selectedBehavior && opt.gptGeneratedAntecedents && opt.gptGeneratedAntecedents.length > 0
-          );
-          
-          if (customOptionWithGpt && customOptionWithGpt.gptGeneratedAntecedents) {
-            // Use GPT-generated antecedents from the custom option
-            antecedentChoices = customOptionWithGpt.gptGeneratedAntecedents.map(antecedent => ({
-              label: antecedent.text,
-              emoji: antecedent.emoji,
-              sentiment: 'negative',
-              isGptGenerated: true,
-              isFromCustomOption: true
-            }));
-            console.log('[FLOW] Using GPT antecedents from custom option:', antecedentChoices);
-          } else {
-            // For predefined behaviors, use full behavior-specific options pool (pagination handled later)
-            const behaviorAntecedents = behaviorSpecificOptions[selectedBehavior]?.antecedents || [];
-            console.log('[FLOW] Behavior antecedents (full pool) for predefined behavior:', behaviorAntecedents);
-            
-            antecedentChoices = behaviorAntecedents.map((antecedent: string) => ({
-              label: antecedent,
-              emoji: getAntecedentEmoji(antecedent), // Use relevant emoji for behavior-specific options
-              sentiment: 'negative',
-              isBehaviorSpecific: true
-            }));
-          }
-        }
+        // Use intelligent selection for multiple behaviors
+        const antecedentChoices = getIntelligentAntecedentChoices(selectedBehaviors, 'whatHappenedBefore');
         
         const allAntecedentChoices = [
           ...antecedentChoices,
@@ -225,54 +179,8 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       if (consequenceQuestionIndex !== -1) {
         const currentSet = optionSets['whatHappenedAfter'] || 0;
         
-        // Check if this is a custom "other" response (GPT should be used)
-        const isCustomResponse = selectedAnswers['whatDidTheyDo']?.[0]?.isCustom;
-        console.log('[FLOW] Is custom response for consequences:', isCustomResponse);
-        console.log('[FLOW] Current gptSuggestions for consequences:', gptSuggestions);
-        
-        let consequenceChoices = [];
-        
-        if (isCustomResponse && gptSuggestions && !gptSuggestions.isFallback) {
-          // For custom responses, use full GPT options pool (pagination handled later)
-          const gptConsequences = gptSuggestions.consequences || [];
-          console.log('[FLOW] GPT consequences (full pool) for custom response:', gptConsequences);
-          
-          consequenceChoices = gptConsequences.map(consequence => ({
-            label: consequence.text, // Save only the text for AsyncStorage
-            emoji: consequence.emoji, // Use GPT's emoji
-            sentiment: 'negative',
-            isGptGenerated: true
-          }));
-        } else {
-          // Check if there's a custom option with GPT data for the selected behavior
-          const selectedBehavior = selectedAnswers['whatDidTheyDo']?.[0]?.answer;
-          const customOptionWithGpt = customOptions['whatDidTheyDo']?.find(opt => 
-            opt.label === selectedBehavior && opt.gptGeneratedConsequences && opt.gptGeneratedConsequences.length > 0
-          );
-          
-          if (customOptionWithGpt && customOptionWithGpt.gptGeneratedConsequences) {
-            // Use GPT-generated consequences from the custom option
-            consequenceChoices = customOptionWithGpt.gptGeneratedConsequences.map(consequence => ({
-              label: consequence.text,
-              emoji: consequence.emoji,
-              sentiment: 'negative',
-              isGptGenerated: true,
-              isFromCustomOption: true
-            }));
-            console.log('[FLOW] Using GPT consequences from custom option:', consequenceChoices);
-          } else {
-            // For predefined behaviors, use full behavior-specific options pool (pagination handled later)
-            const behaviorConsequences = behaviorSpecificOptions[selectedBehavior]?.consequences || [];
-            console.log('[FLOW] Behavior consequences (full pool) for predefined behavior:', behaviorConsequences);
-            
-            consequenceChoices = behaviorConsequences.map((consequence: string) => ({
-              label: consequence,
-              emoji: getConsequenceEmoji(consequence), // Use relevant emoji for behavior-specific options
-              sentiment: 'negative',
-              isBehaviorSpecific: true
-            }));
-          }
-        }
+        // Use intelligent selection for multiple behaviors
+        const consequenceChoices = getIntelligentConsequenceChoices(selectedBehaviors, 'whatHappenedAfter');
         
         const allConsequenceChoices = [
           ...consequenceChoices,
@@ -509,20 +417,41 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       }
     }
 
-    // Process answer selection - always replace for first question, toggle for others
+    // Process answer selection - handle multi-select for first question
     setSelectedAnswers(prev => {
       const answerText = answer.label;
       const current = prev[questionId] || [];
       
-      // For the first question, always replace any existing selection
+      // For the first question, implement multi-select (max 3 behaviors)
       if (questionId === 'whatDidTheyDo') {
-        return {
-          ...prev,
-          [questionId]: [{ answer: answerText, isCustom: (answer as any).isCustom || false }]
-        };
+        const existingIndex = current.findIndex(a => a.answer === answerText);
+        
+        if (existingIndex >= 0) {
+          // Remove if already selected (toggle behavior)
+          return {
+            ...prev,
+            [questionId]: current.filter((_, i) => i !== existingIndex)
+          };
+        } else {
+          // Add if not selected, but limit to max 3 behaviors
+          if (current.length >= 3) {
+            // Replace the last selected behavior with the new one
+            const updated = [...current.slice(0, 2), { answer: answerText, isCustom: (answer as any).isCustom || false }];
+            return {
+              ...prev,
+              [questionId]: updated
+            };
+          } else {
+            // Add new behavior
+            return {
+              ...prev,
+              [questionId]: [...current, { answer: answerText, isCustom: (answer as any).isCustom || false }]
+            };
+          }
+        }
       }
 
-      // For other questions, toggle the selection
+      // For other questions, toggle the selection (existing logic)
       const existingIndex = current.findIndex(a => a.answer === answerText);
       if (existingIndex >= 0) {
         // Remove if already selected
@@ -541,44 +470,22 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     
     // If this was a behavior selection, immediately populate ABC questions
     if (questionId === 'whatDidTheyDo' && currentFlow.length > 0) {
-      const selectedBehavior = answer.label;
-      const isCustomBehavior = (answer as any).isCustom;
-      console.log('[FLOW] Behavior selected, immediately populating ABC questions for:', selectedBehavior, 'isCustom:', isCustomBehavior);
+      const selectedBehaviors = selectedAnswers[questionId] || [];
+      console.log('[FLOW] Behaviors selected, immediately populating ABC questions for:', selectedBehaviors.map(b => b.answer));
       
-      // Set flow sentiment for custom behaviors
-      if (isCustomBehavior) {
+      // Set flow sentiment for custom behaviors (use first custom behavior's sentiment, or default to negative)
+      const hasCustomBehavior = selectedBehaviors.some(b => b.isCustom);
+      if (hasCustomBehavior) {
         setFlowSentiment('negative');
       }
       
       // Force immediate population of ABC questions
       const updatedFlow = [...currentFlow];
       
-      // Populate antecedents
+      // Populate antecedents with intelligent selection
       const antecedentQuestionIndex = updatedFlow.findIndex(q => q.id === 'whatHappenedBefore');
       if (antecedentQuestionIndex !== -1) {
-        let antecedentChoices: Array<{ label: string; emoji: string; sentiment: string | null; isGptGenerated?: boolean; isFromCustomOption?: boolean; isBehaviorSpecific?: boolean }> = [];
-        
-        if (isCustomBehavior) {
-          // For custom behaviors, check if we have GPT data
-          const customOption = customOptions['whatDidTheyDo']?.find(opt => opt.label === selectedBehavior);
-          if (customOption?.gptGeneratedAntecedents) {
-            antecedentChoices = customOption.gptGeneratedAntecedents.map(antecedent => ({
-              label: antecedent.text,
-              emoji: antecedent.emoji,
-              sentiment: 'negative',
-              isGptGenerated: true,
-              isFromCustomOption: true
-            }));
-          }
-        } else {
-          // For predefined behaviors, use behavior-specific options
-          antecedentChoices = behaviorSpecificOptions[selectedBehavior]?.antecedents?.map(antecedent => ({
-            label: antecedent,
-            emoji: getAntecedentEmoji(antecedent),
-            sentiment: 'negative',
-            isBehaviorSpecific: true
-          })) || [];
-        }
+        const antecedentChoices = getIntelligentAntecedentChoices(selectedBehaviors, 'whatHappenedBefore');
         
         const allAntecedentChoices = [
           ...antecedentChoices,
@@ -591,32 +498,10 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         };
       }
       
-      // Populate consequences
+      // Populate consequences with intelligent selection
       const consequenceQuestionIndex = updatedFlow.findIndex(q => q.id === 'whatHappenedAfter');
       if (consequenceQuestionIndex !== -1) {
-        let consequenceChoices: Array<{ label: string; emoji: string; sentiment: string | null; isGptGenerated?: boolean; isFromCustomOption?: boolean; isBehaviorSpecific?: boolean }> = [];
-        
-        if (isCustomBehavior) {
-          // For custom behaviors, check if we have GPT data
-          const customOption = customOptions['whatDidTheyDo']?.find(opt => opt.label === selectedBehavior);
-          if (customOption?.gptGeneratedConsequences) {
-            consequenceChoices = customOption.gptGeneratedConsequences.map(consequence => ({
-              label: consequence.text,
-              emoji: consequence.emoji,
-              sentiment: 'negative',
-              isGptGenerated: true,
-              isFromCustomOption: true
-            }));
-          }
-        } else {
-          // For predefined behaviors, use behavior-specific options
-          consequenceChoices = behaviorSpecificOptions[selectedBehavior]?.consequences?.map(consequence => ({
-            label: consequence,
-            emoji: getConsequenceEmoji(consequence),
-            sentiment: 'negative',
-            isBehaviorSpecific: true
-          })) || [];
-        }
+        const consequenceChoices = getIntelligentConsequenceChoices(selectedBehaviors, 'whatHappenedAfter');
         
         const allConsequenceChoices = [
           ...consequenceChoices,
@@ -650,12 +535,34 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       return;
     }
 
-    // Clear all existing answers and add only the custom answer
-    console.log('[DEBUG] Setting custom answer for:', currentQ.id, 'text:', otherText[currentQ.id]);
+    // Add the "Other" option to existing answers (multi-select support)
+    console.log('[DEBUG] Adding "Other" answer for:', currentQ.id, 'text:', otherText[currentQ.id]);
     setSelectedAnswers(prev => {
+      const existingAnswers = prev[currentQ.id] || [];
+      const otherAnswer = { answer: otherText[currentQ.id], isCustom: true };
+      
+      // Check if this "Other" option is already selected
+      const isAlreadySelected = existingAnswers.some(a => a.answer === otherText[currentQ.id]);
+      if (isAlreadySelected) {
+        console.log('[DEBUG] "Other" option already selected, no change needed');
+        return prev;
+      }
+      
+      // Check if we've reached the maximum of 3 behaviors
+      if (existingAnswers.length >= 3) {
+        console.log('[DEBUG] Maximum 3 behaviors reached, replacing last one with "Other"');
+        const newAnswers = existingAnswers.slice(0, 2); // Keep first 2
+        newAnswers.push(otherAnswer); // Add "Other" as 3rd
+        return {
+          ...prev,
+          [currentQ.id]: newAnswers
+        };
+      }
+      
+      // Add "Other" option to existing answers
       const newState = {
         ...prev,
-        [currentQ.id]: [{ answer: otherText[currentQ.id], isCustom: true }]
+        [currentQ.id]: [...existingAnswers, otherAnswer]
       };
       console.log('[DEBUG] New selectedAnswers state:', newState);
       return newState;
@@ -670,6 +577,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       const customBehavior = otherText[currentQ.id];
       console.log('[GPT] About to call getABCForBehavior with behavior:', customBehavior);
       if (customBehavior) {
+        // For "Other" options on the first question, we don't add them to permanent custom options
+        // They are only temporary for this session. Just call GPT to get suggestions.
+        
         setIsLoadingGpt(true);
         console.log('[GPT] Setting isLoadingGpt to true');
         getABCForBehavior(customBehavior)
@@ -677,6 +587,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
             console.log('[GPT] Successfully got suggestions:', suggestions);
             setGptSuggestions(suggestions);
             console.log('[GPT] Set gptSuggestions state to:', suggestions);
+            
+            // GPT suggestions are stored in gptSuggestions state for temporary use
+            // No need to update custom options since "Other" options are not permanent
           })
           .catch(error => {
             console.error('[GPT] Failed to get suggestions:', error);
@@ -716,25 +629,12 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
 
   const handleShuffleOptions = (questionId: string) => {
     const currentSet = optionSets[questionId] || 0;
-    const selectedBehavior = selectedAnswers['whatDidTheyDo']?.[0]?.answer;
-    const isCustomResponse = selectedAnswers['whatDidTheyDo']?.[0]?.isCustom;
-    
-    if (!selectedBehavior) return;
-    
-    const questionType = questionId === 'whatHappenedBefore' ? 'antecedents' : 'consequences';
-    
-    let totalSets = 0;
-    if (isCustomResponse && gptSuggestions && !gptSuggestions.isFallback) {
-      // For custom responses, use GPT sets
-      totalSets = getTotalGPTSets(gptSuggestions, questionType);
-    } else if (questionId === 'whatHappenedBefore' || questionId === 'whatHappenedAfter') {
-      // For ABC questions, use our custom set calculation that includes custom options
-      totalSets = getTotalSetsWithCustomOptions(questionId);
-    } else {
-      // For predefined behaviors, use behavior-specific sets
-      totalSets = getTotalSets(selectedBehavior || '', questionType);
+    const selectedBehaviors = selectedAnswers['whatDidTheyDo'] || [];
+    if (selectedBehaviors.length === 0) return;
+    let totalSets = 1;
+    if (questionId === 'whatHappenedBefore' || questionId === 'whatHappenedAfter') {
+      totalSets = 5;
     }
-    
     // Cycle to next set, or back to 0 if we've reached the end
     const nextSet = (currentSet + 1) % totalSets;
     setOptionSets(prev => ({
@@ -759,101 +659,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         updatedCustom[questionId] = updatedCustom[questionId].filter(opt => opt.label !== optionLabel);
         setCustomOptions(updatedCustom);
       }
-      
+      // ...existing code...
       // Handle deleting GPT-generated options from custom behavior options
-      if (questionId === 'whatHappenedBefore' || questionId === 'whatHappenedAfter') {
-        const selectedBehavior = selectedAnswers['whatDidTheyDo']?.[0]?.answer;
-        if (selectedBehavior && updatedCustom['whatDidTheyDo']) {
-          const behaviorOptionIndex = updatedCustom['whatDidTheyDo'].findIndex(opt => opt.label === selectedBehavior);
-          if (behaviorOptionIndex !== -1) {
-            const behaviorOption = updatedCustom['whatDidTheyDo'][behaviorOptionIndex];
-            
-            if (questionId === 'whatHappenedBefore' && behaviorOption.gptGeneratedAntecedents) {
-              // Remove the deleted antecedent from the custom option's GPT data
-              updatedCustom['whatDidTheyDo'][behaviorOptionIndex] = {
-                ...behaviorOption,
-                gptGeneratedAntecedents: behaviorOption.gptGeneratedAntecedents.filter(ant => ant.text !== optionLabel)
-              };
-            } else if (questionId === 'whatHappenedAfter' && behaviorOption.gptGeneratedConsequences) {
-              // Remove the deleted consequence from the custom option's GPT data
-              updatedCustom['whatDidTheyDo'][behaviorOptionIndex] = {
-                ...behaviorOption,
-                gptGeneratedConsequences: behaviorOption.gptGeneratedConsequences.filter(con => con.text !== optionLabel)
-              };
-            }
-            
-            setCustomOptions(updatedCustom);
-          }
-        }
-      }
-      
-      // Also add to deletedOptions for tracking (in case we want to restore later)
-      const updatedDeleted = { ...deletedOptions };
-      if (!updatedDeleted[questionId]) {
-        updatedDeleted[questionId] = new Set();
-      }
-      updatedDeleted[questionId].add(optionLabel);
-      setDeletedOptions(updatedDeleted);
-      
-      // Save to child's data in AsyncStorage
-      if (currentChild && currentChild.id) {
-        const childData = await AsyncStorage.getItem(currentChild.id);
-        if (childData) {
-          const parsedChildData = JSON.parse(childData);
-          const updatedChildData = {
-            ...parsedChildData,
-            custom_options: updatedCustom,
-            deleted_options: Object.keys(updatedDeleted).reduce((acc, key) => {
-              acc[key] = Array.from(updatedDeleted[key]);
-              return acc;
-            }, {} as { [key: string]: string[] })
-          };
-          await AsyncStorage.setItem(currentChild.id, JSON.stringify(updatedChildData));
-          
-          // Update currentChild state to keep it in sync
-          setCurrentChild((prev: any) => prev ? { ...prev, data: updatedChildData } : null);
-        }
-      }
-      
-      // Remove from selected answers if it was selected
-      setSelectedAnswers(prev => ({
-        ...prev,
-        [questionId]: (prev[questionId] || []).filter(a => a.answer !== optionLabel)
-      }));
-      
-      // Force a flow update to immediately reflect the deleted option
-      if (currentFlow.length > 0) {
-        const updatedFlow = [...currentFlow];
-        const questionIndex = updatedFlow.findIndex(q => q.id === questionId);
-        if (questionIndex !== -1) {
-          if (questionId === 'whatDidTheyDo' && updatedFlow[questionIndex].categories) {
-            // For the main behavior question, update all categories
-            updatedFlow[questionIndex] = {
-              ...updatedFlow[questionIndex],
-              categories: updatedFlow[questionIndex].categories!.map(cat => ({
-                ...cat,
-                choices: getFilteredOptions(questionId, cat.choices)
-              }))
-            };
-          } else if (updatedFlow[questionIndex].answer_choices) {
-            // For other questions, update answer choices
-            updatedFlow[questionIndex] = {
-              ...updatedFlow[questionIndex],
-              answer_choices: getFilteredOptions(questionId, updatedFlow[questionIndex].answer_choices!)
-            };
-          }
-        }
-        
-        // For ABC questions, reset to set 0 so changes are immediately visible
-        if (questionId === 'whatHappenedBefore' || questionId === 'whatHappenedAfter') {
-          setOptionSets(prev => ({
-            ...prev,
-            [questionId]: 0
-          }));
-        }
-        
-        setCurrentFlow(updatedFlow);
-      }
+      // ...existing code...
     } catch (error) {
       console.error('Error deleting option:', error);
     }
@@ -1070,73 +878,76 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         
         // Handle restoring GPT-generated options to custom behavior options
         if (questionId === 'whatHappenedBefore' || questionId === 'whatHappenedAfter') {
-          const selectedBehavior = selectedAnswers['whatDidTheyDo']?.[0]?.answer;
-          if (selectedBehavior && customOptions['whatDidTheyDo']) {
-            const behaviorOptionIndex = customOptions['whatDidTheyDo'].findIndex(opt => opt.label === selectedBehavior);
-            if (behaviorOptionIndex !== -1) {
-              const behaviorOption = customOptions['whatDidTheyDo'][behaviorOptionIndex];
-              
-              // Check if this option was originally a GPT-generated option
-              if (questionId === 'whatHappenedBefore' && behaviorOption.gptGeneratedAntecedents) {
-                // Check if this option exists in the original GPT data (it might have been deleted)
-                const originalAntecedent = behaviorOption.gptGeneratedAntecedents.find(ant => ant.text === optionLabel);
-                if (!originalAntecedent) {
-                  // This option was deleted from GPT data, we need to restore it
-                  // For now, we'll add it back with a default emoji since we don't have the original
-                  const updatedCustom = { ...customOptions };
-                  updatedCustom['whatDidTheyDo'][behaviorOptionIndex] = {
-                    ...behaviorOption,
-                    gptGeneratedAntecedents: [
-                      ...behaviorOption.gptGeneratedAntecedents,
-                      { text: optionLabel, emoji: '🔄' } // Default emoji for restored option
-                    ]
-                  };
-                  setCustomOptions(updatedCustom);
-                  
-                  // Save updated custom options to AsyncStorage
-                  if (currentChild && currentChild.id) {
-                    const childData = await AsyncStorage.getItem(currentChild.id);
-                    if (childData) {
-                      const parsedChildData = JSON.parse(childData);
-                      const updatedChildData = {
-                        ...parsedChildData,
-                        custom_options: updatedCustom
-                      };
-                      await AsyncStorage.setItem(currentChild.id, JSON.stringify(updatedChildData));
-                      
-                      // Update currentChild state to keep it in sync
-                      setCurrentChild((prev: any) => prev ? { ...prev, data: updatedChildData } : null);
+          const selectedBehaviors = selectedAnswers['whatDidTheyDo'] || [];
+          if (selectedBehaviors.length > 0 && customOptions['whatDidTheyDo']) {
+            // Check all selected behaviors for GPT data
+            for (const behavior of selectedBehaviors) {
+              const behaviorOptionIndex = customOptions['whatDidTheyDo'].findIndex(opt => opt.label === behavior.answer);
+              if (behaviorOptionIndex !== -1) {
+                const behaviorOption = customOptions['whatDidTheyDo'][behaviorOptionIndex];
+                
+                // Check if this option was originally a GPT-generated option
+                if (questionId === 'whatHappenedBefore' && behaviorOption.gptGeneratedAntecedents) {
+                  // Check if this option exists in the original GPT data (it might have been deleted)
+                  const originalAntecedent = behaviorOption.gptGeneratedAntecedents.find(ant => ant.text === optionLabel);
+                  if (!originalAntecedent) {
+                    // This option was deleted from GPT data, we need to restore it
+                    // For now, we'll add it back with a default emoji since we don't have the original
+                    const updatedCustom = { ...customOptions };
+                    updatedCustom['whatDidTheyDo'][behaviorOptionIndex] = {
+                      ...behaviorOption,
+                      gptGeneratedAntecedents: [
+                        ...behaviorOption.gptGeneratedAntecedents,
+                        { text: optionLabel, emoji: '🔄' } // Default emoji for restored option
+                      ]
+                    };
+                    setCustomOptions(updatedCustom);
+                    
+                    // Save updated custom options to AsyncStorage
+                    if (currentChild && currentChild.id) {
+                      const childData = await AsyncStorage.getItem(currentChild.id);
+                      if (childData) {
+                        const parsedChildData = JSON.parse(childData);
+                        const updatedChildData = {
+                          ...parsedChildData,
+                          custom_options: updatedCustom
+                        };
+                        await AsyncStorage.setItem(currentChild.id, JSON.stringify(updatedChildData));
+                        
+                        // Update currentChild state to keep it in sync
+                        setCurrentChild((prev: any) => prev ? { ...prev, data: updatedChildData } : null);
+                      }
                     }
                   }
-                }
-              } else if (questionId === 'whatHappenedAfter' && behaviorOption.gptGeneratedConsequences) {
-                // Check if this option was originally a GPT-generated option
-                const originalConsequence = behaviorOption.gptGeneratedConsequences.find(con => con.text === optionLabel);
-                if (!originalConsequence) {
-                  // This option was deleted from GPT data, we need to restore it
-                  const updatedCustom = { ...customOptions };
-                  updatedCustom['whatDidTheyDo'][behaviorOptionIndex] = {
-                    ...behaviorOption,
-                    gptGeneratedConsequences: [
-                      ...behaviorOption.gptGeneratedConsequences,
-                      { text: optionLabel, emoji: '🔄' } // Default emoji for restored option
-                    ]
-                  };
-                  setCustomOptions(updatedCustom);
-                  
-                  // Save updated custom options to AsyncStorage
-                  if (currentChild && currentChild.id) {
-                    const childData = await AsyncStorage.getItem(currentChild.id);
-                    if (childData) {
-                      const parsedChildData = JSON.parse(childData);
-                      const updatedChildData = {
-                        ...parsedChildData,
-                        custom_options: updatedCustom
-                      };
-                      await AsyncStorage.setItem(currentChild.id, JSON.stringify(updatedChildData));
-                      
-                      // Update currentChild state to keep it in sync
-                      setCurrentChild((prev: any) => prev ? { ...prev, data: updatedChildData } : null);
+                } else if (questionId === 'whatHappenedAfter' && behaviorOption.gptGeneratedConsequences) {
+                  // Check if this option was originally a GPT-generated option
+                  const originalConsequence = behaviorOption.gptGeneratedConsequences.find(con => con.text === optionLabel);
+                  if (!originalConsequence) {
+                    // This option was deleted from GPT data, we need to restore it
+                    const updatedCustom = { ...customOptions };
+                    updatedCustom['whatDidTheyDo'][behaviorOptionIndex] = {
+                      ...behaviorOption,
+                      gptGeneratedConsequences: [
+                        ...behaviorOption.gptGeneratedConsequences,
+                        { text: optionLabel, emoji: '🔄' } // Default emoji for restored option
+                      ]
+                    };
+                    setCustomOptions(updatedCustom);
+                    
+                    // Save updated custom options to AsyncStorage
+                    if (currentChild && currentChild.id) {
+                      const childData = await AsyncStorage.getItem(currentChild.id);
+                      if (childData) {
+                        const parsedChildData = JSON.parse(childData);
+                        const updatedChildData = {
+                          ...parsedChildData,
+                          custom_options: updatedCustom
+                        };
+                        await AsyncStorage.setItem(currentChild.id, JSON.stringify(updatedChildData));
+                        
+                        // Update currentChild state to keep it in sync
+                        setCurrentChild((prev: any) => prev ? { ...prev, data: updatedChildData } : null);
+                      }
                     }
                   }
                 }
@@ -1204,7 +1015,35 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
   };
 
   // Helper function to get filtered and merged options for a question
+  // Helper function to get filtered and merged options for a question
+  // For antecedent/consequence questions, if GPT is used, show 65% GPT options and 35% hardcoded options
   const getFilteredOptions = (questionId: string, originalChoices: Array<{ label: string; emoji: string; sentiment?: string | null }>) => {
+    if ((questionId === 'whatHappenedBefore' || questionId === 'whatHappenedAfter') && gptSuggestions && !gptSuggestions.isFallback) {
+      const gptOptions = (questionId === 'whatHappenedBefore')
+        ? (gptSuggestions.antecedents || []).map(opt => ({ label: opt.text, emoji: opt.emoji, isGptGenerated: true }))
+        : (gptSuggestions.consequences || []).map(opt => ({ label: opt.text, emoji: opt.emoji, isGptGenerated: true }));
+      const hardcodedOptions = originalChoices.filter(opt => !gptOptions.some(g => g.label === opt.label && opt.label !== 'Other'));
+      // Remove 'Other' from gptOptions if present
+      const filteredGptOptions = gptOptions.filter(opt => opt.label !== 'Other');
+      const filteredHardcodedOptions = hardcodedOptions.filter(opt => opt.label !== 'Other');
+      const allOptions = [...filteredGptOptions, ...filteredHardcodedOptions];
+      const optionsPerSet = 5;
+      const currentSet = optionSets[questionId] || 0;
+      // Calculate split for this set
+      const gptCount = Math.round(optionsPerSet * 0.65);
+      const hardcodedCount = optionsPerSet - gptCount;
+      const gptStart = currentSet * gptCount;
+      const hardcodedStart = currentSet * hardcodedCount;
+      const gptSlice = filteredGptOptions.slice(gptStart, gptStart + gptCount);
+      const hardcodedSlice = filteredHardcodedOptions.slice(hardcodedStart, hardcodedStart + hardcodedCount);
+      // Always add 'Other' option at the end
+      const otherOption = originalChoices.find(opt => opt.label === 'Other');
+      return [
+        ...gptSlice,
+        ...hardcodedSlice,
+        ...(otherOption ? [otherOption] : [])
+      ];
+    }
     let deleted = deletedOptions[questionId] || new Set();
     const custom = customOptions[questionId] || [];
     
@@ -1217,9 +1056,11 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     
     // For ABC questions, also check if we need to sync deleted options from custom behavior options
     if (questionId === 'whatHappenedBefore' || questionId === 'whatHappenedAfter') {
-      const selectedBehavior = selectedAnswers['whatDidTheyDo']?.[0]?.answer;
-      if (selectedBehavior && customOptions['whatDidTheyDo']) {
-        const behaviorOption = customOptions['whatDidTheyDo'].find(opt => opt.label === selectedBehavior);
+      const selectedBehaviors = selectedAnswers['whatDidTheyDo'] || [];
+      if (selectedBehaviors.length > 0 && customOptions['whatDidTheyDo']) {
+        // Check primary behavior first for GPT data
+        const primaryBehavior = selectedBehaviors[0];
+        const behaviorOption = customOptions['whatDidTheyDo'].find(opt => opt.label === primaryBehavior.answer);
         if (behaviorOption) {
           // Check if this custom option has GPT data that should be considered for deletion tracking
           const gptOptions = questionId === 'whatHappenedBefore' 
@@ -1260,13 +1101,36 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       }
     }
     
-    // Filter custom options to only show those matching the selected category
-    const filteredCustom = custom.filter(option => 
-      !option.category || option.category === selectedBehaviorCategory
-    );
+    // For multi-select, show custom options from ALL selected behaviors, not just the current category
+    // This allows users to see custom options they added for behaviors from different categories
+    const selectedBehaviors = selectedAnswers['whatDidTheyDo'] || [];
+    let filteredCustom = custom;
+    
+    if (selectedBehaviors.length > 0) {
+      // Get all categories that have selected behaviors
+      const selectedCategories = new Set();
+      selectedBehaviors.forEach(behavior => {
+        // Find which category this behavior belongs to
+        currentQ.categories?.forEach(cat => {
+          if (cat.choices.some(choice => choice.label === behavior.answer)) {
+            selectedCategories.add(cat.key);
+          }
+        });
+      });
+      
+      // Show custom options that either have no category OR belong to any of the selected behavior categories
+      filteredCustom = custom.filter(option => 
+        !option.category || selectedCategories.has(option.category)
+      );
+    } else {
+      // Fallback to original logic if no behaviors selected
+      filteredCustom = custom.filter(option => 
+        !option.category || option.category === selectedBehaviorCategory
+      );
+    }
     
     console.log(`[FILTER] Filtered custom options count: ${filteredCustom.length}`);
-    console.log(`[FILTER] Filtered custom options:`, filteredCustom.map(opt => ({ label: opt.label, category: opt.category, matchesCategory: !opt.category || opt.category === selectedBehaviorCategory })));
+    console.log(`[FILTER] Filtered custom options:`, filteredCustom.map(opt => ({ label: opt.label, category: opt.category, matchesCategory: !opt.category || selectedBehaviors.length > 0 ? 'multi-category' : opt.category === selectedBehaviorCategory })));
     
     // Filter out deleted options from original choices
     const filteredOriginal = originalChoices.filter(choice => !deleted.has(choice.label));
@@ -1284,71 +1148,39 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     if (questionId === 'whatHappenedBefore' || questionId === 'whatHappenedAfter') {
       const currentSet = optionSets[questionId] || 0;
       
-      // Check if this is a custom option with GPT data
-      const selectedBehavior = selectedAnswers['whatDidTheyDo']?.[0]?.answer;
-      const customOptionWithGpt = customOptions['whatDidTheyDo']?.find(opt => 
-        opt.label === selectedBehavior && 
-        ((questionId === 'whatHappenedBefore' && opt.gptGeneratedAntecedents && opt.gptGeneratedAntecedents.length > 0) ||
-         (questionId === 'whatHappenedAfter' && opt.gptGeneratedConsequences && opt.gptGeneratedConsequences.length > 0))
-      );
+      // Use intelligent choice functions to get all available options for multiple behaviors
+      const selectedBehaviors = selectedAnswers['whatDidTheyDo'] || [];
+      let allAvailableOptions: Array<{ label: string; emoji: string; sentiment?: string | null; isGptGenerated?: boolean; isFromCustomOption?: boolean; isBehaviorSpecific?: boolean; isCustomOption?: boolean }> = [];
+      
+      if (selectedBehaviors.length > 0) {
+        if (questionId === 'whatHappenedBefore') {
+          allAvailableOptions = getIntelligentAntecedentChoices(selectedBehaviors, questionId);
+        } else {
+          allAvailableOptions = getIntelligentConsequenceChoices(selectedBehaviors, questionId);
+        }
+        console.log(`[FILTER] Got ${allAvailableOptions.length} intelligent options for ${questionId}`);
+      }
       
       let finalOptions: Array<{ label: string; emoji: string; sentiment?: string | null }> = [];
       
-      if (customOptionWithGpt) {
-        // For custom options with GPT data, show GPT options AND custom options added to this question
-        const gptOptions = questionId === 'whatHappenedBefore' 
-          ? customOptionWithGpt.gptGeneratedAntecedents || []
-          : customOptionWithGpt.gptGeneratedConsequences || [];
-        
-        console.log(`[FILTER] Custom option with GPT data found for ${questionId}, total GPT options: ${gptOptions.length}`);
-        
-        // Show 5 options per set
+      if (allAvailableOptions.length > 0) {
+        // SMART DISTRIBUTION SYSTEM: Always show exactly 5 sets total
+        // All antecedents/consequences from selected behaviors are spread evenly across these 5 sets
+        // Each set shows exactly 5 options (except possibly the last set)
+        const totalSets = 5;
         const optionsPerSet = 5;
+        
+        // Calculate start and end indices for this set
         const startIndex = currentSet * optionsPerSet;
-        const endIndex = startIndex + optionsPerSet;
-        const currentSetOptions = gptOptions.slice(startIndex, endIndex);
+        const endIndex = Math.min(startIndex + optionsPerSet, allAvailableOptions.length);
+        const currentSetOptions = allAvailableOptions.slice(startIndex, endIndex);
         
-        // Map GPT options to choice format
-        const gptFormattedOptions = currentSetOptions.map(option => ({
-          label: option.text,
-          emoji: option.emoji,
-          sentiment: 'negative',
-          isGptGenerated: true,
-          isFromCustomOption: true
-        }));
+        console.log(`[SMART_DISTRIBUTION] ${questionId}: ${selectedBehaviors.length} behaviors, ${allAvailableOptions.length} total options, Set ${currentSet + 1}/${totalSets}: Options ${startIndex + 1}-${endIndex} of ${allAvailableOptions.length} total`);
+        console.log(`[FILTER] Set ${currentSet + 1}: current set options (${currentSetOptions.length}):`, currentSetOptions.map(opt => opt.label));
         
-        // For Set 0, also include custom options added directly to this question
-        if (currentSet === 0) {
-          // Include custom options added directly to this question (antecedents/consequences)
-          const directCustomOptions = filteredCustom.map(option => ({
-            label: option.label,
-            emoji: option.emoji,
-            sentiment: option.sentiment || 'negative',
-            isCustomOption: true
-          }));
-          
-          console.log(`[FILTER] Set 0: Found ${directCustomOptions.length} direct custom options:`, directCustomOptions.map(opt => opt.label));
-          console.log(`[FILTER] Set 0: Found ${gptFormattedOptions.length} GPT options:`, gptFormattedOptions.map(opt => opt.label));
-          
-          // Combine GPT options with direct custom options, prioritizing direct custom options
-          finalOptions = [...directCustomOptions, ...gptFormattedOptions];
-          
-          // For Set 0 with custom options, allow more than 5 options to ensure we don't cut off important options
-          // The "Other" option will be added later, so we can be more flexible here
-          const maxOptionsForSet0 = Math.max(5, directCustomOptions.length + Math.min(gptFormattedOptions.length, 3));
-          if (finalOptions.length > maxOptionsForSet0) {
-            finalOptions = finalOptions.slice(0, maxOptionsForSet0);
-          }
-          
-          console.log(`[FILTER] Set ${currentSet}: ${directCustomOptions.length} direct custom + ${gptFormattedOptions.length} GPT = ${finalOptions.length} total options (max: ${maxOptionsForSet0})`);
-          console.log(`[FILTER] Set ${currentSet}: Final options:`, finalOptions.map(opt => opt.label));
-        } else {
-          // For other sets, show only GPT options
-          finalOptions = gptFormattedOptions;
-          console.log(`[FILTER] Set ${currentSet}: showing ${finalOptions.length} GPT options (${startIndex + 1}-${Math.min(endIndex, gptOptions.length)} of ${gptOptions.length})`);
-        }
+        finalOptions = currentSetOptions;
       } else {
-        // Original logic for non-GPT custom options and hardcoded options
+        // Fallback to original logic if no intelligent options available
         if (currentSet === 0) {
           // Set 0: Custom options first, then hardcoded options
           const customOptionsForSet0 = filteredCustom.slice(0, 5); // Max 5 custom options in Set 0
@@ -1433,77 +1265,19 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       return 1; // Non-ABC questions only have 1 set
     }
     
-    // Get the selected behavior to determine original options
-    const selectedBehavior = selectedAnswers['whatDidTheyDo']?.[0]?.answer;
-    if (!selectedBehavior) {
+    // Get the selected behaviors to determine original options
+    const selectedBehaviors = selectedAnswers['whatDidTheyDo'] || [];
+    if (selectedBehaviors.length === 0) {
       return 1;
     }
     
-    const deleted = deletedOptions[questionId] || new Set();
-    const custom = customOptions[questionId] || [];
+    // Always return exactly 5 sets for ABC questions
+    // All antecedents/consequences are distributed evenly across these 5 sets
+    const totalSets = 5;
     
-    // Check if this is a custom option with GPT data
-    const customOptionWithGpt = customOptions['whatDidTheyDo']?.find(opt => 
-      opt.label === selectedBehavior && 
-      ((questionId === 'whatHappenedBefore' && opt.gptGeneratedAntecedents && opt.gptGeneratedAntecedents.length > 0) ||
-       (questionId === 'whatHappenedAfter' && opt.gptGeneratedConsequences && opt.gptGeneratedConsequences.length > 0))
-    );
+    console.log(`[SETS] ${questionId}: ${selectedBehaviors.length} behaviors selected, showing exactly ${totalSets} sets`);
     
-    if (customOptionWithGpt) {
-      // For custom options with GPT data, calculate sets based on GPT options AND direct custom options
-      const gptOptions = questionId === 'whatHappenedBefore' 
-        ? customOptionWithGpt.gptGeneratedAntecedents || []
-        : customOptionWithGpt.gptGeneratedConsequences || [];
-      
-      // Filter custom options to only count those matching the selected category
-      const filteredCustom = custom.filter(option => 
-        !option.category || option.category === selectedBehaviorCategory
-      );
-      
-      // Total available options: GPT options + direct custom options
-      const totalAvailableOptions = gptOptions.length + filteredCustom.length;
-      const optionsPerSet = 5;
-      const totalSets = Math.ceil(totalAvailableOptions / optionsPerSet);
-      
-      console.log(`[SETS] ${questionId}: Custom option with GPT data, ${gptOptions.length} GPT options + ${filteredCustom.length} direct custom = ${totalAvailableOptions} total, ${totalSets} sets needed`);
-      
-      return Math.max(1, totalSets); // Always at least 1 set
-    }
-    
-    // Filter custom options to only count those matching the selected category
-    const filteredCustom = custom.filter(option => 
-      !option.category || option.category === selectedBehaviorCategory
-    );
-    
-    // Get original behavior-specific options (before any filtering)
-    let originalOptions: string[] = [];
-    const isCustomResponse = selectedAnswers['whatDidTheyDo']?.[0]?.isCustom;
-    
-    if (isCustomResponse && gptSuggestions && !gptSuggestions.isFallback) {
-      // For custom responses, use GPT options
-      const questionType = questionId === 'whatHappenedBefore' ? 'antecedents' : 'consequences';
-      originalOptions = gptSuggestions[questionType]?.map(option => option.text) || [];
-    } else {
-      // For predefined behaviors, use behavior-specific options
-      const behaviorOptions = behaviorSpecificOptions[selectedBehavior];
-      if (behaviorOptions) {
-        originalOptions = behaviorOptions[questionId === 'whatHappenedBefore' ? 'antecedents' : 'consequences'] || [];
-      }
-    }
-    
-    // Filter out deleted options from original options
-    const availableOriginalOptions = originalOptions.filter(option => !deleted.has(option));
-    
-    // Total available options (original + filtered custom)
-    const totalAvailableOptions = availableOriginalOptions.length + filteredCustom.length;
-    
-    // Target 5 options per set (plus "Other" which is always included)
-    const optionsPerSet = 5;
-    const totalSets = Math.ceil(totalAvailableOptions / optionsPerSet);
-    
-    console.log(`[SETS] ${questionId}: ${availableOriginalOptions.length} original + ${custom.length} custom = ${totalAvailableOptions} total, ${totalSets} sets needed`);
-    
-    return Math.max(1, totalSets); // Always at least 1 set
+    return totalSets;
   };
 
   // Helper function to get choice button border radius
@@ -1522,6 +1296,220 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     }
     
     return baseStyle;
+  };
+
+  // New function to get intelligent antecedent choices for multiple behaviors
+  const getIntelligentAntecedentChoices = (selectedBehaviors: Answer[], questionId: string) => {
+    if (selectedBehaviors.length === 0) return [];
+    
+    // EQUAL DISTRIBUTION: Collect all antecedents from all behaviors first
+    let allAntecedents: Array<{ label: string; emoji: string; sentiment: string | null; isGptGenerated?: boolean; isFromCustomOption?: boolean; isBehaviorSpecific?: boolean; isCustomOption?: boolean }> = [];
+    
+    // Collect antecedents from all behaviors equally
+    selectedBehaviors.forEach(behavior => {
+      // Check if this is a custom behavior OR an "Other" option
+      const isCustomBehavior = behavior.isCustom || behavior.answer === otherText['whatDidTheyDo'];
+      
+      if (isCustomBehavior) {
+        // For custom behaviors or "Other" options, check if we have GPT data
+        const customOption = customOptions['whatDidTheyDo']?.find(opt => opt.label === behavior.answer);
+        if (customOption?.gptGeneratedAntecedents) {
+          const behaviorAntecedents = customOption.gptGeneratedAntecedents.map(antecedent => ({
+            label: antecedent.text,
+            emoji: antecedent.emoji,
+            sentiment: 'negative',
+            isGptGenerated: true,
+            isFromCustomOption: true,
+            sourceBehavior: behavior.answer // Track which behavior this came from
+          }));
+          allAntecedents.push(...behaviorAntecedents);
+        } else if (behavior.answer === otherText['whatDidTheyDo']) {
+          // For "Other" options, check if we have GPT data in gptSuggestions state
+          if (gptSuggestions && !gptSuggestions.isFallback && gptSuggestions.antecedents) {
+            const behaviorAntecedents = gptSuggestions.antecedents.map(antecedent => ({
+              label: antecedent.text,
+              emoji: antecedent.emoji,
+              sentiment: 'negative',
+              isGptGenerated: true,
+              isFromOtherOption: true,
+              sourceBehavior: behavior.answer // Track which behavior this came from
+            }));
+            allAntecedents.push(...behaviorAntecedents);
+            console.log(`[OTHER_OPTION] Using GPT antecedents for "Other" option "${behavior.answer}":`, behaviorAntecedents.length);
+          } else {
+            console.log(`[OTHER_OPTION] "Other" option "${behavior.answer}" needs GPT antecedents generated`);
+            // Note: GPT generation will happen asynchronously in the background
+          }
+        }
+      } else {
+        // For predefined behaviors, use behavior-specific options
+        const behaviorAntecedents = behaviorSpecificOptions[behavior.answer]?.antecedents?.map(antecedent => ({
+          label: antecedent,
+          emoji: getAntecedentEmoji(antecedent),
+          sentiment: 'negative',
+          isBehaviorSpecific: true,
+          sourceBehavior: behavior.answer // Track which behavior this came from
+        })) || [];
+        allAntecedents.push(...behaviorAntecedents);
+      }
+    });
+    
+    // Get custom options added directly to this question (prioritize these)
+    const directCustomOptions = (customOptions[questionId] || []).map(option => ({
+      label: option.label,
+      emoji: option.emoji,
+      sentiment: option.sentiment || 'negative',
+      isCustomOption: true,
+      sourceBehavior: 'direct' // Track that this came from direct addition
+    }));
+    
+    // Remove duplicates based on label (preserve sourceBehavior)
+    const uniqueAntecedents = allAntecedents.filter((antecedent, index, self) => 
+      index === self.findIndex(a => a.label === antecedent.label)
+    );
+    
+    // EQUAL DISTRIBUTION: Interleave antecedents from different behaviors
+    // This ensures each behavior gets equal representation across the sets
+    const interleavedAntecedents: Array<{ label: string; emoji: string; sentiment: string | null; isGptGenerated?: boolean; isFromCustomOption?: boolean; isBehaviorSpecific?: boolean; isCustomOption?: boolean; sourceBehavior?: string }> = [];
+    
+    // Simple interleaving: take one option from each behavior in rotation
+    const behaviorOptionsMap = new Map<string, Array<{ label: string; emoji: string; sentiment: string | null; isGptGenerated?: boolean; isFromCustomOption?: boolean; isBehaviorSpecific?: boolean; isCustomOption?: boolean; sourceBehavior?: string }>>();
+    
+    // Group options by behavior
+    selectedBehaviors.forEach(behavior => {
+      const behaviorOptions = uniqueAntecedents.filter(opt => (opt as any).sourceBehavior === behavior.answer);
+      behaviorOptionsMap.set(behavior.answer, behaviorOptions);
+    });
+    
+    // Interleave by taking one option from each behavior in rotation
+    let maxLength = 0;
+    behaviorOptionsMap.forEach(options => {
+      maxLength = Math.max(maxLength, options.length);
+    });
+    
+    for (let i = 0; i < maxLength; i++) {
+      selectedBehaviors.forEach(behavior => {
+        const options = behaviorOptionsMap.get(behavior.answer) || [];
+        if (options[i]) {
+          interleavedAntecedents.push(options[i]);
+        }
+      });
+    }
+    
+    // Combine: direct custom options first, then interleaved behavior options
+    const combined = [...directCustomOptions, ...interleavedAntecedents];
+    
+    console.log(`[EQUAL_DISTRIBUTION] ${questionId}: ${selectedBehaviors.length} behaviors, ${combined.length} total antecedents, interleaved for equal representation`);
+    
+    // Return ALL options so they can be properly distributed across sets
+    return combined;
+  };
+
+  // New function to get intelligent consequence choices for multiple behaviors
+  const getIntelligentConsequenceChoices = (selectedBehaviors: Answer[], questionId: string) => {
+    if (selectedBehaviors.length === 0) return [];
+    
+    // EQUAL DISTRIBUTION: Collect all consequences from all behaviors first
+    let allConsequences: Array<{ label: string; emoji: string; sentiment: string | null; isGptGenerated?: boolean; isFromCustomOption?: boolean; isBehaviorSpecific?: boolean; isCustomOption?: boolean; sourceBehavior?: string }> = [];
+    
+    // Collect consequences from all behaviors equally
+    selectedBehaviors.forEach(behavior => {
+      // Check if this is a custom behavior OR an "Other" option
+      const isCustomBehavior = behavior.isCustom || behavior.answer === otherText['whatDidTheyDo'];
+      
+      if (isCustomBehavior) {
+        // For custom behaviors or "Other" options, check if we have GPT data
+        const customOption = customOptions['whatDidTheyDo']?.find(opt => opt.label === behavior.answer);
+        if (customOption?.gptGeneratedConsequences) {
+          const behaviorConsequences = customOption.gptGeneratedConsequences.map(consequence => ({
+            label: consequence.text,
+            emoji: consequence.emoji,
+            sentiment: 'negative',
+            isGptGenerated: true,
+            isFromCustomOption: true,
+            sourceBehavior: behavior.answer // Track which behavior this came from
+          }));
+          allConsequences.push(...behaviorConsequences);
+        } else if (behavior.answer === otherText['whatDidTheyDo']) {
+          // For "Other" options, check if we have GPT data in gptSuggestions state
+          if (gptSuggestions && !gptSuggestions.isFallback && gptSuggestions.consequences) {
+            const behaviorConsequences = gptSuggestions.consequences.map(consequence => ({
+              label: consequence.text,
+              emoji: consequence.emoji,
+              sentiment: 'negative',
+              isGptGenerated: true,
+              isFromOtherOption: true,
+              sourceBehavior: behavior.answer // Track which behavior this came from
+            }));
+            allConsequences.push(...behaviorConsequences);
+            console.log(`[OTHER_OPTION] Using GPT consequences for "Other" option "${behavior.answer}":`, behaviorConsequences.length);
+          } else {
+            console.log(`[OTHER_OPTION] "Other" option "${behavior.answer}" needs GPT consequences generated`);
+            // Note: GPT generation will happen asynchronously in the background
+          }
+        }
+      } else {
+        // For predefined behaviors, use behavior-specific options
+        const behaviorConsequences = behaviorSpecificOptions[behavior.answer]?.consequences?.map(consequence => ({
+          label: consequence,
+          emoji: getConsequenceEmoji(consequence),
+          sentiment: 'negative',
+          isBehaviorSpecific: true,
+          sourceBehavior: behavior.answer // Track which behavior this came from
+        })) || [];
+        allConsequences.push(...behaviorConsequences);
+      }
+    });
+    
+    // Get custom options added directly to this question (prioritize these)
+    const directCustomOptions = (customOptions[questionId] || []).map(option => ({
+      label: option.label,
+      emoji: option.emoji,
+      sentiment: option.sentiment || 'negative',
+      isCustomOption: true,
+      sourceBehavior: 'direct' // Track that this came from direct addition
+    }));
+    
+    // Remove duplicates based on label (preserve sourceBehavior)
+    const uniqueConsequences = allConsequences.filter((consequence, index, self) => 
+      index === self.findIndex(c => c.label === consequence.label)
+    );
+    
+    // EQUAL DISTRIBUTION: Interleave consequences from different behaviors
+    // This ensures each behavior gets equal representation across the sets
+    const interleavedConsequences: Array<{ label: string; emoji: string; sentiment: string | null; isGptGenerated?: boolean; isFromCustomOption?: boolean; isBehaviorSpecific?: boolean; isCustomOption?: boolean; sourceBehavior?: string }> = [];
+    
+    // Simple interleaving: take one option from each behavior in rotation
+    const behaviorOptionsMap = new Map<string, Array<{ label: string; emoji: string; sentiment: string | null; isGptGenerated?: boolean; isFromCustomOption?: boolean; isBehaviorSpecific?: boolean; isCustomOption?: boolean; sourceBehavior?: string }>>();
+    
+    // Group options by behavior
+    selectedBehaviors.forEach(behavior => {
+      const behaviorOptions = uniqueConsequences.filter(opt => (opt as any).sourceBehavior === behavior.answer);
+      behaviorOptionsMap.set(behavior.answer, behaviorOptions);
+    });
+    
+    // Interleave by taking one option from each behavior in rotation
+    let maxLength = 0;
+    behaviorOptionsMap.forEach(options => {
+      maxLength = Math.max(maxLength, options.length);
+    });
+    
+    for (let i = 0; i < maxLength; i++) {
+      selectedBehaviors.forEach(behavior => {
+        const options = behaviorOptionsMap.get(behavior.answer) || [];
+        if (options[i]) {
+          interleavedConsequences.push(options[i]);
+        }
+      });
+    }
+    
+    // Combine: direct custom options first, then interleaved behavior options
+    const combined = [...directCustomOptions, ...interleavedConsequences];
+    
+    console.log(`[EQUAL_DISTRIBUTION] ${questionId}: ${selectedBehaviors.length} behaviors, ${combined.length} total consequences, interleaved for equal representation`);
+    
+    // Return ALL options so they can be properly distributed across sets
+    return combined;
   };
 
   const animateBackToCategories = () => {
@@ -1881,15 +1869,34 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
   // Helper to check if a category contains the selected answer
   const isCategorySelected = (category: Category) => {
     const answers = selectedAnswers[currentQ.id] || [];
-    return answers.some(answer => 
-      category.choices.some(choice => choice.label === answer.answer)
-    );
+    return answers.some(answer => {
+      // Check if this answer matches any choice in the category
+      const matchesCategoryChoice = category.choices.some(choice => choice.label === answer.answer);
+      
+      // Also check if this is an "Other" option that was selected from this category
+      // (since "Other" options are stored separately but belong to the current category)
+      const isOtherFromThisCategory = answer.answer === otherText[currentQ.id] && selectedCategory?.key === category.key;
+      
+      return matchesCategoryChoice || isOtherFromThisCategory;
+    });
   };
 
   // Helper to get the selected answer text for display
   const getSelectedAnswerText = () => {
     const answers = selectedAnswers[currentQ.id] || [];
-    if (answers.length > 0) {
+    if (answers.length === 0) return null;
+    
+    if (currentQ.id === 'whatDidTheyDo') {
+      // For first question, show multiple behaviors if selected
+      if (answers.length === 1) {
+        return answers[0].answer;
+      } else if (answers.length === 2) {
+        return `${answers[0].answer} + ${answers[1].answer}`;
+      } else if (answers.length === 3) {
+        return `${answers[0].answer} + ${answers[1].answer} + ${answers[2].answer}`;
+      }
+    } else {
+      // For other questions, show first answer (existing logic)
       const answer = answers[0];
       if (answer.isCustom) {
         return answer.answer;
@@ -1906,6 +1913,13 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     if (currentQuestionId === 'mood') {
       return moodBefore !== 0 && moodAfter !== 0;
     }
+    
+    // For first question, require at least 1 behavior selected
+    if (currentQuestionId === 'whatDidTheyDo') {
+      return (selectedAnswers[currentQuestionId]?.length ?? 0) > 0;
+    }
+    
+    // For other questions, require at least 1 answer
     return (selectedAnswers[currentQuestionId]?.length ?? 0) > 0;
   };
 
@@ -2211,9 +2225,14 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                         style={getChoiceButtonStyle(choice, currentQ.id)}
                         onPress={() => {
                           handleAnswer(currentQ.id, choice);
-                          // Immediately go back to main categories view
-                          setSelectedCategory(null);
-                          setSearchQuery('');
+                          // Don't go back to categories for multi-select - let user select multiple behaviors
+                          // Only go back if they've reached the max limit
+                          const currentAnswers = selectedAnswers[currentQ.id] || [];
+                          console.log(`[MULTI-SELECT] Selected behavior: ${choice.label}, total selected: ${currentAnswers.length + 1}`);
+                          if (currentAnswers.length >= 3) {
+                            setSelectedCategory(null);
+                            setSearchQuery('');
+                          }
                         }}
                       >
                         <View style={styles.choiceContent}>
@@ -2271,13 +2290,18 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                      <View key={`${choice.label}-${index}-${(choice as any).isCustom ? 'custom' : 'base'}`} style={styles.choiceContainer}>
                        <TouchableOpacity
                          style={getChoiceButtonStyle(choice, currentQ.id)}
-                         onPress={() => {
-                           handleAnswer(currentQ.id, choice);
-                           // Immediately go back to main categories view
-                           setSelectedCategory(null);
-                           setSearchQuery('');
-                           setBehaviorOptionSet(0);
-                         }}
+                                                 onPress={() => {
+                          handleAnswer(currentQ.id, choice);
+                          // Don't go back to categories for multi-select - let user select multiple behaviors
+                          // Only go back if they've reached the max limit
+                          const currentAnswers = selectedAnswers[currentQ.id] || [];
+                          console.log(`[MULTI-SELECT] Selected behavior: ${choice.label}, total selected: ${currentAnswers.length + 1}`);
+                          if (currentAnswers.length >= 3) {
+                            setSelectedCategory(null);
+                            setSearchQuery('');
+                            setBehaviorOptionSet(0);
+                          }
+                        }}
                        >
                                                   <View style={styles.choiceContent}>
                            <Text style={styles.choiceText}>{getChoiceLabel(choice)}</Text>
@@ -2338,7 +2362,17 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                         ✅ Selected: {getSelectedAnswerText()}
                       </Text>
                       <Text style={styles.nextHintText}>
-                        You can now press "Next" to continue
+                        {(() => {
+                          const selectedCount = (selectedAnswers['whatDidTheyDo'] || []).length;
+                          if (selectedCount === 1) {
+                            return "You can select up to 2 more behaviors, or press 'Next' to continue";
+                          } else if (selectedCount === 2) {
+                            return "You can select 1 more behavior, or press 'Next' to continue";
+                          } else if (selectedCount === 3) {
+                            return "Maximum behaviors selected. You can press 'Next' to continue";
+                          }
+                          return "You can now press 'Next' to continue";
+                        })()}
                       </Text>
                       {/* {isLoadingGpt && (
                         <Text style={styles.gptLoadingText}>
@@ -2355,16 +2389,10 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                         isCategorySelected(cat) && styles.selectedChoice
                       ]}
                       onPress={() => {
-                        // If changing categories, clear previous selections and reset flow
-                        if (selectedBehaviorCategory && selectedBehaviorCategory !== cat.key) {
-                          setSelectedAnswers({});
-                          setCurrentQuestion(0);
-                          setFlowSentiment(null);
-                          setCurrentFlow([] as Question[]);
-                          setOptionSets({});
-                          setBehaviorOptionSet(0);
-                        }
-                        
+                        // Don't clear previous selections when switching categories for multi-select
+                        // Users should be able to select behaviors from multiple categories
+                        const currentAnswers = selectedAnswers['whatDidTheyDo'] || [];
+                        console.log(`[CATEGORY] Switching to category: ${cat.key}, current behaviors:`, currentAnswers.map(b => b.answer));
                         setSelectedCategory(cat);
                         setBehaviorOptionSet(0);
                         // Track the selected category for custom options
@@ -2373,9 +2401,22 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                     >
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Text style={styles.choiceText}>{`${cat.emoji} ${cat.label}`}</Text>
-                        {isCategorySelected(cat) && (
-                          <Text style={styles.categorySelectedText}>✓</Text>
-                        )}
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          {isCategorySelected(cat) && (
+                            <Text style={styles.categorySelectedText}>✓</Text>
+                          )}
+                          {(() => {
+                            const selectedCount = (selectedAnswers['whatDidTheyDo'] || []).length;
+                            if (selectedCount > 0) {
+                              return (
+                                <Text style={[styles.categorySelectedText, { marginLeft: 8, fontSize: 12 }]}>
+                                  {selectedCount}/3
+                                </Text>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </View>
                       </View>
                     </TouchableOpacity>
                   ))}
@@ -2449,9 +2490,10 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                     
                     {/* Show GPT generation status for custom options */}
                     {(() => {
-                      const selectedBehavior = selectedAnswers['whatDidTheyDo']?.[0]?.answer;
-                      const customOption = customOptions['whatDidTheyDo']?.find(opt => opt.label === selectedBehavior);
-                      const isGeneratingGpt = isLoadingGpt && selectedBehavior && customOption;
+                      const selectedBehaviors = selectedAnswers['whatDidTheyDo'] || [];
+                      const primaryBehavior = selectedBehaviors[0];
+                      const customOption = customOptions['whatDidTheyDo']?.find(opt => opt.label === primaryBehavior?.answer);
+                      const isGeneratingGpt = isLoadingGpt && primaryBehavior && customOption;
                       const hasGptData = customOption && 
                         ((currentQ.id === 'whatHappenedBefore' && customOption.gptGeneratedAntecedents && customOption.gptGeneratedAntecedents.length > 0) ||
                          (currentQ.id === 'whatHappenedAfter' && customOption.gptGeneratedConsequences && customOption.gptGeneratedConsequences.length > 0));
@@ -2463,7 +2505,6 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                       //     </View>
                       //   );
                       // } else if (hasGptData) {
-                      //   return (
                       //     <View style={styles.gptStatusContainer}>
                       //       <Text style={styles.gptStatusText}>🤖 AI suggestions ready</Text>
                       //     </View>
@@ -2538,22 +2579,18 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                     <Text style={styles.shuffleButtonText}>🔄 Shuffle options</Text>
                   </TouchableOpacity>
                   <Text style={styles.shuffleInfoText}>
-                    Set {((optionSets[currentQ.id] || 0) + 1)} of {
-                      (() => {
-                        const selectedBehavior = selectedAnswers['whatDidTheyDo']?.[0]?.answer;
-                        const isCustomResponse = selectedAnswers['whatDidTheyDo']?.[0]?.isCustom;
-                        const questionType = currentQ.id === 'whatHappenedBefore' ? 'antecedents' : 'consequences';
-                        
-                        if (isCustomResponse && gptSuggestions && !gptSuggestions.isFallback) {
-                          return getTotalGPTSets(gptSuggestions, questionType);
-                        } else if (currentQ.id === 'whatHappenedBefore' || currentQ.id === 'whatHappenedAfter') {
-                          // For ABC questions, use our custom set calculation that includes custom options
-                          return getTotalSetsWithCustomOptions(currentQ.id);
-                        } else {
-                          return getTotalSets(selectedBehavior || '', questionType);
+                    Set {((optionSets[currentQ.id] || 0) + 1)} of 5
+                    {(() => {
+                      // Show selected behaviors count for multi-behavior scenarios
+                      if (currentQ.id === 'whatHappenedBefore' || currentQ.id === 'whatHappenedAfter') {
+                        const selectedBehaviors = selectedAnswers['whatDidTheyDo'] || [];
+                        if (selectedBehaviors.length > 1) {
+                          const behaviorNames = selectedBehaviors.map(b => b.answer).join(' + ');
+                          return ` • ${selectedBehaviors.length} behaviors`;
                         }
-                      })()
-                    }
+                      }
+                      return '';
+                    })()}
                   </Text>
                 </View>
               )}

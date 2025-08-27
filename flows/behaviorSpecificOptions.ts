@@ -1324,10 +1324,12 @@ export function getShuffledOptions(behavior: string, questionType: 'antecedents'
 // Helper function to get total number of sets for a behavior
 export function getTotalSets(behavior: string, questionType: 'antecedents' | 'consequences'): number {
   const options = behaviorSpecificOptions[behavior];
+  const sets = 5;
   if (!options) {
     // For fallback options, we have 10 options total, showing 5 per set
-    return 2; // 10 options / 5 per set = 2 sets
+    return sets;
   }
 
-  return Math.ceil(options[questionType].length / 5);
+  // Always return 5 sets to show more options, even if some sets have fewer items
+  return sets;
 } 
