@@ -1234,10 +1234,195 @@ async function generateGoalsPDF(childName: string, childId: string, duration: st
       });
     }
 
+    // Add line graph below the goals table
+    if (filteredGoals.length > 0) {
+      const graphStartY = tableStartY - headerHeight - (filteredGoals.length * rowHeight) - 60;
+      const graphHeight = 200;
+      const graphWidth = tableWidth;
+      const graphLeft = leftMargin;
+      const graphBottom = graphStartY - graphHeight;
+      
+      // Graph title
+      page.drawText('Goals Frequency Over Time', {
+        x: graphLeft,
+        y: graphStartY + 20,
+        size: 14,
+        font: fontBold,
+        color: rgb(0.24, 0.24, 0.42),
+      });
+
+      // Calculate data for the line graph
+      const maxCount = Math.max(...filteredGoals.map(goal => 
+        Math.max(...weekDates.map(date => 
+          goal.dailyCounts?.find((dc: any) => dc.date === date)?.count || 0
+        ))
+      ));
+      const yAxisMax = Math.max(1, maxCount); // Ensure at least 1 for y-axis
+      
+      // Y-axis labels (whole numbers only)
+      const yAxisSteps = Math.min(5, yAxisMax + 1); // Max 5 steps
+      for (let i = 0; i <= yAxisMax; i += Math.max(1, Math.ceil(yAxisMax / (yAxisSteps - 1)))) {
+        const yPos = graphBottom + (i / yAxisMax) * graphHeight;
+        const label = i.toString();
+        const labelWidth = font.widthOfTextAtSize(label, 8);
+        
+        // Y-axis line
+        page.drawLine({
+          start: { x: graphLeft - 5, y: yPos },
+          end: { x: graphLeft, y: yPos },
+          thickness: 1,
+          color: rgb(0.8, 0.8, 0.8),
+        });
+        
+        // Y-axis label
+        page.drawText(label, {
+          x: graphLeft - 10 - labelWidth,
+          y: yPos - 3,
+          size: 8,
+          font: font,
+          color: rgb(0.5, 0.5, 0.5),
+        });
+      }
+
+      // X-axis labels (days)
+      weekDates.forEach((date, index) => {
+        const dayName = getDayName(date);
+        const xPos = graphLeft + (index / (weekDates.length - 1)) * graphWidth;
+        const labelWidth = font.widthOfTextAtSize(dayName, 8);
+        
+        // X-axis line
+        page.drawLine({
+          start: { x: xPos, y: graphBottom },
+          end: { x: xPos, y: graphBottom + 5 },
+          thickness: 1,
+          color: rgb(0.8, 0.8, 0.8),
+        });
+        
+        // X-axis label
+        page.drawText(dayName, {
+          x: xPos - (labelWidth / 2),
+          y: graphBottom + 15,
+          size: 8,
+          font: font,
+          color: rgb(0.5, 0.5, 0.5),
+        });
+      });
+
+      // Draw grid lines
+      for (let i = 0; i <= yAxisMax; i += Math.max(1, Math.ceil(yAxisMax / (yAxisSteps - 1)))) {
+        const yPos = graphBottom + (i / yAxisMax) * graphHeight;
+        page.drawLine({
+          start: { x: graphLeft, y: yPos },
+          end: { x: graphLeft + graphWidth, y: yPos },
+          thickness: 0.5,
+          color: rgb(0.9, 0.9, 0.9),
+        });
+      }
+
+      // Draw lines for each goal
+      const goalColors = [
+        rgb(0.36, 0.61, 0.63), // #5B9AA0
+        rgb(0.96, 0.78, 0.37), // #F6C85F
+        rgb(1.0, 0.44, 0.38),  // #FF6F61
+        rgb(0.42, 0.36, 0.58), // #6B5B95
+        rgb(0.53, 0.69, 0.29), // #88B04B
+      ];
+
+      filteredGoals.forEach((goal, goalIndex) => {
+        const color = goalColors[goalIndex % goalColors.length];
+        const points: { x: number, y: number }[] = [];
+        
+        // Calculate points for this goal
+        weekDates.forEach((date, dateIndex) => {
+          const count = goal.dailyCounts?.find((dc: any) => dc.date === date)?.count || 0;
+          const x = graphLeft + (dateIndex / (weekDates.length - 1)) * graphWidth;
+          const y = graphBottom + (count / yAxisMax) * graphHeight;
+          points.push({ x, y });
+        });
+
+        // Draw line segments (skip null/zero values to create gaps)
+        for (let i = 0; i < points.length - 1; i++) {
+          const currentPoint = points[i];
+          const nextPoint = points[i + 1];
+          
+          // Only draw line if both points have data (count > 0)
+          if (currentPoint.y > graphBottom && nextPoint.y > graphBottom) {
+            page.drawLine({
+              start: { x: currentPoint.x, y: currentPoint.y },
+              end: { x: nextPoint.x, y: nextPoint.y },
+              thickness: 2,
+              color: color,
+            });
+          }
+        }
+
+        // Draw data points
+        points.forEach(point => {
+          if (point.y > graphBottom) { // Only draw points with data
+            // Draw circle for data point
+            page.drawCircle({
+              x: point.x,
+              y: point.y,
+              size: 4,
+              color: color,
+            });
+            
+            // Draw white center for better visibility
+            page.drawCircle({
+              x: point.x,
+              y: point.y,
+              size: 2,
+              color: rgb(1, 1, 1),
+            });
+          }
+        });
+
+        // Add legend entry
+        const legendY = graphBottom - 30 - (goalIndex * 15);
+        const legendX = graphLeft + 10;
+        
+        // Legend color box
+        page.drawRectangle({
+          x: legendX,
+          y: legendY - 3,
+          width: 12,
+          height: 8,
+          color: color,
+        });
+        
+        // Legend text (truncate if too long)
+        const goalText = sanitizePdfText(goal.text);
+        const maxLegendWidth = 200;
+        const legendText = goalText.length > 25 ? goalText.substring(0, 22) + '...' : goalText;
+        
+        page.drawText(legendText, {
+          x: legendX + 18,
+          y: legendY,
+          size: 8,
+          font: font,
+          color: rgb(0.2, 0.2, 0.2),
+        });
+      });
+
+      // Draw axis lines
+      page.drawLine({
+        start: { x: graphLeft, y: graphBottom },
+        end: { x: graphLeft + graphWidth, y: graphBottom },
+        thickness: 1,
+        color: rgb(0.8, 0.8, 0.8),
+      });
+      page.drawLine({
+        start: { x: graphLeft, y: graphBottom },
+        end: { x: graphLeft, y: graphBottom + graphHeight },
+        thickness: 1,
+        color: rgb(0.8, 0.8, 0.8),
+      });
+    }
+
+    /*
     // Add comments section if there are comments for the current week
     const groupedComments = groupCommentsByGoalAndDate(filteredGoals, weekDates);
     const hasComments = Object.keys(groupedComments).length > 0;
-    
     if (hasComments) {
       // Calculate where the goals table ended
       const tableEndY = tableStartY - headerHeight - (filteredGoals.length * rowHeight);
@@ -1317,6 +1502,7 @@ async function generateGoalsPDF(childName: string, childId: string, duration: st
         y -= 15; // Space between goals
       });
     }
+    */
   }
 
   // Add footer with therapist contact and App Store link
