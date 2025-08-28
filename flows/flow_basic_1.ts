@@ -84,7 +84,8 @@ export const flow_basic_1 = [
         ],
         "is_editable": true
       }
-    ]
+    ],
+    is_editable: false
   },
   {
     "id": "whenDidItHappen",

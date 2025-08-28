@@ -117,6 +117,39 @@ const CustomOptionsScreen: React.FC = () => {
     setCustomOptions(updatedOptions);
     await saveCustomOptions(updatedOptions);
 
+    // Generate GPT antecedents and consequences immediately
+    try {
+      console.log(`[GPT_GENERATION] Generating antecedents and consequences for new custom option: ${newOption.label}`);
+      const gptService = require('../utils/gptService');
+      const gptData = await gptService.getABCForBehavior(newOption.label, 'negative');
+      
+      if (gptData && !gptData.isFallback) {
+        // Update the custom option with GPT data
+        const finalOptions = {
+          ...updatedOptions,
+          whatDidTheyDo: updatedOptions.whatDidTheyDo.map(option => 
+            option.label === newOption.label 
+              ? {
+                  ...option,
+                  gptGeneratedAntecedents: gptData.antecedents || [],
+                  gptGeneratedConsequences: gptData.consequences || []
+                }
+              : option
+          )
+        };
+        
+        setCustomOptions(finalOptions);
+        await saveCustomOptions(finalOptions);
+        
+        console.log(`[GPT_GENERATION] Successfully generated ${gptData.antecedents?.length || 0} antecedents and ${gptData.consequences?.length || 0} consequences for "${newOption.label}"`);
+      } else {
+        console.log(`[GPT_GENERATION] Failed to generate GPT data for "${newOption.label}" - using fallback`);
+      }
+    } catch (error) {
+      console.error(`[GPT_GENERATION] Error generating GPT data for "${newOption.label}":`, error);
+      // Don't show error to user - the custom option was still added successfully
+    }
+
     // Reset form
     setNewOptionText('');
     setShowAddModal(false);

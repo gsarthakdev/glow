@@ -1460,6 +1460,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
             sourceBehavior: behavior.answer // Track which behavior this came from
           }));
           allAntecedents.push(...behaviorAntecedents);
+        } else if (customOption && !customOption.gptGeneratedAntecedents) {
+          // Custom option exists but doesn't have GPT data yet
+          console.log(`[GPT_GENERATION] Custom option "${behavior.answer}" doesn't have GPT antecedents - this should have been generated when the option was added`);
         } else if (behavior.answer === otherText['whatDidTheyDo']) {
           // For "Other" options, check if we have GPT data in gptSuggestions state
           if (gptSuggestions && !gptSuggestions.isFallback && gptSuggestions.antecedents) {
@@ -1567,6 +1570,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
             sourceBehavior: behavior.answer // Track which behavior this came from
           }));
           allConsequences.push(...behaviorConsequences);
+        } else if (customOption && !customOption.gptGeneratedConsequences) {
+          // Custom option exists but doesn't have GPT data yet
+          console.log(`[GPT_GENERATION] Custom option "${behavior.answer}" doesn't have GPT consequences - this should have been generated when the option was added`);
         } else if (behavior.answer === otherText['whatDidTheyDo']) {
           // For "Other" options, check if we have GPT data in gptSuggestions state
           if (gptSuggestions && !gptSuggestions.isFallback && gptSuggestions.consequences) {
