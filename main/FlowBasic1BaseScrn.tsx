@@ -90,6 +90,14 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     gptGeneratedConsequences?: Array<{ text: string; emoji: string }>; 
   }> }>({});
   const [deletedOptions, setDeletedOptions] = useState<{ [questionId: string]: Set<string> }>({});
+  
+  // Debug useEffect to monitor deletedOptions changes
+  useEffect(() => {
+    console.log(`[DELETED_OPTIONS_STATE] deletedOptions state changed:`, deletedOptions);
+    Object.keys(deletedOptions).forEach(questionId => {
+      console.log(`[DELETED_OPTIONS_STATE] Question ${questionId} has ${deletedOptions[questionId].size} deleted options:`, Array.from(deletedOptions[questionId]));
+    });
+  }, [deletedOptions]);
   const [selectedBehaviorCategory, setSelectedBehaviorCategory] = useState<string | null>(null);
   const [showAddOptionModal, setShowAddOptionModal] = useState<{ questionId: string; isVisible: boolean }>({ questionId: '', isVisible: false });
   const [newOptionText, setNewOptionText] = useState('');
@@ -201,7 +209,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       console.log('[FLOW] Setting currentFlow with updated flow');
       setCurrentFlow(updatedFlow as Question[]);
     }
-  }, [selectedAnswers, gptSuggestions, optionSets, customOptions]);
+  }, [selectedAnswers, gptSuggestions, optionSets, customOptions, deletedOptions]);
 
   // Set sentiment immediately in edit mode
   useEffect(() => {
@@ -754,18 +762,155 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
 
   // New functions for custom options management
   const handleDeleteOption = async (questionId: string, optionLabel: string) => {
+    console.log(`[DELETE] ===== STARTING DELETE PROCESS =====`);
+    console.log(`[DELETE] Function called with questionId: "${questionId}", optionLabel: "${optionLabel}"`);
+    console.log(`[DELETE] Current deletedOptions state:`, deletedOptions);
+    console.log(`[DELETE] Current customOptions state:`, customOptions);
+    console.log(`[DELETE] Current selectedAnswers:`, selectedAnswers);
+    console.log(`[DELETE] Current currentChild:`, currentChild);
+    
     try {
-      // First, remove the option from customOptions
-      const updatedCustom = { ...customOptions };
-      if (updatedCustom[questionId]) {
-        updatedCustom[questionId] = updatedCustom[questionId].filter(opt => opt.label !== optionLabel);
-        setCustomOptions(updatedCustom);
+      // Add the option to deletedOptions so it gets filtered out
+      console.log(`[DELETE] Step 1: Adding option to deletedOptions state`);
+      const updatedDeleted = { ...deletedOptions };
+      console.log(`[DELETE] updatedDeleted before modification:`, updatedDeleted);
+      
+      if (!updatedDeleted[questionId]) {
+        console.log(`[DELETE] Creating new Set for questionId: ${questionId}`);
+        updatedDeleted[questionId] = new Set();
+      } else {
+        console.log(`[DELETE] Existing Set for questionId: ${questionId} has ${updatedDeleted[questionId].size} items`);
       }
-      // ...existing code...
+      
+      console.log(`[DELETE] Adding "${optionLabel}" to deletedOptions[${questionId}]`);
+      updatedDeleted[questionId].add(optionLabel);
+      console.log(`[DELETE] updatedDeleted after adding option:`, updatedDeleted);
+      console.log(`[DELETE] Set now has ${updatedDeleted[questionId].size} items:`, Array.from(updatedDeleted[questionId]));
+      
+      console.log(`[DELETE] Step 2: Calling setDeletedOptions with updated state`);
+      setDeletedOptions(updatedDeleted);
+      console.log(`[DELETE] setDeletedOptions called successfully`);
+      
+      // Save deleted options to AsyncStorage
+      console.log(`[DELETE] Step 3: Saving to AsyncStorage`);
+      if (currentChild?.id) {
+        console.log(`[DELETE] currentChild.id exists: ${currentChild.id}`);
+        const childData = await AsyncStorage.getItem(currentChild.id);
+        console.log(`[DELETE] Retrieved childData from AsyncStorage:`, childData ? 'exists' : 'null');
+        
+        if (childData) {
+          const parsedChildData = JSON.parse(childData);
+          console.log(`[DELETE] Parsed childData:`, parsedChildData);
+          
+          const deletedOptionsForStorage = { ...parsedChildData.deleted_options || {} };
+          console.log(`[DELETE] deletedOptionsForStorage before modification:`, deletedOptionsForStorage);
+          
+          if (!deletedOptionsForStorage[questionId]) {
+            console.log(`[DELETE] Creating new array for questionId: ${questionId}`);
+            deletedOptionsForStorage[questionId] = [];
+          } else {
+            console.log(`[DELETE] Existing array for questionId: ${questionId} has ${deletedOptionsForStorage[questionId].length} items`);
+          }
+          
+          if (!deletedOptionsForStorage[questionId].includes(optionLabel)) {
+            console.log(`[DELETE] Adding "${optionLabel}" to storage array`);
+            deletedOptionsForStorage[questionId].push(optionLabel);
+          } else {
+            console.log(`[DELETE] Option "${optionLabel}" already exists in storage array`);
+          }
+          
+          console.log(`[DELETE] deletedOptionsForStorage after modification:`, deletedOptionsForStorage);
+          
+          const updatedChildData = {
+            ...parsedChildData,
+            deleted_options: deletedOptionsForStorage
+          };
+          console.log(`[DELETE] Saving updated childData to AsyncStorage`);
+          await AsyncStorage.setItem(currentChild.id, JSON.stringify(updatedChildData));
+          console.log(`[DELETE] AsyncStorage save completed`);
+        } else {
+          console.log(`[DELETE] No childData found in AsyncStorage`);
+        }
+      } else {
+        console.log(`[DELETE] No currentChild.id available`);
+      }
+      
       // Handle deleting GPT-generated options from custom behavior options
-      // ...existing code...
+      console.log(`[DELETE] Step 4: Handling GPT-generated options`);
+      if (questionId === 'whatHappenedBefore' || questionId === 'whatHappenedAfter') {
+        console.log(`[DELETE] This is an ABC question, checking for GPT options`);
+        const selectedBehaviors = selectedAnswers['whatDidTheyDo'] || [];
+        console.log(`[DELETE] selectedBehaviors:`, selectedBehaviors);
+        
+        if (selectedBehaviors.length > 0) {
+          const primaryBehavior = selectedBehaviors[0];
+          console.log(`[DELETE] primaryBehavior:`, primaryBehavior);
+          
+          const behaviorOption = customOptions['whatDidTheyDo']?.find(opt => opt.label === primaryBehavior.answer);
+          console.log(`[DELETE] behaviorOption found:`, behaviorOption ? 'yes' : 'no');
+          
+          if (behaviorOption) {
+            console.log(`[DELETE] behaviorOption details:`, behaviorOption);
+            
+            // Check if this option was originally a GPT-generated option
+            if (questionId === 'whatHappenedBefore' && behaviorOption.gptGeneratedAntecedents) {
+              console.log(`[DELETE] Checking antecedents for GPT option`);
+              const originalAntecedent = behaviorOption.gptGeneratedAntecedents.find(ant => ant.text === optionLabel);
+              console.log(`[DELETE] originalAntecedent found:`, originalAntecedent ? 'yes' : 'no');
+              
+              if (!originalAntecedent) {
+                console.log(`[DELETE] Option was deleted from GPT data, restoring it`);
+                const updatedCustom = { ...customOptions };
+                const behaviorOptionIndex = updatedCustom['whatDidTheyDo']?.findIndex(opt => opt.label === primaryBehavior.answer);
+                console.log(`[DELETE] behaviorOptionIndex:`, behaviorOptionIndex);
+                
+                if (behaviorOptionIndex !== undefined && behaviorOptionIndex !== -1) {
+                  updatedCustom['whatDidTheyDo'][behaviorOptionIndex] = {
+                    ...behaviorOption,
+                    gptGeneratedAntecedents: [
+                      ...behaviorOption.gptGeneratedAntecedents,
+                      { text: optionLabel, emoji: '🔄' } // Default emoji for restored option
+                    ]
+                  };
+                  console.log(`[DELETE] Updating customOptions with restored antecedent`);
+                  setCustomOptions(updatedCustom);
+                }
+              }
+            } else if (questionId === 'whatHappenedAfter' && behaviorOption.gptGeneratedConsequences) {
+              console.log(`[DELETE] Checking consequences for GPT option`);
+              const originalConsequence = behaviorOption.gptGeneratedConsequences.find(con => con.text === optionLabel);
+              console.log(`[DELETE] originalConsequence found:`, originalConsequence ? 'yes' : 'no');
+              
+              if (!originalConsequence) {
+                console.log(`[DELETE] Option was deleted from GPT data, restoring it`);
+                const updatedCustom = { ...customOptions };
+                const behaviorOptionIndex = updatedCustom['whatDidTheyDo']?.findIndex(opt => opt.label === primaryBehavior.answer);
+                console.log(`[DELETE] behaviorOptionIndex:`, behaviorOptionIndex);
+                
+                if (behaviorOptionIndex !== undefined && behaviorOptionIndex !== -1) {
+                  updatedCustom['whatDidTheyDo'][behaviorOptionIndex] = {
+                    ...behaviorOption,
+                    gptGeneratedConsequences: [
+                      ...behaviorOption.gptGeneratedConsequences,
+                      { text: optionLabel, emoji: '🔄' } // Default emoji for restored option
+                    ]
+                  };
+                  console.log(`[DELETE] Updating customOptions with restored consequence`);
+                  setCustomOptions(updatedCustom);
+                }
+              }
+            }
+          }
+        }
+      } else {
+        console.log(`[DELETE] This is not an ABC question, skipping GPT handling`);
+      }
+      
+      console.log(`[DELETE] ===== DELETE PROCESS COMPLETED SUCCESSFULLY =====`);
     } catch (error) {
-      console.error('Error deleting option:', error);
+      console.error(`[DELETE] ===== ERROR IN DELETE PROCESS =====`);
+      console.error('[DELETE] Error details:', error);
+      console.error('[DELETE] Error stack:', error.stack);
     }
   };
 
@@ -1256,8 +1401,19 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     console.log(`[FILTER] Filtered custom options:`, filteredCustom.map(opt => ({ label: opt.label, category: opt.category, matchesCategory: opt.category === selectedBehaviorCategory ? 'same-category' : 'different-category' })));
     
     // Filter out deleted options from original choices
-    const filteredOriginal = originalChoices.filter(choice => !deleted.has(choice.label));
+    console.log(`[FILTER] ===== FILTERING DELETED OPTIONS =====`);
+    console.log(`[FILTER] deleted Set for ${questionId}:`, deleted);
+    console.log(`[FILTER] deleted Set size: ${deleted.size}`);
+    console.log(`[FILTER] deleted Set contents:`, Array.from(deleted));
+    console.log(`[FILTER] originalChoices before filtering:`, originalChoices.map(c => c.label));
     
+    const filteredOriginal = originalChoices.filter(choice => {
+      const isDeleted = deleted.has(choice.label);
+      console.log(`[FILTER] Checking choice "${choice.label}": isDeleted = ${isDeleted}`);
+      return !isDeleted;
+    });
+    
+    console.log(`[FILTER] filteredOriginal after filtering:`, filteredOriginal.map(c => c.label));
     console.log(`[FILTER] Filtered original choices count: ${filteredOriginal.length}`);
     
     // Separate "Other" option from other choices
@@ -1282,6 +1438,11 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
           allAvailableOptions = getIntelligentConsequenceChoices(selectedBehaviors, questionId);
         }
         console.log(`[FILTER] Got ${allAvailableOptions.length} intelligent options for ${questionId}`);
+        
+        // CRITICAL FIX: Filter the intelligent options to remove deleted ones
+        const deletedSet = deletedOptions[questionId] || new Set();
+        allAvailableOptions = allAvailableOptions.filter(option => !deletedSet.has(option.label));
+        console.log(`[FILTER] After filtering deleted options: ${allAvailableOptions.length} intelligent options remain for ${questionId}`);
       }
       
       let finalOptions: Array<{ label: string; emoji: string; sentiment?: string | null }> = [];
@@ -2414,7 +2575,12 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                                 {
                                   text: 'Delete',
                                   style: 'destructive',
-                                  onPress: () => handleDeleteOption(currentQ.id, choice.label)
+                                  onPress: () => {
+                                    console.log(`[DELETE_BUTTON] Delete button pressed for choice: "${choice.label}" in question: "${currentQ.id}"`);
+                                    console.log(`[DELETE_BUTTON] Choice details:`, choice);
+                                    console.log(`[DELETE_BUTTON] Current question details:`, currentQ);
+                                    handleDeleteOption(currentQ.id, choice.label);
+                                  }
                                 }
                               ]
                             );
@@ -2490,7 +2656,12 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                                  {
                                    text: 'Delete',
                                    style: 'destructive',
-                                   onPress: () => handleDeleteOption(currentQ.id, choice.label)
+                                   onPress: () => {
+                                    console.log(`[DELETE_BUTTON] Delete button pressed for choice: "${choice.label}" in question: "${currentQ.id}"`);
+                                    console.log(`[DELETE_BUTTON] Choice details:`, choice);
+                                    console.log(`[DELETE_BUTTON] Current question details:`, currentQ);
+                                    handleDeleteOption(currentQ.id, choice.label);
+                                  }
                                  }
                                ]
                              );
@@ -2641,7 +2812,12 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                                   {
                                     text: 'Delete',
                                     style: 'destructive',
-                                    onPress: () => handleDeleteOption(currentQ.id, choice.label)
+                                    onPress: () => {
+                                    console.log(`[DELETE_BUTTON] Delete button pressed for choice: "${choice.label}" in question: "${currentQ.id}"`);
+                                    console.log(`[DELETE_BUTTON] Choice details:`, choice);
+                                    console.log(`[DELETE_BUTTON] Current question details:`, currentQ);
+                                    handleDeleteOption(currentQ.id, choice.label);
+                                  }
                                   }
                                 ]
                               );
