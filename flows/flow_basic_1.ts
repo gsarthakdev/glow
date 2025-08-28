@@ -73,6 +73,16 @@ export const flow_basic_1 = [
           { "label": "Other", "emoji": "➕", "sentiment": null, "isOther": true }
         ],
         "is_editable": true
+      },
+      {
+        "key": "yourPins",
+        "label": "Your Pins",
+        "emoji": "📌",
+        "sentiment": "negative",
+        "choices": [
+          // { "label": "Other", "emoji": "➕", "sentiment": null, "isOther": true }
+        ],
+        "is_editable": true
       }
     ]
   },

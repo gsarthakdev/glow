@@ -1,5 +1,5 @@
 //@ts-ignore
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { flow_basic_1 } from '../flows/flow_basic_1';
 import { flow_basic_1 as positive_flow_basic_1 } from '../flows/positive_flow_basic_1';
 import MoodBubbleSlider from '../components/MoodBubbleSlider';
-import { useRoute } from '@react-navigation/native';
+import { useRoute, useFocusEffect } from '@react-navigation/native';
 import { getABCForBehavior, trackGPTSuggestionUsage } from '../utils/gptService';
 import { getShuffledOptions, getTotalSets, behaviorSpecificOptions } from '../flows/behaviorSpecificOptions';
 import { getShuffledGPTOptions, getTotalGPTSets } from '../utils/gptService';
@@ -45,6 +45,7 @@ interface Question {
 interface Answer {
   answer: string;
   isCustom: boolean;
+  isFromCustomCategory?: boolean;
 }
 
 interface OtherModalState {
@@ -135,7 +136,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
 
   // Inject behavior-specific options and GPT suggestions into the flow
   useEffect(() => {
-    console.log('[FLOW] useEffect triggered. selectedAnswers:', selectedAnswers, 'gptSuggestions:', gptSuggestions, 'customOptions:', customOptions);
+    console.log('[FLOW] MAIN useEffect triggered. selectedAnswers:', selectedAnswers, 'gptSuggestions:', gptSuggestions, 'customOptions:', customOptions);
     console.log('[FLOW] customOptions keys:', Object.keys(customOptions));
     console.log('[FLOW] whatDidTheyDo custom options:', customOptions['whatDidTheyDo']);
     
@@ -343,7 +344,100 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     }
   };
 
+  // Function to reload custom options from AsyncStorage
+  const reloadCustomOptions = useCallback(async () => {
+    try {
+      if (currentChild && currentChild.id) {
+        const childData = await AsyncStorage.getItem(currentChild.id);
+        if (childData) {
+          const parsedChildData = JSON.parse(childData);
+          if (parsedChildData.custom_options) {
+            console.log('[RELOAD] Reloading custom options:', parsedChildData.custom_options);
+            setCustomOptions(parsedChildData.custom_options);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error reloading custom options:', error);
+    }
+  }, [currentChild]);
+
+  // Reload custom options when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      reloadCustomOptions();
+    }, [reloadCustomOptions])
+  );
+
+  // Update "Your Pins" category when custom options change
+  // Use timeout to ensure this runs after other flow updates
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (currentFlow.length > 0 && Object.keys(customOptions).length > 0) {
+        const updatedFlow = [...currentFlow];
+        const firstQuestionIndex = updatedFlow.findIndex(q => q.id === 'whatDidTheyDo');
+        
+        if (firstQuestionIndex !== -1 && updatedFlow[firstQuestionIndex].categories) {
+          const yourPinsCategoryIndex = updatedFlow[firstQuestionIndex].categories!.findIndex(cat => cat.key === 'yourPins');
+          
+          if (yourPinsCategoryIndex !== -1) {
+            console.log('[YOUR_PINS] Updating Your Pins category with custom options');
+            const customBehaviors = customOptions['whatDidTheyDo'] || [];
+            
+            // Check if custom options are already in the flow to prevent unnecessary updates
+            const currentCustomChoices = updatedFlow[firstQuestionIndex].categories![yourPinsCategoryIndex].choices
+              .filter((choice: any) => choice.isCustom);
+            
+            const needsUpdate = currentCustomChoices.length !== customBehaviors.length ||
+              customBehaviors.some(behavior => !currentCustomChoices.some((choice: any) => choice.label === behavior.label));
+            
+            if (needsUpdate) {
+              // Create choices from all custom behaviors
+              const customChoices = customBehaviors.map(option => {
+                const choice = {
+                  ...option, // Spread original properties
+                  sentiment: option.sentiment || 'negative', // Ensure sentiment is set
+                  isCustom: true // Override to ensure isCustom is always true
+                };
+                console.log('[YOUR_PINS] Creating choice from option:', option);
+                console.log('[YOUR_PINS] Final choice object:', choice);
+                return choice;
+              });
+              
+              // Update the "Your Pins" category (no "Other" option needed)
+              updatedFlow[firstQuestionIndex].categories![yourPinsCategoryIndex] = {
+                ...updatedFlow[firstQuestionIndex].categories![yourPinsCategoryIndex],
+                choices: customChoices
+              };
+              
+              setCurrentFlow(updatedFlow as Question[]);
+              console.log('[YOUR_PINS] Updated Your Pins category with', customBehaviors.length, 'custom options');
+              console.log('[YOUR_PINS] Final choices in Your Pins:', updatedFlow[firstQuestionIndex].categories![yourPinsCategoryIndex].choices);
+              console.log('[YOUR_PINS] Checking isCustom properties:');
+              updatedFlow[firstQuestionIndex].categories![yourPinsCategoryIndex].choices.forEach((choice: any, index: number) => {
+                console.log(`[YOUR_PINS] Choice ${index}:`, { 
+                  label: choice.label, 
+                  isCustom: choice.isCustom, 
+                  isOther: choice.isOther,
+                  allProps: Object.keys(choice)
+                });
+              });
+            }
+          }
+        }
+      }
+    }, 50); // Small delay to ensure other useEffects run first
+    
+    return () => clearTimeout(timeoutId);
+  }, [customOptions, selectedAnswers]); // Also depend on selectedAnswers to re-run after selections
+
   const handleAnswer = (questionId: string, answer: { label: string; emoji: string; sentiment?: string | null }) => {
+    console.log('[DEBUG] handleAnswer called with:', { questionId, answer });
+    console.log('[DEBUG] answer.label:', answer.label);
+    console.log('[DEBUG] answer properties:', Object.keys(answer));
+    console.log('[DEBUG] isOther?', (answer as any).isOther);
+    console.log('[DEBUG] isCustom?', (answer as any).isCustom);
+    
     // Handle "Other" option first
     if (answer.label === 'Other') {
       const customAnswer = selectedAnswers[questionId]?.find(a => a.isCustom);
@@ -428,15 +522,19 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         
         if (existingIndex >= 0) {
           // Remove if already selected (toggle behavior)
-          return {
-            ...prev,
+        return {
+          ...prev,
             [questionId]: current.filter((_, i) => i !== existingIndex)
           };
         } else {
           // Add if not selected, but limit to max 3 behaviors
           if (current.length >= 3) {
             // Replace the last selected behavior with the new one
-            const updated = [...current.slice(0, 2), { answer: answerText, isCustom: (answer as any).isCustom || false }];
+            const updated = [...current.slice(0, 2), { 
+              answer: answerText, 
+              isCustom: (answer as any).isCustom || false,
+              isFromCustomCategory: (answer as any).isCustom || false // Mark custom options from categories
+            }];
             return {
               ...prev,
               [questionId]: updated
@@ -445,7 +543,11 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
             // Add new behavior
             return {
               ...prev,
-              [questionId]: [...current, { answer: answerText, isCustom: (answer as any).isCustom || false }]
+              [questionId]: [...current, { 
+                answer: answerText, 
+                isCustom: (answer as any).isCustom || false,
+                isFromCustomCategory: (answer as any).isCustom || false // Mark custom options from categories
+              }]
             };
           }
         }
@@ -883,70 +985,70 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
             // Check all selected behaviors for GPT data
             for (const behavior of selectedBehaviors) {
               const behaviorOptionIndex = customOptions['whatDidTheyDo'].findIndex(opt => opt.label === behavior.answer);
-              if (behaviorOptionIndex !== -1) {
-                const behaviorOption = customOptions['whatDidTheyDo'][behaviorOptionIndex];
-                
-                // Check if this option was originally a GPT-generated option
-                if (questionId === 'whatHappenedBefore' && behaviorOption.gptGeneratedAntecedents) {
-                  // Check if this option exists in the original GPT data (it might have been deleted)
-                  const originalAntecedent = behaviorOption.gptGeneratedAntecedents.find(ant => ant.text === optionLabel);
-                  if (!originalAntecedent) {
-                    // This option was deleted from GPT data, we need to restore it
-                    // For now, we'll add it back with a default emoji since we don't have the original
-                    const updatedCustom = { ...customOptions };
-                    updatedCustom['whatDidTheyDo'][behaviorOptionIndex] = {
-                      ...behaviorOption,
-                      gptGeneratedAntecedents: [
-                        ...behaviorOption.gptGeneratedAntecedents,
-                        { text: optionLabel, emoji: '🔄' } // Default emoji for restored option
-                      ]
-                    };
-                    setCustomOptions(updatedCustom);
-                    
-                    // Save updated custom options to AsyncStorage
-                    if (currentChild && currentChild.id) {
-                      const childData = await AsyncStorage.getItem(currentChild.id);
-                      if (childData) {
-                        const parsedChildData = JSON.parse(childData);
-                        const updatedChildData = {
-                          ...parsedChildData,
-                          custom_options: updatedCustom
-                        };
-                        await AsyncStorage.setItem(currentChild.id, JSON.stringify(updatedChildData));
-                        
-                        // Update currentChild state to keep it in sync
-                        setCurrentChild((prev: any) => prev ? { ...prev, data: updatedChildData } : null);
-                      }
+            if (behaviorOptionIndex !== -1) {
+              const behaviorOption = customOptions['whatDidTheyDo'][behaviorOptionIndex];
+              
+              // Check if this option was originally a GPT-generated option
+              if (questionId === 'whatHappenedBefore' && behaviorOption.gptGeneratedAntecedents) {
+                // Check if this option exists in the original GPT data (it might have been deleted)
+                const originalAntecedent = behaviorOption.gptGeneratedAntecedents.find(ant => ant.text === optionLabel);
+                if (!originalAntecedent) {
+                  // This option was deleted from GPT data, we need to restore it
+                  // For now, we'll add it back with a default emoji since we don't have the original
+                  const updatedCustom = { ...customOptions };
+                  updatedCustom['whatDidTheyDo'][behaviorOptionIndex] = {
+                    ...behaviorOption,
+                    gptGeneratedAntecedents: [
+                      ...behaviorOption.gptGeneratedAntecedents,
+                      { text: optionLabel, emoji: '🔄' } // Default emoji for restored option
+                    ]
+                  };
+                  setCustomOptions(updatedCustom);
+                  
+                  // Save updated custom options to AsyncStorage
+                  if (currentChild && currentChild.id) {
+                    const childData = await AsyncStorage.getItem(currentChild.id);
+                    if (childData) {
+                      const parsedChildData = JSON.parse(childData);
+                      const updatedChildData = {
+                        ...parsedChildData,
+                        custom_options: updatedCustom
+                      };
+                      await AsyncStorage.setItem(currentChild.id, JSON.stringify(updatedChildData));
+                      
+                      // Update currentChild state to keep it in sync
+                      setCurrentChild((prev: any) => prev ? { ...prev, data: updatedChildData } : null);
                     }
                   }
-                } else if (questionId === 'whatHappenedAfter' && behaviorOption.gptGeneratedConsequences) {
-                  // Check if this option was originally a GPT-generated option
-                  const originalConsequence = behaviorOption.gptGeneratedConsequences.find(con => con.text === optionLabel);
-                  if (!originalConsequence) {
-                    // This option was deleted from GPT data, we need to restore it
-                    const updatedCustom = { ...customOptions };
-                    updatedCustom['whatDidTheyDo'][behaviorOptionIndex] = {
-                      ...behaviorOption,
-                      gptGeneratedConsequences: [
-                        ...behaviorOption.gptGeneratedConsequences,
-                        { text: optionLabel, emoji: '🔄' } // Default emoji for restored option
-                      ]
-                    };
-                    setCustomOptions(updatedCustom);
-                    
-                    // Save updated custom options to AsyncStorage
-                    if (currentChild && currentChild.id) {
-                      const childData = await AsyncStorage.getItem(currentChild.id);
-                      if (childData) {
-                        const parsedChildData = JSON.parse(childData);
-                        const updatedChildData = {
-                          ...parsedChildData,
-                          custom_options: updatedCustom
-                        };
-                        await AsyncStorage.setItem(currentChild.id, JSON.stringify(updatedChildData));
-                        
-                        // Update currentChild state to keep it in sync
-                        setCurrentChild((prev: any) => prev ? { ...prev, data: updatedChildData } : null);
+                }
+              } else if (questionId === 'whatHappenedAfter' && behaviorOption.gptGeneratedConsequences) {
+                // Check if this option was originally a GPT-generated option
+                const originalConsequence = behaviorOption.gptGeneratedConsequences.find(con => con.text === optionLabel);
+                if (!originalConsequence) {
+                  // This option was deleted from GPT data, we need to restore it
+                  const updatedCustom = { ...customOptions };
+                  updatedCustom['whatDidTheyDo'][behaviorOptionIndex] = {
+                    ...behaviorOption,
+                    gptGeneratedConsequences: [
+                      ...behaviorOption.gptGeneratedConsequences,
+                      { text: optionLabel, emoji: '🔄' } // Default emoji for restored option
+                    ]
+                  };
+                  setCustomOptions(updatedCustom);
+                  
+                  // Save updated custom options to AsyncStorage
+                  if (currentChild && currentChild.id) {
+                    const childData = await AsyncStorage.getItem(currentChild.id);
+                    if (childData) {
+                      const parsedChildData = JSON.parse(childData);
+                      const updatedChildData = {
+                        ...parsedChildData,
+                        custom_options: updatedCustom
+                      };
+                      await AsyncStorage.setItem(currentChild.id, JSON.stringify(updatedChildData));
+                      
+                      // Update currentChild state to keep it in sync
+                      setCurrentChild((prev: any) => prev ? { ...prev, data: updatedChildData } : null);
                       }
                     }
                   }
@@ -1018,6 +1120,19 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
   // Helper function to get filtered and merged options for a question
   // For antecedent/consequence questions, if GPT is used, show 65% GPT options and 35% hardcoded options
   const getFilteredOptions = (questionId: string, originalChoices: Array<{ label: string; emoji: string; sentiment?: string | null }>) => {
+    console.log(`[FILTER] getFilteredOptions called for ${questionId}`);
+    console.log(`[FILTER] originalChoices:`, originalChoices);
+    if (questionId === 'whatDidTheyDo') {
+      console.log(`[FILTER] Processing whatDidTheyDo - checking for isCustom properties:`);
+      originalChoices.forEach((choice, index) => {
+        console.log(`[FILTER] Choice ${index}:`, { 
+          label: choice.label, 
+          isCustom: (choice as any).isCustom, 
+          isOther: (choice as any).isOther,
+          allProps: Object.keys(choice)
+        });
+      });
+    }
     if ((questionId === 'whatHappenedBefore' || questionId === 'whatHappenedAfter') && gptSuggestions && !gptSuggestions.isFallback) {
       const gptOptions = (questionId === 'whatHappenedBefore')
         ? (gptSuggestions.antecedents || []).map(opt => ({ label: opt.text, emoji: opt.emoji, isGptGenerated: true }))
@@ -1110,27 +1225,35 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
       // Get all categories that have selected behaviors
       const selectedCategories = new Set();
       selectedBehaviors.forEach(behavior => {
-        // Find which category this behavior belongs to
-        currentQ.categories?.forEach(cat => {
-          if (cat.choices.some(choice => choice.label === behavior.answer)) {
-            selectedCategories.add(cat.key);
-          }
-        });
+        // Check if this is a custom behavior (has isCustom property)
+        if (behavior.isCustom) {
+          selectedCategories.add('yourPins');
+        } else {
+          // Find which category this behavior belongs to
+          currentQ.categories?.forEach(cat => {
+            if (cat.choices.some(choice => choice.label === behavior.answer)) {
+              selectedCategories.add(cat.key);
+            }
+          });
+        }
       });
       
-      // Show custom options that either have no category OR belong to any of the selected behavior categories
+      console.log(`[FILTER] Selected categories:`, Array.from(selectedCategories));
+      
+      // Show custom options ONLY in their own category, not across all categories
+      // This prevents "Your Pins" options from appearing in other categories
       filteredCustom = custom.filter(option => 
-        !option.category || selectedCategories.has(option.category)
+        option.category === selectedBehaviorCategory
       );
     } else {
       // Fallback to original logic if no behaviors selected
       filteredCustom = custom.filter(option => 
-        !option.category || option.category === selectedBehaviorCategory
-      );
+      !option.category || option.category === selectedBehaviorCategory
+    );
     }
     
     console.log(`[FILTER] Filtered custom options count: ${filteredCustom.length}`);
-    console.log(`[FILTER] Filtered custom options:`, filteredCustom.map(opt => ({ label: opt.label, category: opt.category, matchesCategory: !opt.category || selectedBehaviors.length > 0 ? 'multi-category' : opt.category === selectedBehaviorCategory })));
+    console.log(`[FILTER] Filtered custom options:`, filteredCustom.map(opt => ({ label: opt.label, category: opt.category, matchesCategory: opt.category === selectedBehaviorCategory ? 'same-category' : 'different-category' })));
     
     // Filter out deleted options from original choices
     const filteredOriginal = originalChoices.filter(choice => !deleted.has(choice.label));
@@ -1179,7 +1302,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         console.log(`[FILTER] Set ${currentSet + 1}: current set options (${currentSetOptions.length}):`, currentSetOptions.map(opt => opt.label));
         
         finalOptions = currentSetOptions;
-      } else {
+        } else {
         // Fallback to original logic if no intelligent options available
         if (currentSet === 0) {
           // Set 0: Custom options first, then hardcoded options
@@ -1225,6 +1348,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
         console.warn(`[FILTER] Duplicate labels detected in ${questionId} Set ${currentSet}. Original: ${finalOptions.length}, Unique: ${uniqueOptions.length}`);
       }
       
+      console.log(`[FILTER] Returning ${uniqueOptions.length} options for ${questionId}`);
       return uniqueOptions;
     }
     
@@ -1255,6 +1379,19 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     }
     
     console.log(`[FILTER] Final options count for ${questionId}: ${uniqueNonShuffleOptions.length}`);
+    
+    if (questionId === 'whatDidTheyDo') {
+      console.log(`[FILTER] Non-shuffle return for whatDidTheyDo:`, uniqueNonShuffleOptions);
+      console.log(`[FILTER] Checking non-shuffle returned options for isCustom:`);
+      uniqueNonShuffleOptions.forEach((option, index) => {
+        console.log(`[FILTER] Non-shuffle option ${index}:`, { 
+          label: option.label, 
+          isCustom: (option as any).isCustom, 
+          isOther: (option as any).isOther,
+          allProps: Object.keys(option)
+        });
+      });
+    }
     
     return uniqueNonShuffleOptions;
   };
@@ -1443,7 +1580,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
             }));
             allConsequences.push(...behaviorConsequences);
             console.log(`[OTHER_OPTION] Using GPT consequences for "Other" option "${behavior.answer}":`, behaviorConsequences.length);
-          } else {
+    } else {
             console.log(`[OTHER_OPTION] "Other" option "${behavior.answer}" needs GPT consequences generated`);
             // Note: GPT generation will happen asynchronously in the background
           }
@@ -1861,9 +1998,10 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
 
   const isOtherSelected = (questionId: string) => {
     const answers = selectedAnswers[questionId] || [];
-    // The "Other" option should be selected if there's a custom answer
-    // This covers both cases: when "Other" was literally selected and when custom text was submitted
-    return answers.some(a => a.isCustom);
+    // The "Other" option should be selected if there's a custom answer that was submitted via "Other"
+    // This should NOT include custom options selected from "Your Pins" category
+    // Custom options from "Your Pins" are handled by isAnswerSelected, not isOtherSelected
+    return answers.some(a => a.isCustom && !a.isFromCustomCategory);
   };
 
   // Helper to check if a category contains the selected answer
@@ -2067,8 +2205,8 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
   const getChoiceLabel = (choice: { label: string; emoji: string }) => {
     if (choice.label === 'Other') {
       // Only show custom text for "Other" if it was specifically selected via the "Other" option
-      // Check if there's a custom answer that was entered via "Other"
-      const customAnswer = selectedAnswers[currentQ.id]?.find(a => a.isCustom);
+      // This should NOT include custom options selected from "Your Pins" category
+      const customAnswer = selectedAnswers[currentQ.id]?.find(a => a.isCustom && !a.isFromCustomCategory);
       if (customAnswer) {
         return `${choice.emoji} ${customAnswer.answer}`; // Show the custom input instead of "Other"
       }
@@ -2163,6 +2301,16 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                   </Text>
                 </TouchableOpacity>
               )}
+              
+              {/* Show manage behaviors button only for the first question */}
+              {currentQ.id === 'whatDidTheyDo' && (
+                <TouchableOpacity
+                  style={styles.manageBehaviorsButton}
+                  onPress={() => navigation.navigate('CustomOptionsScreen', { currentChild })}
+                >
+                  <Text style={styles.manageBehaviorsButtonText}>⚙️ Manage</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
           
@@ -2230,8 +2378,8 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                           const currentAnswers = selectedAnswers[currentQ.id] || [];
                           console.log(`[MULTI-SELECT] Selected behavior: ${choice.label}, total selected: ${currentAnswers.length + 1}`);
                           if (currentAnswers.length >= 3) {
-                            setSelectedCategory(null);
-                            setSearchQuery('');
+                          setSelectedCategory(null);
+                          setSearchQuery('');
                           }
                         }}
                       >
@@ -2286,22 +2434,33 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                     // Apply filtering and custom options
                     const filteredChoices = getFilteredOptions(currentQ.id, catChoices);
                     
+                    // TEMP FIX: Ensure custom options in "Your Pins" category have isCustom property
+                    if (selectedCategory.key === 'yourPins') {
+                      console.log('[TEMP_FIX] Your Pins category detected, fixing isCustom properties');
+                      filteredChoices.forEach((choice: any) => {
+                        if (!choice.isOther) {
+                          choice.isCustom = true;
+                          console.log('[TEMP_FIX] Added isCustom to:', choice.label);
+                        }
+                      });
+                    }
+                    
                     return filteredChoices.map((choice, index) => (
                      <View key={`${choice.label}-${index}-${(choice as any).isCustom ? 'custom' : 'base'}`} style={styles.choiceContainer}>
                        <TouchableOpacity
                          style={getChoiceButtonStyle(choice, currentQ.id)}
-                                                 onPress={() => {
-                          handleAnswer(currentQ.id, choice);
+                         onPress={() => {
+                           handleAnswer(currentQ.id, choice);
                           // Don't go back to categories for multi-select - let user select multiple behaviors
                           // Only go back if they've reached the max limit
                           const currentAnswers = selectedAnswers[currentQ.id] || [];
                           console.log(`[MULTI-SELECT] Selected behavior: ${choice.label}, total selected: ${currentAnswers.length + 1}`);
                           if (currentAnswers.length >= 3) {
-                            setSelectedCategory(null);
-                            setSearchQuery('');
-                            setBehaviorOptionSet(0);
+                           setSelectedCategory(null);
+                           setSearchQuery('');
+                           setBehaviorOptionSet(0);
                           }
-                        }}
+                         }}
                        >
                                                   <View style={styles.choiceContent}>
                            <Text style={styles.choiceText}>{getChoiceLabel(choice)}</Text>
@@ -2402,9 +2561,9 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Text style={styles.choiceText}>{`${cat.emoji} ${cat.label}`}</Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                          {isCategorySelected(cat) && (
-                            <Text style={styles.categorySelectedText}>✓</Text>
-                          )}
+                        {isCategorySelected(cat) && (
+                          <Text style={styles.categorySelectedText}>✓</Text>
+                        )}
                           {(() => {
                             const selectedCount = (selectedAnswers['whatDidTheyDo'] || []).length;
                             if (selectedCount > 0) {
@@ -3422,6 +3581,23 @@ const styles = StyleSheet.create({
   editModeButtonActive: {
     backgroundColor: '#5B9AA0',
     borderColor: '#5B9AA0',
+  },
+  manageBehaviorsButton: {
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 8,
+    backgroundColor: '#6C63FF',
+    minWidth: 80,
+    minHeight: 36,
+    borderWidth: 1,
+    borderColor: '#6C63FF',
+    marginLeft: 8,
+  },
+  manageBehaviorsButtonText: {
+    fontSize: 12,
+    color: '#fff',
+    fontWeight: 'bold',
   },
   editModeIcon: {
     fontSize: 16,
