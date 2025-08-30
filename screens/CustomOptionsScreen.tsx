@@ -10,6 +10,7 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -42,6 +43,7 @@ const CustomOptionsScreen: React.FC = () => {
   const [newOptionText, setNewOptionText] = useState('');
   // All custom options go in "Your Pins" category
   const [isLoading, setIsLoading] = useState(true);
+  const [isGeneratingGPT, setIsGeneratingGPT] = useState(false);
 
   // Load custom options on component mount
   useEffect(() => {
@@ -117,6 +119,9 @@ const CustomOptionsScreen: React.FC = () => {
     setCustomOptions(updatedOptions);
     await saveCustomOptions(updatedOptions);
 
+    // Start GPT generation with loading indicator
+    setIsGeneratingGPT(true);
+
     // Generate GPT antecedents and consequences immediately
     try {
       console.log(`[GPT_GENERATION] Generating antecedents and consequences for new custom option: ${newOption.label}`);
@@ -148,6 +153,9 @@ const CustomOptionsScreen: React.FC = () => {
     } catch (error) {
       console.error(`[GPT_GENERATION] Error generating GPT data for "${newOption.label}":`, error);
       // Don't show error to user - the custom option was still added successfully
+    } finally {
+      // Stop loading indicator
+      setIsGeneratingGPT(false);
     }
 
     // Reset form
@@ -253,7 +261,10 @@ const CustomOptionsScreen: React.FC = () => {
         visible={showAddModal}
         transparent
         animationType="slide"
-        onRequestClose={() => setShowAddModal(false)}
+        onRequestClose={() => {
+          setIsGeneratingGPT(false);
+          setShowAddModal(false);
+        }}
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -277,11 +288,23 @@ const CustomOptionsScreen: React.FC = () => {
               📌 This behavior will be added to your "Your Pins" category.
             </Text>
 
+            {isGeneratingGPT && (
+              <View style={styles.loadingContainer}>
+                {/* <ActivityIndicator size="small" color="#5B9AA0" />
+                <Text style={styles.loadingText}>Generating options...</Text> */}
+              </View>
+            )}
+
             <View style={styles.modalButtons}>
               <TouchableOpacity
-                style={styles.modalButton}
+                style={[
+                  styles.modalButton,
+                  isGeneratingGPT && styles.disabledButton
+                ]}
+                disabled={isGeneratingGPT}
                 onPress={() => {
                   setNewOptionText('');
+                  setIsGeneratingGPT(false);
                   setShowAddModal(false);
                 }}
               >
@@ -291,12 +314,19 @@ const CustomOptionsScreen: React.FC = () => {
                 style={[
                   styles.modalButton,
                   styles.addModalButton,
-                  !newOptionText.trim() && styles.disabledButton
+                  (!newOptionText.trim() || isGeneratingGPT) && styles.disabledButton
                 ]}
-                disabled={!newOptionText.trim()}
+                disabled={!newOptionText.trim() || isGeneratingGPT}
                 onPress={addCustomOption}
               >
-                <Text style={[styles.modalButtonText, { color: 'white' }]}>Add</Text>
+                {isGeneratingGPT ? (
+                  <View style={styles.buttonLoadingContainer}>
+                    <ActivityIndicator size="small" color="white" />
+                    <Text style={[styles.modalButtonText, { color: 'white', marginLeft: 8 }]}>Adding...</Text>
+                  </View>
+                ) : (
+                  <Text style={[styles.modalButtonText, { color: 'white' }]}>Add</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -497,6 +527,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
+  },
+  buttonLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 
