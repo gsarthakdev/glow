@@ -64,6 +64,11 @@ export default function GoalsScrn({ navigation }: { navigation: any }) {
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [newCommentText, setNewCommentText] = useState('');
   const [editingComment, setEditingComment] = useState<Comment | null>(null);
+  
+  // New state for edit goal modal
+  const [editGoalModalVisible, setEditGoalModalVisible] = useState(false);
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
+  const [editGoalText, setEditGoalText] = useState('');
 
   useEffect(() => {
     if (isFocused) {
@@ -525,6 +530,37 @@ export default function GoalsScrn({ navigation }: { navigation: any }) {
     setNewCommentText('');
   };
 
+  // Edit goal functions
+  const handleEditGoal = (goal: Goal) => {
+    setEditingGoal(goal);
+    setEditGoalText(goal.text);
+    setEditGoalModalVisible(true);
+  };
+
+  const handleSaveEditGoal = async () => {
+    if (!editingGoal || !editGoalText.trim()) return;
+    
+    const updatedGoal = {
+      ...editingGoal,
+      text: editGoalText.trim()
+    };
+
+    const updatedGoals = goals.map(goal => 
+      goal.id === editingGoal.id ? updatedGoal : goal
+    );
+
+    await saveGoals(updatedGoals);
+    setEditGoalModalVisible(false);
+    setEditingGoal(null);
+    setEditGoalText('');
+  };
+
+  const handleCancelEditGoal = () => {
+    setEditGoalModalVisible(false);
+    setEditingGoal(null);
+    setEditGoalText('');
+  };
+
   const formatDateForDisplay = (dateString: string) => {
     const today = getCurrentDate();
     const yesterday = new Date();
@@ -668,12 +704,20 @@ export default function GoalsScrn({ navigation }: { navigation: any }) {
                   onPress={() => handleGoalPress(goal)}
                 >
                   <Text style={styles.goalText}>{goal.text}</Text>
-                  <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={() => handleDeleteGoal(goal.id)}
-                  >
-                    <Ionicons name="trash-outline" size={16} color="#FF6F61" />
-                  </TouchableOpacity>
+                  <View style={styles.goalActionButtons}>
+                    <TouchableOpacity
+                      style={styles.editButton}
+                      onPress={() => handleEditGoal(goal)}
+                    >
+                      <Ionicons name="pencil" size={16} color="#5B9AA0" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.deleteButton}
+                      onPress={() => handleDeleteGoal(goal.id)}
+                    >
+                      <Ionicons name="trash-outline" size={16} color="#FF6F61" />
+                    </TouchableOpacity>
+                  </View>
                 </TouchableOpacity>
                 <View style={styles.counterContainer}>
                   <TouchableOpacity
@@ -939,6 +983,61 @@ export default function GoalsScrn({ navigation }: { navigation: any }) {
             </View>
           </KeyboardAvoidingView>
         </Modal>
+
+        {/* Edit Goal Modal */}
+        <Modal
+          visible={editGoalModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={handleCancelEditGoal}
+        >
+          <TouchableWithoutFeedback onPress={handleCancelEditGoal}>
+            <View style={styles.modalOverlay}>
+              <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                <View style={styles.modalContent}>
+                  <View style={styles.modalHeader}>
+                    <Text style={styles.modalTitle}>Edit Goal</Text>
+                    <TouchableOpacity
+                      onPress={handleCancelEditGoal}
+                      style={styles.closeButton}
+                    >
+                      <Ionicons name="close" size={24} color="#5B9AA0" />
+                    </TouchableOpacity>
+                  </View>
+                  
+                  <TextInput
+                    style={styles.goalInput}
+                    placeholder="Type your goal..."
+                    value={editGoalText}
+                    onChangeText={setEditGoalText}
+                    multiline
+                    autoFocus
+                    maxLength={200}
+                  />
+                  
+                  <View style={styles.modalButtons}>
+                    <TouchableOpacity
+                      style={styles.cancelButton}
+                      onPress={handleCancelEditGoal}
+                    >
+                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.addGoalButton,
+                        !editGoalText.trim() && styles.addGoalButtonDisabled
+                      ]}
+                      onPress={handleSaveEditGoal}
+                      disabled={!editGoalText.trim()}
+                    >
+                      <Text style={styles.addGoalButtonText}>Save</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
       </SafeAreaView>
     </LinearGradient>
   );
@@ -1077,9 +1176,17 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     lineHeight: 22,
   },
+  goalActionButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  editButton: {
+    padding: 4,
+    marginRight: 4,
+  },
   deleteButton: {
     padding: 4,
-    marginLeft: 8,
   },
   counterContainer: {
     flexDirection: 'row',
