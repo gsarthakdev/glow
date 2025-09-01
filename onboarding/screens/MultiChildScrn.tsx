@@ -76,7 +76,7 @@ const MultiChildScrn = () => {
   
   return (
     <SafeAreaView style={styles.safeArea}>
-          <Header onBackPress={() => {}} subtext="Last step, then you can start logging 🎉" />
+          <Header hideBackButton={false} subtext="Last step, then you can start logging 🎉" />
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.container}>
           <Text style={styles.title}>Add each child</Text>

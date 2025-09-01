@@ -4,6 +4,8 @@ import ChildrenCountScrn from "./onboarding/screens/ChildrenCountScrn";
 import WelcomeScrn from "./onboarding/screens/WelcomeScrn";
 import OneChildScrn from "./onboarding/screens/OneChildScrn";
 import MultiChildScrn from "./onboarding/screens/MultiChildScrn";
+import QRScannerScrn from "./onboarding/screens/QRScannerScrn";
+import QRConfirmationModal from "./onboarding/screens/QRConfirmationModal";
 import HomeScrn from "./main/HomeScrn";
 
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -30,6 +32,8 @@ export function OnboardingStack() {
           initialRouteName="WelcomeScrn"
         >
             <Stack.Screen name="WelcomeScrn" component={WelcomeScrn} />
+            <Stack.Screen name="QRScannerScrn" component={QRScannerScrn} />
+            <Stack.Screen name="QRConfirmationModal" component={QRConfirmationModal} />
             <Stack.Screen name="ChildrenCountScrn" component={ChildrenCountScrn} />
             <Stack.Screen name="OneChildScrn" component={OneChildScrn} />
             <Stack.Screen name="MultiChildScrn" component={MultiChildScrn} />

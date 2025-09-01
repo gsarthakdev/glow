@@ -127,16 +127,31 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     loadCommentButtonSetting();
   }, []);
 
-  // Load comment button setting from AsyncStorage
+  // Load comment button setting from current child's data
   const loadCommentButtonSetting = async () => {
     try {
-      const setting = await AsyncStorage.getItem('is_comment_enabled');
-      if (setting !== null) {
-        setIsCommentButtonEnabled(JSON.parse(setting));
+      const selectedChildJson = await AsyncStorage.getItem('current_selected_child');
+      if (selectedChildJson) {
+        const selected = JSON.parse(selectedChildJson);
+        const childData = await AsyncStorage.getItem(selected.id);
+        if (childData) {
+          const parsedChildData = JSON.parse(childData);
+          // Get the is_comment_enabled field from the child's data
+          const isCommentEnabled = parsedChildData.is_comment_enabled;
+          console.log('[COMMENT] Setting comment enabled to:', isCommentEnabled, 'for child:', selected.child_name);
+          setIsCommentButtonEnabled(isCommentEnabled === true);
+        } else {
+          // Default to true if child data not found
+          setIsCommentButtonEnabled(true);
+        }
+      } else {
+        // Default to true if no current child selected
+        setIsCommentButtonEnabled(true);
       }
-      // Default to true if not found
     } catch (error) {
       console.error('Error loading comment button setting:', error);
+      // Default to true on error
+      setIsCommentButtonEnabled(true);
     }
   };
 
@@ -360,6 +375,11 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
             });
             setDeletedOptions(converted);
           }
+          
+          // Load comment button setting from child data
+          const isCommentEnabled = parsedChildData.is_comment_enabled;
+          console.log('[COMMENT] Loading comment enabled from child data:', isCommentEnabled, 'for child:', selected.child_name);
+          setIsCommentButtonEnabled(isCommentEnabled === true);
         }
       }
       
@@ -2444,6 +2464,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
             </Text>
             <View style={styles.headerButtons}>
               {/* Show comment button only when NOT in edit mode AND setting is enabled */}
+              {console.log('[COMMENT] Button visibility check - isCustomEditMode:', isCustomEditMode, 'isCommentButtonEnabled:', isCommentButtonEnabled)}
               {!isCustomEditMode && isCommentButtonEnabled && (
                 <>
                 <TouchableOpacity

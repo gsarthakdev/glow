@@ -2,11 +2,11 @@ import { View, Text, StyleSheet, Pressable, Platform } from 'react-native'
 import { SimpleLineIcons } from '@expo/vector-icons'
 import { useNavigation } from '@react-navigation/native'
 
-const Header = ({ onBackPress, hideBackButton, subtext  }: { onBackPress?: () => void, hideBackButton?: boolean, subtext?: string }) => {
+const Header = ({ onBackPress, hideBackButton, subtext, forWelcomeScrn=false  }: { onBackPress?: () => void, hideBackButton?: boolean, subtext?: string, forWelcomeScrn?: boolean }) => {
   const navigation = useNavigation();
   return (
     <View style={styles.container}>
-      <Pressable disabled={hideBackButton} onPress={() => navigation.goBack()} style={styles.iconContainer}>
+      <Pressable disabled={hideBackButton} onPress={() => forWelcomeScrn ? navigation.navigate("WelcomeScrn") : navigation.goBack()} style={styles.iconContainer}>
         <SimpleLineIcons name="arrow-left" size={22} color={hideBackButton ? "#EAE4CF" : "#000"} />
       </Pressable>
       <View style={styles.textContainer}>

@@ -139,7 +139,7 @@ export default function WelcomeScrn({ navigation }: { navigation: any }) {
     opacity: contentOpacity.value,
   }));
 
-  const handleTap = () => {
+  const handleQRScan = () => {
     Haptics.selectionAsync();
     
     // Start immersive transition animation
@@ -158,7 +158,32 @@ export default function WelcomeScrn({ navigation }: { navigation: any }) {
       contentTranslateY.value = withTiming(-30, { duration: 800 });
     }, 300);
     
-    // Navigate after animation completes (slightly extended for smoothness)
+    // Navigate to QR scanner after animation completes
+    setTimeout(() => {
+      navigation.replace('QRScannerScrn');
+    }, 1300);
+  };
+
+  const handleManualSetup = () => {
+    Haptics.selectionAsync();
+    
+    // Start immersive transition animation
+    rippleOpacity.value = withTiming(1, { duration: 150 });
+    rippleScale.value = withTiming(2, { duration: 600 });
+    
+    // Animate all screen elements together with smoother timing
+    setTimeout(() => {
+      // Background zoom and fade
+      transitionScale.value = withTiming(1.3, { duration: 800 });
+      transitionOpacity.value = withTiming(0, { duration: 800 });
+      
+      // Content elements fade out and scale down smoothly
+      contentScale.value = withTiming(0.7, { duration: 800 });
+      contentOpacity.value = withTiming(0, { duration: 800 });
+      contentTranslateY.value = withTiming(-30, { duration: 800 });
+    }, 300);
+    
+    // Navigate to manual setup after animation completes
     setTimeout(() => {
       navigation.replace('ChildrenCountScrn');
     }, 1300);
@@ -200,20 +225,29 @@ export default function WelcomeScrn({ navigation }: { navigation: any }) {
         </Animated.View>
       </Animated.View>
 
-      {/* Button */}
+      {/* Buttons */}
       <Animated.View style={[styles.buttonContainer, buttonContainerAnimatedStyle]}>
         <TouchableOpacity
-          style={styles.button}
-          onPress={handleTap}
+          style={styles.primaryButton}
+          onPress={handleQRScan}
           activeOpacity={0.8}
         >
           <View style={styles.buttonGlow} />
-          <Text style={styles.buttonText}>Tap to Begin</Text>
+          <Text style={styles.buttonText}>Scan QR Code</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          onPress={handleManualSetup}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.secondaryButtonText}>Manual Setup</Text>
         </TouchableOpacity>
       </Animated.View>
     </View>
   );
 }
+const { height: screenHeight } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   container: {
@@ -291,12 +325,12 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     position: 'absolute',
-    bottom: 120,
+    bottom: screenHeight < 700 ? 40: 120,
     left: 0,
     right: 0,
     alignItems: 'center',
   },
-  button: {
+  primaryButton: {
     width: 200,
     height: 56,
     borderRadius: 28,
@@ -308,6 +342,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 16,
     elevation: 8,
+    marginBottom: 16,
+  },
+  secondaryButton: {
+    width: 200,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#007AFF',
   },
   buttonGlow: {
     position: 'absolute',
@@ -324,6 +369,12 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     color: '#FFFFFF',
+    letterSpacing: -0.2,
+  },
+  secondaryButtonText: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#007AFF',
     letterSpacing: -0.2,
   },
 }); 

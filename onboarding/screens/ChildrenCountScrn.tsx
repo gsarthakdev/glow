@@ -24,7 +24,7 @@ export default function ChildrenCountScrn({ navigation }: { navigation: any }) {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#EAE4CF" }}>
       {/* Header remains static */}
-      <Header hideBackButton={true} subtext="Let's set up your little star ⭐️" />
+      <Header hideBackButton={false} subtext="Let's set up your little star ⭐️" forWelcomeScrn={true} />
 
       {/* Animated main content */}
       <Animated.View style={[{ flex: 1, alignItems: 'center', justifyContent: 'center' }, animatedStyle]}>

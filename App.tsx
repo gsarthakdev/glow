@@ -125,7 +125,7 @@ export default function App() {
   }
   */
 
-  // clearAsyncStorage();
+  // clearAsyncStorage(); 
   useEffect(() => {
     const initializeApp = async () => {
       try {
