@@ -116,12 +116,29 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
   // New state for edit mode toggle
   const [isCustomEditMode, setIsCustomEditMode] = useState(false);
 
+  // State for comment button visibility
+  const [isCommentButtonEnabled, setIsCommentButtonEnabled] = useState(true);
+
   // Add ref for ScrollView
   const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     loadCurrentChild();
+    loadCommentButtonSetting();
   }, []);
+
+  // Load comment button setting from AsyncStorage
+  const loadCommentButtonSetting = async () => {
+    try {
+      const setting = await AsyncStorage.getItem('is_comment_enabled');
+      if (setting !== null) {
+        setIsCommentButtonEnabled(JSON.parse(setting));
+      }
+      // Default to true if not found
+    } catch (error) {
+      console.error('Error loading comment button setting:', error);
+    }
+  };
 
   // Initialize flow after sentiment is determined
   useEffect(() => {
@@ -370,10 +387,11 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     }
   }, [currentChild]);
 
-  // Reload custom options when screen comes into focus
+  // Reload custom options and comment button setting when screen comes into focus
   useFocusEffect(
     useCallback(() => {
       reloadCustomOptions();
+      loadCommentButtonSetting();
     }, [reloadCustomOptions])
   );
 
@@ -910,7 +928,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
     } catch (error) {
       console.error(`[DELETE] ===== ERROR IN DELETE PROCESS =====`);
       console.error('[DELETE] Error details:', error);
-      console.error('[DELETE] Error stack:', error.stack);
+      console.error('[DELETE] Error stack:', (error as Error).stack);
     }
   };
 
@@ -2425,8 +2443,8 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
               Step {currentQuestion + 1} of {currentFlow.length > 0 ? currentFlow.length : 1}
             </Text>
             <View style={styles.headerButtons}>
-              {/* Show comment button only when NOT in edit mode */}
-              {!isCustomEditMode && (
+              {/* Show comment button only when NOT in edit mode AND setting is enabled */}
+              {!isCustomEditMode && isCommentButtonEnabled && (
                 <>
                 <TouchableOpacity
                   style={styles.commentIconButton}

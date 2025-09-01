@@ -38,10 +38,12 @@ export default function SettingsScreen() {
   const [reminderTime, setReminderTime] = useState({ hour: 20, minute: 30 });
   const [isTimePickerVisible, setIsTimePickerVisible] = useState(false);
   const [isNotificationSettingsLoaded, setIsNotificationSettingsLoaded] = useState(false);
+  const [commentButtonEnabled, setCommentButtonEnabled] = useState(true);
 
   useEffect(() => {
     loadChildren();
     loadNotificationSettings();
+    loadCommentButtonSetting();
   }, []);
 
   const loadChildren = async () => {
@@ -55,7 +57,8 @@ export default function SettingsScreen() {
         key !== 'daily_reminder_enabled' &&
         key !== 'notification_permissions_requested_after_onboarding' &&
         key !== 'default_email_provider' &&
-        key !== 'daily_reminder_time'
+        key !== 'daily_reminder_time' &&
+        key !== 'is_comment_enabled'
       );
       console.log('SettingsScreen - Filtered child keys:', childKeys);
       
@@ -108,6 +111,18 @@ export default function SettingsScreen() {
     } catch (error) {
       console.error('Error loading notification settings:', error);
       setIsNotificationSettingsLoaded(true); // Set to true even on error to prevent infinite loading
+    }
+  };
+
+  const loadCommentButtonSetting = async () => {
+    try {
+      const setting = await AsyncStorage.getItem('is_comment_enabled');
+      if (setting !== null) {
+        setCommentButtonEnabled(JSON.parse(setting));
+      }
+      // Default to true if not found
+    } catch (error) {
+      console.error('Error loading comment button setting:', error);
     }
   };
 
@@ -213,6 +228,16 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleCommentButtonToggle = async (value: boolean) => {
+    try {
+      setCommentButtonEnabled(value);
+      await AsyncStorage.setItem('is_comment_enabled', JSON.stringify(value));
+    } catch (error) {
+      console.error('Error saving comment button setting:', error);
+      Alert.alert('Error', 'Failed to update comment button setting.');
+    }
+  };
+
   const handleAddChild = async () => {
     const pronounToSave = newChildPronouns === 'Other' ? customPronoun.trim() : newChildPronouns.trim();
     if (!newChildName.trim() || !pronounToSave) {
@@ -301,8 +326,27 @@ export default function SettingsScreen() {
         <Text style={styles.subtitle}>Manage your children and app preferences.</Text>
       </View>
 
+      {/* App Preferences Section - Compact */}
+      <View style={styles.sectionCompact}>
+        {/* <Text style={styles.sectionTitleSmall}>App Preferences</Text> */}
+        <TouchableOpacity 
+          style={styles.settingRowCompact}
+          onPress={() => handleCommentButtonToggle(!commentButtonEnabled)}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.settingLabelCompact}>Show Comment Button</Text>
+          <Switch
+            value={commentButtonEnabled}
+            onValueChange={handleCommentButtonToggle}
+            trackColor={{ false: '#E0E0E0', true: '#5B9AA0' }}
+            thumbColor={commentButtonEnabled ? '#fff' : '#f4f3f4'}
+            style={styles.switchCompact}
+          />
+        </TouchableOpacity>
+      </View>
+
       {/* Notification Settings Section */}
-      <View style={styles.section}>
+      <View style={styles.sectionCompact}>
         <Text style={styles.sectionTitle}>Daily Reminders</Text>
         <TouchableOpacity 
           style={styles.settingRow}
@@ -340,47 +384,52 @@ export default function SettingsScreen() {
         )}
       </View>
 
-      {/* Children Management Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Manage Children</Text>
-        <Text style={styles.sectionSubtitle}>Add or remove children you want to track.</Text>
+      {/* Children Management Section - Now flexible */}
+      <View style={styles.childrenSection}>
+        <View style={styles.sectionHeaderCompact}>
+          <Text style={styles.sectionTitle}>Manage Children</Text>
+          <Text style={styles.sectionSubtitle}>Add or remove children you want to track.</Text>
+        </View>
+        <View style={styles.childrenContainer}>
+          <FlatList
+            data={children}
+            keyExtractor={item => item.id}
+            style={styles.childrenList}
+            contentContainerStyle={styles.childrenListContent}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={<Text style={styles.emptyText}>No children yet. Add your first child below!</Text>}
+            renderItem={({ item }) => (
+              <View style={styles.childRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.childName}>{item.child_name}</Text>
+                  <Text style={styles.childPronouns}>{item.pronouns}</Text>
+                </View>
+                <TouchableOpacity onPress={() => {
+                  setEditChild(item);
+                  setEditName(item.child_name);
+                  setEditPronoun(
+                    ['He/Him', 'She/Her', 'They/Them'].includes(item.pronouns)
+                      ? item.pronouns
+                      : 'Other'
+                  );
+                  setEditShowCustomPronoun(!['He/Him', 'She/Her', 'They/Them'].includes(item.pronouns));
+                  setEditCustomPronoun(!['He/Him', 'She/Her', 'They/Them'].includes(item.pronouns) ? item.pronouns : '');
+                  setEditModalVisible(true);
+                }} style={styles.editBtn}>
+                  <Feather name="edit-2" size={20} color="#5B9AA0" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => handleRemoveChild(item)} style={styles.removeBtn}>
+                  <Feather name="trash-2" size={22} color="#E57373" />
+                </TouchableOpacity>
+              </View>
+            )}
+          />
+          <TouchableOpacity style={styles.addBtn} onPress={() => setIsAddModalVisible(true)}>
+            <Feather name="plus" size={24} color="#fff" />
+            <Text style={styles.addBtnText}>Add Child</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-      <FlatList
-        data={children}
-        keyExtractor={item => item.id}
-        style={{ width: isTablet ? 600 : '100%', alignSelf: 'center' }}
-        contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 24 }}
-        ListEmptyComponent={<Text style={styles.emptyText}>No children yet. Add your first child below!</Text>}
-        renderItem={({ item }) => (
-          <View style={styles.childRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.childName}>{item.child_name}</Text>
-              <Text style={styles.childPronouns}>{item.pronouns}</Text>
-            </View>
-            <TouchableOpacity onPress={() => {
-              setEditChild(item);
-              setEditName(item.child_name);
-              setEditPronoun(
-                ['He/Him', 'She/Her', 'They/Them'].includes(item.pronouns)
-                  ? item.pronouns
-                  : 'Other'
-              );
-              setEditShowCustomPronoun(!['He/Him', 'She/Her', 'They/Them'].includes(item.pronouns));
-              setEditCustomPronoun(!['He/Him', 'She/Her', 'They/Them'].includes(item.pronouns) ? item.pronouns : '');
-              setEditModalVisible(true);
-            }} style={styles.editBtn}>
-              <Feather name="edit-2" size={20} color="#5B9AA0" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleRemoveChild(item)} style={styles.removeBtn}>
-              <Feather name="trash-2" size={22} color="#E57373" />
-            </TouchableOpacity>
-          </View>
-        )}
-      />
-      <TouchableOpacity style={styles.addBtn} onPress={() => setIsAddModalVisible(true)}>
-        <Feather name="plus" size={24} color="#fff" />
-        <Text style={styles.addBtnText}>Add Child</Text>
-      </TouchableOpacity>
       {/* Add Child Modal */}
       <Modal
         visible={isAddModalVisible}
@@ -582,9 +631,9 @@ const styles = StyleSheet.create({
   },
   header: {
     width: '100%',
-    paddingVertical: 16,
+    paddingVertical: screenHeight < 700 ? 8 : 16,
     paddingHorizontal: 24,
-    marginBottom: screenHeight < 700 ? 0 : 12,
+    marginBottom: screenHeight < 700 ? 4 : 8,
   },
   title: {
     fontSize: 28,
@@ -638,13 +687,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#5B9AA0',
-    paddingVertical: 14,
+    paddingVertical: 10,
     paddingHorizontal: 32,
     borderRadius: 25,
-    marginTop: 0,
-    marginBottom: screenHeight < 700 ? 100 : 110,
-    // bottom: screenHeight < 700 ? 100 : 110,
+    marginTop: 6,
+    marginBottom: 14,
+    marginHorizontal: 24,
     alignSelf: 'center',
+  },
+  switchCompact: {
+    transform: [{ scaleX: 0.9 }, { scaleY: 0.9 }],
   },
   addBtnText: {
     color: '#fff',
@@ -799,11 +851,48 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     marginBottom: 20,
   },
+  sectionCompact: {
+    width: isTablet ? 600 : '100%',
+    alignSelf: 'center',
+    paddingHorizontal: 24,
+    marginBottom: 8,
+  },
+  sectionHeaderCompact: {
+    width: isTablet ? 600 : '100%',
+    alignSelf: 'center',
+    paddingHorizontal: 24,
+    marginBottom: 8,
+  },
+  childrenSection: {
+    flex: 1,
+    width: '100%',
+    minHeight: 200,
+  },
+  childrenContainer: {
+    flex: 1,
+    paddingBottom: screenHeight < 700 ? 80 : 100,
+  },
+  childrenList: {
+    flex: 1,
+    width: isTablet ? 600 : '100%',
+    alignSelf: 'center',
+  },
+  childrenListContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+    flexGrow: 1,
+  },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
     color: '#3E3E6B',
     marginBottom: 8,
+  },
+  sectionTitleSmall: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#3E3E6B',
+    marginBottom: 6,
   },
   sectionSubtitle: {
     fontSize: 15,
@@ -831,6 +920,16 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  settingRowCompact: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E1E5E9',
+  },
   settingInfo: {
     flex: 1,
     marginRight: 10,
@@ -838,6 +937,11 @@ const styles = StyleSheet.create({
   settingLabel: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#3E3E6B',
+  },
+  settingLabelCompact: {
+    fontSize: 15,
+    fontWeight: '500',
     color: '#3E3E6B',
   },
   settingDescription: {
