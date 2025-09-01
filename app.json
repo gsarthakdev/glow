@@ -2,7 +2,7 @@
   "expo": {
     "name": "Glow",
     "slug": "glow",
-    "version": "1.0.8",
+    "version": "1.0.9",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -44,7 +44,15 @@
       "enabled": true
     },
     "plugins": [
-      "expo-mail-composer"
+      "expo-mail-composer",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "react-native",
+          "organization": "1700ventures"
+        }
+      ]
     ]
   }
 }

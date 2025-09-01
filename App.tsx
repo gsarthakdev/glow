@@ -18,6 +18,23 @@ import { IS_DEBUGGING } from './flag';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { LogBox } from 'react-native';
+import * as Sentry from '@sentry/react-native';
+
+Sentry.init({
+  dsn: 'https://bb4034f99657c0b850301ef84f792c1b@o4509945918062592.ingest.us.sentry.io/4509945919045632',
+
+  // Adds more context data to events (IP address, cookies, user, etc.)
+  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  sendDefaultPii: true,
+
+  // Configure Session Replay
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1,
+  integrations: [Sentry.mobileReplayIntegration()],
+
+  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
+  // spotlight: __DEV__,
+});
 
 
 // LogBox.ignoreAllLogs();    
@@ -65,7 +82,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 }
 
-export default function App() {
+export default Sentry.wrap(function App() {
   const onboardingStatus = useAsyncStorage('onboarding_completed');
 
   const [isOnboardingCompleted, setIsOnboardingCompleted] = useState<boolean | null>(null);
@@ -179,7 +196,7 @@ export default function App() {
   );
 
 
-}
+});
 
 const styles = StyleSheet.create({
   container: {
