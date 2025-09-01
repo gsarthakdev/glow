@@ -16,7 +16,8 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.1700ventures.glow",
       "infoPlist": {
-        "NSUserNotificationsUsageDescription": "One reminder to make a log. This can be turned off any time."
+        "NSUserNotificationsUsageDescription": "One reminder to make a log. This can be turned off any time.",
+        "NSCameraUsageDescription": "This app uses the camera to scan QR codes for quick child setup."
       }
     },
     "android": {
