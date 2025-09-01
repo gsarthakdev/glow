@@ -42,6 +42,9 @@
       "url": "https://u.expo.dev/6f3061a7-4940-4d3a-aeec-e9d3618780ee",
       "fallbackToCacheTimeout": 0,
       "enabled": true
-    }
+    },
+    "plugins": [
+      "expo-mail-composer"
+    ]
   }
 }
