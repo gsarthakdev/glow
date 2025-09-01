@@ -2464,7 +2464,7 @@ export default function FlowBasic1BaseScrn({ navigation }: { navigation: any }) 
             </Text>
             <View style={styles.headerButtons}>
               {/* Show comment button only when NOT in edit mode AND setting is enabled */}
-              {console.log('[COMMENT] Button visibility check - isCustomEditMode:', isCustomEditMode, 'isCommentButtonEnabled:', isCommentButtonEnabled)}
+              {/* {console.log('[COMMENT] Button visibility check - isCustomEditMode:', isCustomEditMode, 'isCommentButtonEnabled:', isCommentButtonEnabled)} */}
               {!isCustomEditMode && isCommentButtonEnabled && (
                 <>
                 <TouchableOpacity
