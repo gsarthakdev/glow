@@ -329,7 +329,7 @@ export default function SettingsScreen() {
       {/* App Preferences Section - Compact */}
       <View style={styles.sectionCompact}>
         {/* <Text style={styles.sectionTitleSmall}>App Preferences</Text> */}
-        <TouchableOpacity 
+        {/* <TouchableOpacity 
           style={styles.settingRowCompact}
           onPress={() => handleCommentButtonToggle(!commentButtonEnabled)}
           activeOpacity={0.7}
@@ -342,7 +342,7 @@ export default function SettingsScreen() {
             thumbColor={commentButtonEnabled ? '#fff' : '#f4f3f4'}
             style={styles.switchCompact}
           />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
 
       {/* Notification Settings Section */}
@@ -867,6 +867,7 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     minHeight: 200,
+    marginTop: 24,
   },
   childrenContainer: {
     flex: 1,
